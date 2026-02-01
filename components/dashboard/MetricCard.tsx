@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MetricCardProps } from '@/types';
 import { getRiskColor } from '@/lib/colors';
 import { cn } from '@/lib/utils';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, ArrowUpRight } from 'lucide-react';
 
 export function MetricCard({
   title,
@@ -28,30 +28,40 @@ export function MetricCard({
       transition={{ duration: 0.3 }}
     >
       <Card className={cn(
-        'transition-all duration-200 hover:shadow-md',
-        statusColor?.border && `border-l-4 ${statusColor.border}`
+        'transition-all duration-300 hover:shadow-lg border-none shadow-sm ring-1 ring-slate-900/5 bg-white group',
+        statusColor?.subtle && `hover:${statusColor.subtle}`
       )}>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
+          <CardTitle className="text-sm font-medium text-slate-500 group-hover:text-slate-700 transition-colors">
             {title}
           </CardTitle>
-          {icon && <div className="text-muted-foreground">{icon}</div>}
+          {icon && (
+            <div className={cn(
+              "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+              statusColor ? `bg-${statusColor.base}-50 text-${statusColor.base}-600` : "bg-slate-50 text-slate-500"
+            )}>
+              {icon}
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <div className="flex items-baseline gap-2">
             <span className={cn(
-              'text-2xl font-bold',
+              'text-2xl font-bold text-slate-900 tracking-tight',
               statusColor?.text
             )}>
-              {typeof value === 'number' ? value.toFixed(2) : value}
+              {typeof value === 'number' ? 
+                (Number.isInteger(value) ? value : value.toFixed(2)) 
+                : value
+              }
             </span>
             {unit && (
-              <span className="text-sm text-muted-foreground">{unit}</span>
+              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">{unit}</span>
             )}
           </div>
           
           {trend && (
-            <div className={cn('flex items-center gap-1 mt-2 text-xs', trendColor)}>
+            <div className={cn('flex items-center gap-1 mt-2 text-xs font-medium', trendColor)}>
               <TrendIcon className="h-3 w-3" />
               <span>{trendValue}</span>
             </div>

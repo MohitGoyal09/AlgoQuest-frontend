@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { RiskMeterProps } from '@/types';
 import { getRiskColor, getRiskLabel, getRiskProgress } from '@/lib/colors';
 import { cn } from '@/lib/utils';
+import { AlertTriangle, CheckCircle, Info } from 'lucide-react';
 
 export function RiskMeter({ riskLevel, velocity, confidence, size = 'md' }: RiskMeterProps) {
   const colors = getRiskColor(riskLevel);
@@ -21,6 +22,19 @@ export function RiskMeter({ riskLevel, velocity, confidence, size = 'md' }: Risk
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
+  const getStatusIcon = () => {
+    switch (riskLevel) {
+      case 'LOW':
+        return <CheckCircle className="h-5 w-5 text-green-500" />;
+      case 'ELEVATED':
+        return <Info className="h-5 w-5 text-amber-500" />;
+      case 'CRITICAL':
+        return <AlertTriangle className="h-5 w-5 text-red-500" />;
+      default:
+        return <Info className="h-5 w-5 text-slate-400" />;
+    }
+  };
+
   return (
     <div className="flex flex-col items-center">
       <div className="relative" style={{ width: container, height: container }}>
@@ -37,7 +51,7 @@ export function RiskMeter({ riskLevel, velocity, confidence, size = 'md' }: Risk
             fill="none"
             stroke="currentColor"
             strokeWidth={stroke}
-            className="text-gray-200 dark:text-gray-800"
+            className="text-slate-100"
           />
           {/* Progress circle */}
           <motion.circle
@@ -61,6 +75,14 @@ export function RiskMeter({ riskLevel, velocity, confidence, size = 'md' }: Risk
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.3, delay: 0.2 }}
+            className="mb-2"
+          >
+            {getStatusIcon()}
+          </motion.div>
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
             className={cn('font-bold', font, colors.text)}
           >
             {label}
@@ -69,7 +91,7 @@ export function RiskMeter({ riskLevel, velocity, confidence, size = 'md' }: Risk
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3, delay: 0.4 }}
-            className="text-xs text-muted-foreground mt-1"
+            className="text-xs text-slate-400 mt-1"
           >
             {Math.round(confidence * 100)}% confidence
           </motion.div>
@@ -81,11 +103,14 @@ export function RiskMeter({ riskLevel, velocity, confidence, size = 'md' }: Risk
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.5 }}
-        className="mt-4 text-center"
+        className="mt-6 text-center"
       >
-        <div className="text-sm text-muted-foreground">Velocity</div>
-        <div className={cn('text-2xl font-bold', colors.text)}>
+        <div className="text-sm text-slate-500 mb-1">Velocity Score</div>
+        <div className={cn('text-3xl font-bold', colors.text)}>
           {velocity.toFixed(1)}
+        </div>
+        <div className="text-xs text-slate-400 mt-1">
+          {velocity < 1.5 ? 'Stable' : velocity < 2.5 ? 'Moderate' : 'High Risk'}
         </div>
       </motion.div>
     </div>
