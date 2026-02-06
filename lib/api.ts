@@ -117,18 +117,14 @@ export async function createPersona(
  */
 export async function injectEvent(
   userHash: string,
-  eventType: string,
-  timestamp?: string,
-  metadata?: Record<string, unknown>
+  currentRisk: string,
 ): Promise<InjectEventResponse> {
   const response = await fetch(`${API_BASE_URL}/events`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       user_hash: userHash,
-      event_type: eventType,
-      ...(timestamp && { timestamp }),
-      ...(metadata && { metadata }),
+      current_risk: currentRisk,
     }),
   });
   return handleResponse<InjectEventResponse>(response);
@@ -158,6 +154,44 @@ export async function acknowledgeNudge(nudgeId: string, action: string): Promise
     body: JSON.stringify({ action }),
   });
   return handleResponse<void>(response);
+}
+
+// ============================================
+// User Listing API
+// ============================================
+
+/**
+ * List all users with their risk scores
+ * GET /users
+ */
+export async function listUsers(): Promise<Array<{
+  user_hash: string;
+  risk_level: string;
+  velocity: number;
+  confidence: number;
+  updated_at: string | null;
+}>> {
+  const response = await fetch(`${API_BASE_URL}/users`);
+  return handleResponse(response);
+}
+
+// ============================================
+// Risk History API
+// ============================================
+
+/**
+ * Get risk score history for timeline charts
+ * GET /users/{user_hash}/history?days=30
+ */
+export async function getRiskHistory(userHash: string, days: number = 30): Promise<Array<{
+  timestamp: string;
+  risk_level: string;
+  velocity: number;
+  confidence: number;
+  belongingness_score: number;
+}>> {
+  const response = await fetch(`${API_BASE_URL}/users/${userHash}/history?days=${days}`);
+  return handleResponse(response);
 }
 
 // ============================================

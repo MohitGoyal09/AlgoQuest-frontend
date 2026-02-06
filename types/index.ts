@@ -109,7 +109,7 @@ export interface NetworkGraphData {
 // ============================================
 // Simulation Types
 // ============================================
-export type PersonaType = 'alex_burnout' | 'sarah_gem' | 'jordan_steady';
+export type PersonaType = 'alex_burnout' | 'sarah_gem' | 'jordan_steady' | 'maria_contagion';
 
 export interface SimulationEvent {
   user_hash: string;

@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function SimulationPage() {
   const [userHash, setUserHash] = useState('demo_user_hash');
@@ -74,17 +75,17 @@ export default function SimulationPage() {
               </div>
               <div>
                 <Label htmlFor="riskLevel">Current Risk Level</Label>
-                <select
-                  id="riskLevel"
-                  value={currentRisk}
-                  onChange={(e) => setCurrentRisk(e.target.value as RiskLevel)}
-                  className="w-full p-2 border rounded-md"
-                >
-                  <option value="CALIBRATING">Calibrating</option>
-                  <option value="LOW">Low</option>
-                  <option value="ELEVATED">Elevated</option>
-                  <option value="CRITICAL">Critical</option>
-                </select>
+                <Select value={currentRisk} onValueChange={(value) => setCurrentRisk(value as RiskLevel)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select risk level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CALIBRATING">Calibrating</SelectItem>
+                    <SelectItem value="LOW">Low</SelectItem>
+                    <SelectItem value="ELEVATED">Elevated</SelectItem>
+                    <SelectItem value="CRITICAL">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>

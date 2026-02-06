@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { User, UserCog, UserCheck, Loader2 } from 'lucide-react';
+import { User, UserCog, UserCheck, Users, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const personas: { type: PersonaType; label: string; description: string; icon: typeof User; color: string }[] = [
@@ -32,6 +32,13 @@ const personas: { type: PersonaType; label: string; description: string; icon: t
     description: 'Consistent, balanced patterns',
     icon: User,
     color: 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200',
+  },
+  {
+    type: 'maria_contagion',
+    label: 'Maria: Contagion Risk',
+    description: 'Team morale impact, resignation risk',
+    icon: Users,
+    color: 'bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200',
   },
 ];
 
