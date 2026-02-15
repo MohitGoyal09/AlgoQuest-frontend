@@ -117,8 +117,8 @@ function DashboardContent() {
   const fetchProfileData = async () => {
     try {
       setProfileLoading(true)
-      const response = await api.get('/me') as MeData
-      setProfileData(response)
+      const response = await api.get<MeData>('/me')
+      setProfileData(response as MeData)
       setProfileError(null)
     } catch (err: any) {
       setProfileError(err.response?.data?.detail || "Failed to load profile")

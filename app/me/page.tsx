@@ -240,7 +240,7 @@ function MePageContent() {
     : "Unknown"
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden bg-background">
+    <div className="flex flex-col bg-background">
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">

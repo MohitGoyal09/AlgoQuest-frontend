@@ -95,13 +95,9 @@ function MePageContent() {
   const fetchMeData = async () => {
     try {
       setLoading(true)
-      const response = await api.get<APIResponse<MeData>>('/me')
-      if (response.success && response.data) {
-        setData(response.data)
-        setError(null)
-      } else {
-        setError(response.error || "Failed to load your data")
-      }
+      const response = await api.get<MeData>('/me')
+      setData(response as MeData)
+      setError(null)
     } catch (err: any) {
       setError(err.response?.data?.detail || "Failed to load your data")
     } finally {
@@ -215,7 +211,7 @@ function MePageContent() {
   }
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden bg-background">
+    <div className="flex flex-col bg-background">
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">

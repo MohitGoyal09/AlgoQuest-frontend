@@ -3,6 +3,8 @@ import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import { AuthProvider } from '@/contexts/auth-context'
 import { ClientLayout } from "@/components/layout/client-layout"
+import { AmbientBackground } from "@/components/ambient-background"
+import { RouteProgressBar } from "@/components/route-progress-bar"
 
 import './globals.css'
 

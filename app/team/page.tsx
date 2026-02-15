@@ -44,19 +44,19 @@ interface TeamData {
     at_risk_count: number
     critical_count: number
     consent_rate: string
-  }
+  } | null
   risk_distribution: {
     LOW: number
     ELEVATED: number
     CRITICAL: number
     CALIBRATING: number
-  }
+  } | null
   consent_summary: {
     total: number
     consented: number
     not_consented: number
     percentage: number
-  }
+  } | null
 }
 
 interface TeamAnalytics {
@@ -115,15 +115,19 @@ function TeamPageContent() {
   const fetchTeamData = async () => {
     try {
       setLoading(true)
+      console.log('[team] Fetching team data...')
       const [teamRes, analyticsRes] = await Promise.all([
-        api.get('/team') as TeamData,
-        api.get('/team/analytics?days=30') as TeamAnalytics
+        api.get<TeamData>('/team'),
+        api.get<TeamAnalytics>('/team/analytics?days=30')
       ])
-      setTeamData(teamRes)
-      setAnalytics(analyticsRes)
+      console.log('[team] Team response:', teamRes)
+      console.log('[team] Analytics response:', analyticsRes)
+      setTeamData(teamRes as TeamData)
+      setAnalytics(analyticsRes as TeamAnalytics)
       setError(null)
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to load team data")
+      console.error('[team] Error fetching team data:', err)
+      setError(err.response?.data?.detail || err.message || "Failed to load team data")
     } finally {
       setLoading(false)
     }
@@ -139,8 +143,8 @@ function TeamPageContent() {
     }
 
     try {
-      const response = await api.get(`/team/member/${member.real_hash}`) as MemberDetails
-      setMemberDetails(response)
+      const response = await api.get<MemberDetails>(`/team/member/${member.real_hash}`)
+      setMemberDetails(response as MemberDetails)
       setSelectedMember(member)
     } catch (err: any) {
       setError(err.response?.data?.detail || "Failed to load member details")
@@ -173,20 +177,71 @@ function TeamPageContent() {
     )
   }
 
-  if (!teamData || !teamData.metrics) {
+  // Error State (only if no data at all and we have an error)
+  if (error && !teamData) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Alert variant="destructive" className="max-w-md">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error || "Failed to load team data"}</AlertDescription>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       </div>
     )
   }
 
+  // Valid Data Check: If we have teamData, we render (even if metrics is null for empty team)
+  if (!teamData) {
+    return (
+       <div className="flex h-screen items-center justify-center">
+        <Alert variant="destructive" className="max-w-md">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>Failed to load team data</AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
+  // EMPTY STATE Handling
+  if (!teamData.metrics || teamData.team.member_count === 0) {
+    return (
+      <div className="flex flex-col bg-background min-h-screen">
+          <header className="border-b bg-card">
+          <div className="container mx-auto flex h-16 items-center justify-between px-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+                <Users className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-lg font-semibold">Team Dashboard</h1>
+                <p className="text-xs text-muted-foreground">No team members</p>
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard")}>
+              Back to Dashboard
+            </Button>
+          </div>
+        </header>
+
+        <main className="container mx-auto p-4 lg:p-8 flex items-center justify-center flex-1">
+          <Card className="max-w-lg w-full text-center p-8">
+            <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+              <Users className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <CardTitle className="text-xl mb-2">No Team Members Assigned</CardTitle>
+            <CardDescription className="mb-6">
+              You haven't been assigned any team members yet. Once employees are added to your team, their wellbeing insights will appear here.
+            </CardDescription>
+            <Button onClick={() => router.push('/dashboard')}>Return to Dashboard</Button>
+          </Card>
+        </main>
+      </div>
+    )
+  }
+
   return (
-    <div className="flex flex-col flex-1 overflow-hidden bg-background">
+    <div className="flex flex-col bg-background">
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">

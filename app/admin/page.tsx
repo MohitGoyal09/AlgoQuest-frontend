@@ -96,8 +96,8 @@ function AdminPageContent() {
   const fetchHealthData = async () => {
     try {
       setLoading(true)
-      const response = await api.get("/admin/health") as SystemHealth
-      setHealth(response)
+      const response = await api.get<SystemHealth>("/admin/health")
+      setHealth(response as SystemHealth)
       setError(null)
     } catch (err: any) {
       setError(err.response?.data?.detail || "Failed to load system health")
@@ -112,8 +112,8 @@ function AdminPageContent() {
       let url = `/admin/audit-logs?days=${auditDays}&limit=50&offset=${auditOffset}`
       if (auditAction) url += `&action_type=${auditAction}`
       
-      const response = await api.get(url) as { logs: AuditLog[] }
-      setAuditLogs(response.logs)
+      const response = await api.get<{ logs: AuditLog[] }>(url)
+      setAuditLogs((response as { logs: AuditLog[] }).logs)
       setError(null)
     } catch (err: any) {
       setError(err.response?.data?.detail || "Failed to load audit logs")
@@ -128,8 +128,8 @@ function AdminPageContent() {
       let url = "/admin/users?limit=100"
       if (userRole) url += `&role=${userRole}`
       
-      const response = await api.get(url) as { users: User[] }
-      setUsers(response.users)
+      const response = await api.get<{ users: User[] }>(url)
+      setUsers((response as { users: User[] }).users)
       setError(null)
     } catch (err: any) {
       setError(err.response?.data?.detail || "Failed to load users")
@@ -170,7 +170,7 @@ function AdminPageContent() {
   ]
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden bg-background">
+    <div className="flex flex-col bg-background">
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">

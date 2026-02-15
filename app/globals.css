@@ -102,6 +102,7 @@ body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   font-feature-settings: "rlig" 1, "calt" 1;
+  overflow-x: hidden;
 }
 
 /* Premium Animations */
@@ -127,6 +128,10 @@ body {
 }
 
 .ambient-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background: radial-gradient(circle at 50% 50%, hsl(var(--primary) / 0.08) 0%, transparent 50%),
     radial-gradient(circle at 0% 0%, hsl(var(--sentinel-info) / 0.05) 0%, transparent 40%),
     radial-gradient(circle at 100% 100%, hsl(var(--sentinel-critical) / 0.03) 0%, transparent 40%);
