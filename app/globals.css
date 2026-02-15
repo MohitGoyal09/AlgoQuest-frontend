@@ -90,6 +90,10 @@
   --sidebar-ring: 142 70% 50%;
 }
 
+/* ═══════════════════════════════════════════════════════
+   BASE STYLES
+   ═══════════════════════════════════════════════════════ */
+
 * {
   border-color: hsl(var(--border));
 }
@@ -140,7 +144,6 @@ body {
   animation: shimmer 2s infinite;
 }
 
-/* Selection styles */
 ::selection {
   background: hsl(var(--primary) / 0.3);
   color: hsl(var(--primary-foreground));

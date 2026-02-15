@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { createServerClient } from "@supabase/ssr"
 
 /**
  * Role-based routing middleware
  * 
- * This middleware checks the user's role from the JWT token in the cookie
- * and redirects them to the appropriate default page.
+ * Uses @supabase/ssr to correctly read Supabase session cookies
+ * (cookie name is `sb-<project-ref>-auth-token`, NOT `sb-access-token`).
  * 
  * Role → Default Page Mapping:
  * - employee → /me (employee self-service dashboard)
@@ -113,7 +114,7 @@ export function middleware(request: NextRequest) {
 
   // If not protected, allow through
   if (!isProtectedRoute) {
-    return NextResponse.next()
+    return supabaseResponse
   }
 
   // If no token and trying to access protected route, redirect to login
@@ -162,12 +163,13 @@ export function middleware(request: NextRequest) {
 }
 
 // Configure middleware to run on specific paths
+// NOTE: "/" is excluded — landing page is public
 export const config = {
   matcher: [
-    "/",
     "/dashboard/:path*",
     "/me/:path*",
     "/team/:path*",
     "/admin/:path*",
   ],
 }
+

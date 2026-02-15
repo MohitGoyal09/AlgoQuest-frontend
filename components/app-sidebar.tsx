@@ -92,15 +92,16 @@ export function AppSidebar({ activeView, onViewChange, collapsed, onToggleCollap
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-5">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary">
-          <Shield className="h-4.5 w-4.5 text-sidebar-primary-foreground" />
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--sidebar-primary))]"
+          style={{ boxShadow: "0 0 16px hsl(152 55% 48% / 0.2)" }}>
+          <Shield className="h-4.5 w-4.5 text-[hsl(var(--sidebar-primary-foreground))]" />
         </div>
         {!collapsed && (
           <div className="flex flex-col">
             <span className="text-[15px] font-semibold tracking-tight text-white">
               Sentinel
             </span>
-            <span className="text-[10px] leading-none text-sidebar-foreground">
+            <span className="text-[10px] leading-none text-[hsl(var(--sidebar-foreground))]">
               Employee Insights
             </span>
           </div>
@@ -142,6 +143,8 @@ export function AppSidebar({ activeView, onViewChange, collapsed, onToggleCollap
             Engines
           </p>
         )}
+        {/* Gradient divider */}
+        <div className="mx-3 mb-3 h-px bg-gradient-to-r from-transparent via-[var(--glass-border)] to-transparent" />
         <ul className="flex flex-col gap-1">
           {engineNavItems.map((item) => {
             const isActiveItem = pathname === '/dashboard' && activeView === item.id
@@ -168,17 +171,17 @@ export function AppSidebar({ activeView, onViewChange, collapsed, onToggleCollap
       {/* Footer */}
       <div className="mt-auto px-3 pb-4">
         {!collapsed && (
-          <div className="mb-3 rounded-lg bg-sidebar-accent px-4 py-3">
+          <div className="mb-3 rounded-lg border border-[var(--glass-border)] bg-[hsl(var(--sidebar-accent))] px-4 py-3">
             <div className="mb-2 flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-sidebar-primary animate-pulse" />
-              <span className="text-[11px] font-medium text-sidebar-accent-foreground">System Online</span>
+              <span className="h-2 w-2 rounded-full bg-[hsl(var(--sidebar-primary))] dot-pulse" />
+              <span className="text-[11px] font-medium text-[hsl(var(--sidebar-accent-foreground))]">System Online</span>
             </div>
             <div className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-2 text-[10px] text-sidebar-foreground">
+              <div className="flex items-center gap-2 text-[10px] text-[hsl(var(--sidebar-foreground))]">
                 <GitBranch className="h-3 w-3" />
                 <span>Two-Vault Active</span>
               </div>
-              <div className="flex items-center gap-2 text-[10px] text-sidebar-foreground">
+              <div className="flex items-center gap-2 text-[10px] text-[hsl(var(--sidebar-foreground))]">
                 <Activity className="h-3 w-3" />
                 <span>Role: {userRoleName}</span>
               </div>
@@ -189,7 +192,7 @@ export function AppSidebar({ activeView, onViewChange, collapsed, onToggleCollap
           <button
             type="button"
             onClick={onToggleCollapse}
-            className="flex w-full items-center justify-center rounded-lg py-2 text-sidebar-foreground/50 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            className="flex w-full items-center justify-center rounded-lg py-2 text-[hsl(var(--sidebar-foreground))]/50 transition-colors hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-accent-foreground))]"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {collapsed ? (
