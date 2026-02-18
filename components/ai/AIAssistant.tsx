@@ -279,7 +279,7 @@ export function AIAssistant({ userHash, userName, riskLevel }: AIAssistantProps)
             type="submit"
             disabled={isLoading || !input.trim()}
             size="icon"
-            className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600"
+            className="bg-purple-600 hover:bg-purple-700"
           >
             {isLoading ? (
               <Sparkles className="h-4 w-4 animate-spin" />

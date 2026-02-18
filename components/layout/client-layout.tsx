@@ -5,14 +5,15 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { usePathname } from "next/navigation"
+import { cn } from "@/lib/utils"
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const pathname = usePathname()
 
-  // Hide sidebar on auth pages
-  const isAuthPage = pathname === "/login" || pathname === "/register"
+  // Hide sidebar on auth pages & landing page
+  const isAuthPage = pathname === "/login" || pathname === "/register" || pathname === "/"
   if (isAuthPage) {
     return <>{children}</>
   }
@@ -62,7 +63,10 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-6">
+        <main className={cn(
+          "flex-1 overflow-x-hidden",
+          pathname === "/ask-sentinel" ? "overflow-y-hidden p-0" : "overflow-y-auto p-4 lg:p-6"
+        )}>
           {children}
         </main>
       </div>

@@ -124,15 +124,15 @@ export function AgendaGenerator({
     )}>
       <CardHeader className={cn(
         "pb-3 transition-colors",
-        isElevatedOrHigher && agenda && "bg-gradient-to-r from-amber-500/5 to-orange-500/5"
+        isElevatedOrHigher && agenda && "bg-amber-500/5"
       )}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={cn(
               "flex h-10 w-10 items-center justify-center rounded-xl shadow-lg",
               isElevatedOrHigher 
-                ? "bg-gradient-to-br from-amber-500 to-orange-500" 
-                : "bg-gradient-to-br from-purple-500 to-indigo-500"
+                ? "bg-amber-500" 
+                : "bg-purple-500"
             )}>
               {isElevatedOrHigher ? (
                 <AlertTriangle className="h-5 w-5 text-white" />
@@ -189,8 +189,8 @@ export function AgendaGenerator({
               className={cn(
                 "w-full gap-2 shadow-lg",
                 isElevatedOrHigher 
-                  ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 hover:shadow-amber-500/20" 
-                  : "bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 hover:shadow-purple-500/20"
+                  ? "bg-amber-500 hover:bg-amber-600 hover:shadow-amber-500/20" 
+                  : "bg-purple-500 hover:bg-purple-600 hover:shadow-purple-500/20"
               )}
             >
               {isLoading ? (

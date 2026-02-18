@@ -498,7 +498,7 @@ Displays a single metric with optional trend indicator.
 
 ```typescript
 interface RiskMeterProps {
-  level: RiskLevel;  // 'CALIBRATING' | 'LOW' | 'ELEVATED' | 'CRITICAL'
+  level: RiskLevel;  // 'LOW' | 'ELEVATED' | 'CRITICAL'
   velocity: number;
   confidence: number;
 }

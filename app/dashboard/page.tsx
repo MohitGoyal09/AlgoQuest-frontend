@@ -20,6 +20,7 @@ import { ProtectedRoute } from "@/components/protected-route"
 import { ForecastChart } from "@/components/forecast-chart"
 import { AgendaGenerator } from "@/components/copilot/AgendaGenerator"
 import { AskSentinel } from "@/components/ai/AskSentinel"
+import { AskSentinelWidget } from "@/components/ask-sentinel-widget"
 import { useAuth } from "@/contexts/auth-context"
 import { api } from "@/lib/api"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -276,17 +277,15 @@ function DashboardContent() {
 
     // Calculate counts from actual employees data
     const total_members = employees.length
-    const healthy_count = employees.filter(e => e.risk_level === "LOW").length
+    const healthy_count = employees.filter(e => e.risk_level === "LOW" || !e.risk_level).length
     const elevated_count = employees.filter(e => e.risk_level === "ELEVATED").length
     const critical_count = employees.filter(e => e.risk_level === "CRITICAL").length
-    const calibrating_count = employees.filter(e => e.risk_level === "CALIBRATING" || !e.risk_level).length
 
     return {
       total_members,
       healthy_count,
       elevated_count,
       critical_count,
-      calibrating_count,
       avg_velocity: teamData.metrics.avg_velocity,
       graph_fragmentation: teamData.metrics.graph_fragmentation,
       comm_decay_rate: teamData.metrics.comm_decay_rate,
@@ -380,6 +379,8 @@ function DashboardContent() {
                     {isRefreshing ? 'Refreshing...' : 'Refresh'}
                   </Button>
                 </div>
+
+                <AskSentinelWidget />
 
                 <AskSentinel />
 

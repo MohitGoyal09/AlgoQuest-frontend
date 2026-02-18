@@ -105,17 +105,10 @@ const riskConfig: Record<string, { label: string; color: string; glow: string; b
     bgClass: "bg-emerald-500/10",
     accentClass: "glass-card-accent--healthy",
   },
-  CALIBRATING: {
-    label: "Calibrating",
-    color: "hsl(var(--muted-foreground))",
-    glow: "none",
-    bgClass: "bg-muted/30",
-    accentClass: "",
-  },
 }
 
 function getRisk(level: string | undefined) {
-  return riskConfig[level || "CALIBRATING"] || riskConfig.CALIBRATING
+  return riskConfig[level || "LOW"] || riskConfig.LOW
 }
 
 function MePageContent() {
@@ -312,7 +305,7 @@ function MePageContent() {
               className="text-3xl font-bold tracking-tight font-mono breathe"
               style={{ color: risk.color }}
             >
-              {data.risk?.risk_level || "CALIBRATING"}
+              {data.risk?.risk_level || "LOW"}
             </div>
 
             {data.risk && (
@@ -375,8 +368,8 @@ function MePageContent() {
                 />
               </div>
 
-              {/* Gradient divider */}
-              <div className="h-px bg-gradient-to-r from-transparent via-[var(--glass-border)] to-transparent" />
+              {/* Divider */}
+              <div className="h-px bg-slate-700" />
 
               {/* Share Anonymized */}
               <div className="flex items-center justify-between gap-4">

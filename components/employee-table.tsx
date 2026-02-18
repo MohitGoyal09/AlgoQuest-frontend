@@ -57,11 +57,10 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                       "border-0 px-2 py-0.5 text-xs font-medium uppercase tracking-wide",
                       employee.risk_level === "CRITICAL" && "bg-red-500/20 text-red-400 ring-1 ring-red-500/50",
                       employee.risk_level === "ELEVATED" && "bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/50",
-                      employee.risk_level === "LOW" && "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/50",
-                      employee.risk_level === "CALIBRATING" && "bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50"
+                      employee.risk_level === "LOW" && "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/50"
                     )}
                   >
-                    {employee.risk_level}
+                    {employee.risk_level || "LOW"}
                   </Badge>
                 </div>
               </TableCell>

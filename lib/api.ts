@@ -329,19 +329,6 @@ export async function getRiskHistory(userHash: string, days: number = 30): Promi
 }
 
 // ============================================
-// WebSocket Client
-// ============================================
-
-/**
- * Create a WebSocket connection for real-time updates
- * ws://localhost:8000/ws/{user_hash}
- */
-export function createWebSocket(userHash: string): WebSocket {
-  const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/ws';
-  return new WebSocket(`${wsUrl}/${userHash}`);
-}
-
-// ============================================
 // Health Check
 // ============================================
 
@@ -415,6 +402,40 @@ export interface SemanticQueryResponse {
  */
 export async function semanticQuery(query: string): Promise<SemanticQueryResponse> {
   return handleResponse(api.post<SemanticQueryResponse>(`/ai/query`, { query }));
+}
+
+// ============================================
+// AI Chat API
+// ============================================
+
+export interface ChatRequest {
+  message: string;
+  conversation_id?: string;
+  context?: Record<string, unknown>;
+}
+
+export interface ChatContextUsed {
+  risk_level?: string;
+  velocity?: number;
+  belongingness?: number;
+  team_size?: number;
+  org_total_users?: number;
+}
+
+export interface ChatResponse {
+  response: string;
+  role: string;
+  conversation_id?: string;
+  context_used: ChatContextUsed;
+  generated_at: string;
+}
+
+/**
+ * Send a message to the AI chat endpoint
+ * POST /ai/chat
+ */
+export async function chatWithSentinel(request: ChatRequest): Promise<ChatResponse> {
+  return handleResponse(api.post<ChatResponse>(`/ai/chat`, request));
 }
 
 // ============================================

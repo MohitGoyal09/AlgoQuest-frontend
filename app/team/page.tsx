@@ -52,7 +52,6 @@ interface TeamData {
     LOW: number
     ELEVATED: number
     CRITICAL: number
-    CALIBRATING: number
   } | null
   consent_summary: {
     total: number

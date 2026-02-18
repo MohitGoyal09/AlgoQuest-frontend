@@ -3,14 +3,14 @@ import type React from 'react';
 // ============================================
 // Risk Level Types
 // ============================================
-export type RiskLevel = 'CALIBRATING' | 'LOW' | 'ELEVATED' | 'CRITICAL';
+export type RiskLevel = 'LOW' | 'ELEVATED' | 'CRITICAL';
 
-const RISK_LEVELS: readonly RiskLevel[] = ['CALIBRATING', 'LOW', 'ELEVATED', 'CRITICAL'];
+const RISK_LEVELS: readonly RiskLevel[] = ['LOW', 'ELEVATED', 'CRITICAL'];
 
-/** Safely cast an API string to RiskLevel, defaulting to 'CALIBRATING' if unknown. */
+/** Safely cast an API string to RiskLevel, defaulting to 'LOW' if unknown. */
 export function toRiskLevel(value: string | undefined | null): RiskLevel {
   if (value && RISK_LEVELS.includes(value as RiskLevel)) return value as RiskLevel;
-  return 'CALIBRATING';
+  return 'LOW';
 }
 
 // ============================================
@@ -105,7 +105,6 @@ export interface TeamMetrics {
   healthy_count: number;
   elevated_count: number;
   critical_count: number;
-  calibrating_count: number;
   avg_velocity: number;
   graph_fragmentation: number;
   comm_decay_rate: number;
@@ -222,23 +221,6 @@ export interface RealtimeEventData {
   new_event: SimulationEvent;
   updated_risk: SafetyValveData;
 }
-
-// ============================================
-// WebSocket Types
-// ============================================
-export type WebSocketMessageType = 'pong' | 'manual_refresh' | 'risk_update' | 'error';
-
-export interface WebSocketMessage {
-  type: WebSocketMessageType;
-  timestamp?: string;
-  data?: SafetyValveData;
-}
-
-export interface WebSocketSendMessage {
-  action: 'ping' | 'request_update';
-}
-
-export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
 
 // ============================================
 // Context Enricher Types
@@ -425,13 +407,6 @@ export interface Employee {
   updated_at: string;
   persona: string;
   indicators: RiskIndicators;
-}
-
-export interface UseWebSocketReturn {
-  connectionStatus: ConnectionStatus;
-  lastMessage: WebSocketMessage | null;
-  lastPing: Date | null;
-  requestUpdate: () => void;
 }
 
 export interface UseSimulationReturn {

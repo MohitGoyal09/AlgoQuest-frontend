@@ -92,7 +92,7 @@ export function DemoScenarios() {
           <Card
             key={scenario.id}
             className={cn(
-              "relative cursor-pointer overflow-hidden border-2 bg-gradient-to-br transition-all duration-300 hover:scale-[1.02] hover:shadow-lg",
+              "relative cursor-pointer overflow-hidden border-2 bg-slate-800 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg",
               isLoading ? "pointer-events-none" : "cursor-pointer",
               scenario.color
             )}
@@ -116,12 +116,12 @@ export function DemoScenarios() {
             <CardContent className="flex flex-col items-center justify-center p-6 text-center">
               <div
                 className={cn(
-                  "mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br",
+                  "mb-4 flex h-16 w-16 items-center justify-center rounded-full",
                   scenario.id === "burnout"
-                    ? "from-orange-500 to-red-500"
+                    ? "bg-orange-500"
                     : scenario.id === "talent"
-                      ? "from-amber-500 to-yellow-500"
-                      : "from-purple-500 to-pink-500"
+                      ? "bg-amber-500"
+                      : "bg-purple-500"
                 )}
               >
                 <Icon className="h-8 w-8 text-white" />

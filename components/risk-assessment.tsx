@@ -18,9 +18,7 @@ export function RiskAssessment({ employee }: RiskAssessmentProps) {
       ? 90
       : employee.risk_level === "ELEVATED"
         ? 60
-        : employee.risk_level === "CALIBRATING"
-          ? 20
-          : 25
+        : 25
 
   const strokeColor =
     employee.risk_level === "CRITICAL"

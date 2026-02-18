@@ -87,13 +87,13 @@ export default function LoginPage() {
       <div ref={cardRef} className="w-full max-w-md perspective-1000">
         <Card className="glass-card overflow-hidden border-none shadow-[0_0_50px_rgba(0,0,0,0.3)]">
           <CardHeader className="text-center pb-2 pt-8">
-            <div className="mx-auto h-16 w-16 rounded-2xl bg-gradient-to-br from-primary to-accent p-0.5 shadow-2xl shadow-primary/20 mb-6 group cursor-default">
+            <div className="mx-auto h-16 w-16 rounded-2xl bg-primary p-0.5 shadow-2xl shadow-primary/20 mb-6 group cursor-default">
               <div className="h-full w-full rounded-[14px] bg-background/80 backdrop-blur-sm flex items-center justify-center transition-transform duration-500 group-hover:scale-105">
                 <Shield className="h-8 w-8 text-primary transition-all duration-500 group-hover:drop-shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
               </div>
             </div>
             
-            <CardTitle className="text-4xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/70 uppercase mb-2">
+            <CardTitle className="text-4xl font-black tracking-tight text-foreground uppercase mb-2">
               Sentinel
             </CardTitle>
             <CardDescription className="text-muted-foreground font-medium text-pretty max-w-[280px] mx-auto text-base">
@@ -176,7 +176,7 @@ export default function LoginPage() {
                     <span className="relative z-10 flex items-center justify-center gap-2">
                       {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Enter Command Center'}
                     </span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-shimmer" />
+                    <div className="absolute inset-0 bg-white/10 -translate-x-full group-hover:animate-shimmer" />
                   </Button>
                 </CardFooter>
               </form>

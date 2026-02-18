@@ -100,12 +100,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('userRole', userData.role)
       }
       
-      // Redirect to dashboard - it will show content based on role
-      router.push('/dashboard')
+      // Redirect to ask-sentinel - it will show content based on role
+      router.push('/ask-sentinel')
     } catch (error) {
-      // Fallback to dashboard if role fetch fails
+      // Fallback to ask-sentinel if role fetch fails
       console.error('[auth] Failed to fetch role:', error)
-      router.push('/dashboard')
+      router.push('/ask-sentinel')
     }
   }
 

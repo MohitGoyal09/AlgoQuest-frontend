@@ -4,16 +4,6 @@ import { RiskLevel } from '@/types';
 // Risk Level Colors (OKLCH)
 // ============================================
 export const riskColors = {
-  CALIBRATING: {
-    oklch: 'oklch(0.7 0 0)',
-    bg: 'bg-slate-500',
-    text: 'text-slate-500',
-    border: 'border-slate-500',
-    ring: 'ring-slate-500',
-    hex: '#64748b',
-    base: 'slate',
-    subtle: 'shadow-slate-100',
-  },
   LOW: {
     oklch: 'oklch(0.6 0.15 145)',
     bg: 'bg-green-500',
@@ -47,12 +37,11 @@ export const riskColors = {
 } as const;
 
 export function getRiskColor(level: RiskLevel) {
-  return riskColors[level] || riskColors.CALIBRATING;
+  return riskColors[level] || riskColors.LOW;
 }
 
 export function getRiskLabel(level: RiskLevel): string {
   const labels: Record<RiskLevel, string> = {
-    CALIBRATING: 'Calibrating',
     LOW: 'Low Risk',
     ELEVATED: 'Elevated',
     CRITICAL: 'Critical',
@@ -62,7 +51,6 @@ export function getRiskLabel(level: RiskLevel): string {
 
 export function getRiskProgress(level: RiskLevel): number {
   const progress: Record<RiskLevel, number> = {
-    CALIBRATING: 0,
     LOW: 25,
     ELEVATED: 60,
     CRITICAL: 90,

@@ -262,7 +262,7 @@ function MePageContent() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">
-                {data.risk?.risk_level || "CALIBRATING"}
+                {data.risk?.risk_level || "LOW"}
               </div>
               {data.risk && (
                 <div className="mt-4 space-y-2 text-sm">

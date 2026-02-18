@@ -68,10 +68,10 @@ export function AskSentinel() {
 
   return (
     <Card className="border-border bg-card shadow-sm overflow-hidden">
-      <CardHeader className="pb-3 border-b bg-gradient-to-r from-purple-500/5 to-indigo-500/5">
+      <CardHeader className="pb-3 border-b bg-purple-500/5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-indigo-500 shadow-lg">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-600 shadow-lg">
               <Bot className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -144,7 +144,7 @@ export function AskSentinel() {
           <Button
             type="submit"
             disabled={isLoading || !query.trim()}
-            className="w-full gap-2 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 shadow-lg shadow-purple-500/20"
+            className="w-full gap-2 bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-500/20"
           >
             {isLoading ? (
               <>
@@ -170,7 +170,7 @@ export function AskSentinel() {
         {results && (
           <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
             {results.summary && (
-              <div className="rounded-lg bg-gradient-to-r from-purple-500/10 to-indigo-500/10 p-4 border border-purple-500/20">
+              <div className="rounded-lg bg-purple-500/10 p-4 border border-purple-500/20">
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkles className="h-4 w-4 text-purple-500" />
                   <span className="font-medium text-foreground">AI Summary</span>
@@ -225,7 +225,7 @@ function ResultCard({
     <div className="rounded-lg border border-border bg-card p-4 transition-all duration-200 hover:border-purple-500/30 hover:shadow-md hover:shadow-purple-500/5">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 text-sm font-medium">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-sm font-medium">
             {result.name ? result.name.charAt(0).toUpperCase() : "?"}
           </div>
           <div>

@@ -1,209 +1,389 @@
 "use client"
 
 import {
-  Activity,
-  GitBranch,
-  LayoutDashboard,
-  Network,
-  Shield,
-  Sparkles,
-  Thermometer,
-  Zap,
   ChevronLeft,
   ChevronRight,
-  User,
+  ChevronDown,
+  LayoutDashboard,
+  MessageSquare,
   Users,
   Settings,
-  Play,
+  Heart,
+  TrendingUp,
+  BarChart3,
+  User,
+  Zap,
+  Shield,
+  Gem,
+  Thermometer,
+  Link,
+  Plus,
+  MessageCircle
 } from "lucide-react"
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
+import { useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import { cn } from "@/lib/utils"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { SettingsModal } from "@/components/settings-modal"
+import { useChatHistory } from "@/hooks/useChatHistory"
 
 interface AppSidebarProps {
-  activeView?: string
-  onViewChange?: (view: string) => void
-  collapsed?: boolean
-  onToggleCollapse?: () => void
+  activeView?: string;
+  onViewChange?: (view: string) => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-// Navigation items for each role - with href links for routing
-const roleBasedNavItems: Record<string, Array<{ id: string; label: string; icon: any; href?: string }>> = {
+const engineSubItems = [
+  { id: "safety", label: "Safety Valve", href: "/engines/safety", icon: Shield },
+  { id: "talent", label: "Talent Scout", href: "/engines/talent", icon: Gem },
+  { id: "culture", label: "Culture", href: "/engines/culture", icon: Thermometer },
+  { id: "network", label: "Network", href: "/engines/network", icon: Link },
+]
+
+const primaryNavItems: Record<string, Array<{ id: string; label: string; icon: any; href?: string; isDropdown?: boolean }>> = {
   employee: [
-    { id: "profile", label: "My Wellbeing", icon: User, href: "/profile" },
-    { id: "dashboard", label: "Team Overview", icon: LayoutDashboard, href: "/dashboard" },
+    { id: "ask-sentinel", label: "Ask Sentinel", icon: MessageSquare, href: "/ask-sentinel" },
+    { id: "wellbeing", label: "My Wellbeing", icon: Heart, href: "/employee" },
+    { id: "progress", label: "Progress Report", icon: TrendingUp, href: "/employee?view=progress" },
   ],
   manager: [
-    { id: "profile", label: "My Wellbeing", icon: User, href: "/profile" },
+    { id: "ask-sentinel", label: "Ask Sentinel", icon: MessageSquare, href: "/ask-sentinel" },
     { id: "team", label: "My Team", icon: Users, href: "/team" },
     { id: "dashboard", label: "Team Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+    { id: "engines", label: "Engines", icon: Zap, isDropdown: true },
   ],
   admin: [
-    { id: "profile", label: "My Wellbeing", icon: User, href: "/profile" },
-    { id: "team", label: "My Team", icon: Users, href: "/team" },
-    { id: "admin", label: "Admin", icon: Settings, href: "/admin" },
-    { id: "dashboard", label: "Team Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+    { id: "ask-sentinel", label: "Ask Sentinel", icon: MessageSquare, href: "/ask-sentinel" },
+    { id: "admin", label: "Admin Panel", icon: Settings, href: "/admin" },
+    { id: "engines", label: "Engines", icon: Zap, isDropdown: true },
   ],
 }
-
-// Engine navigation items (available to all roles)
-const engineNavItems = [
-  { id: "demo", label: "Quick Demo", icon: Play, href: "/demo" },
-  { id: "safety-valve", label: "Safety Valve", icon: Shield },
-  { id: "talent-scout", label: "Talent Scout", icon: Sparkles },
-  { id: "culture", label: "Culture Temp", icon: Thermometer },
-  { id: "network", label: "Network Graph", icon: Network },
-  { id: "simulation", label: "Simulation", icon: Zap },
-]
 
 export function AppSidebar({ activeView, onViewChange, collapsed, onToggleCollapse }: AppSidebarProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const { userRole } = useAuth()
-  const userRoleName = userRole?.role || "employee"
+  const { user, userRole, loading } = useAuth()
+  const { chats, loadChat, createNewChat } = useChatHistory()
+  const [enginesOpen, setEnginesOpen] = useState(true)
+  const [recentChatsOpen, setRecentChatsOpen] = useState(true)
   
-  // Determine active view from URL
+  if (loading) {
+    return (
+      <aside className="flex h-full w-[260px] items-center justify-center bg-sidebar">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-green-500 border-t-transparent" />
+      </aside>
+    )
+  }
+  
+  const roleDisplayNames: Record<string, string> = {
+    admin: "Administrator",
+    manager: "Manager",
+    employee: "Team Member",
+  }
+  
+  const userRoleName = userRole?.role || "employee"
+  const displayRole = roleDisplayNames[userRoleName] || "Team Member"
+  const userName = user?.email?.split('@')[0] || "User"
+  const userEmail = user?.email || ""
+  
   const currentView = pathname === '/dashboard' 
     ? (searchParams.get('view') || 'dashboard')
     : pathname.split('/')[1] || 'dashboard'
 
-  // Get navigation items based on role
-  const navItems = roleBasedNavItems[userRoleName] || roleBasedNavItems.employee
+  const navItems = primaryNavItems[userRoleName] || primaryNavItems.employee
 
-  const handleNavigation = (id: string, href?: string) => {
-    if (href) {
-      router.push(href)
-    } else {
-      router.push(`/dashboard?view=${id}`)
-    }
+  const handleNavigation = (id: string, href: string) => {
+    router.push(href)
     if (onViewChange) onViewChange(id)
   }
 
-  const isActive = (item: { id: string, href?: string }) => {
-    const isPageActive = item.href && pathname === item.href
-    const isDashboardViewActive = pathname === '/dashboard' && !item.href && currentView === item.id
-    const isDefaultDashboard = pathname === '/dashboard' && item.href === '/dashboard' && (!searchParams.get('view') || searchParams.get('view') === 'dashboard')
-    return isPageActive || isDashboardViewActive || isDefaultDashboard
+  const handleNewChat = () => {
+    const newChat = createNewChat()
+    router.push(`/ask-sentinel?chatId=${newChat.id}`)
+  }
+
+  const handleChatClick = (chatId: string) => {
+    loadChat(chatId)
+    router.push(`/ask-sentinel?chatId=${chatId}`)
+  }
+
+  const sortedChats = [...chats].sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  ).slice(0, 5)
+
+  const isEngineSubItemActive = (href: string) => {
+    return pathname === href || pathname.startsWith(href)
+  }
+
+  const isEnginesActive = () => {
+    return pathname.startsWith('/engines')
+  }
+
+  const getInitials = (name: string) => {
+    return name.substring(0, 2).toUpperCase()
+  }
+
+  const renderNavItem = (item: typeof navItems[0]) => {
+    if (item.isDropdown) {
+      const isActive = isEnginesActive()
+      
+      if (collapsed) {
+        return (
+          <Collapsible open={enginesOpen} onOpenChange={setEnginesOpen}>
+            <CollapsibleTrigger asChild>
+              <button
+                className={cn(
+                  "flex w-full items-center justify-center gap-2 rounded-md px-3 py-2.5 text-[13px] font-medium transition-all duration-200 group relative",
+                  isActive 
+                    ? "bg-green-500/10 text-green-400" 
+                    : "text-muted-foreground hover:bg-white/5 hover:text-white"
+                )}
+                title={item.label}
+              >
+                <item.icon className={cn("h-[18px] w-[18px] shrink-0 transition-colors", isActive ? "text-green-400" : "text-muted-foreground/70 group-hover:text-white")} />
+                {isActive && (
+                    <div className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-green-500 rounded-r-full" />
+                )}
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-0.5 px-2 py-1">
+              {engineSubItems.map((subItem) => (
+                <button
+                  key={subItem.id}
+                  onClick={() => handleNavigation(subItem.id, subItem.href)}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-md px-3 py-2 text-[12px] cursor-pointer",
+                    isEngineSubItemActive(subItem.href) 
+                      ? "text-green-400 bg-green-500/10" 
+                      : "text-muted-foreground hover:text-white hover:bg-white/5"
+                  )}
+                >
+                  <subItem.icon className="h-3.5 w-3.5 shrink-0" />
+                </button>
+              ))}
+            </CollapsibleContent>
+          </Collapsible>
+        )
+      }
+
+      return (
+        <Collapsible open={enginesOpen} onOpenChange={setEnginesOpen}>
+          <CollapsibleTrigger asChild>
+            <button
+              className={cn(
+                "flex w-full items-center justify-between rounded-md px-3 py-2.5 text-[13px] font-medium transition-all duration-200 group",
+                isActive 
+                  ? "bg-green-500/10 text-green-400" 
+                  : "text-muted-foreground hover:bg-white/5 hover:text-white"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <item.icon className={cn("h-[18px] w-[18px] shrink-0 transition-colors", isActive ? "text-green-400" : "text-muted-foreground/70 group-hover:text-white")} />
+                <span>{item.label}</span>
+              </div>
+              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", enginesOpen && "rotate-180")} />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-0.5 px-2 py-1 ml-3 border-l border-white/10">
+            {engineSubItems.map((subItem) => (
+              <button
+                key={subItem.id}
+                onClick={() => handleNavigation(subItem.id, subItem.href)}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-3 py-2 text-[13px] cursor-pointer",
+                  isEngineSubItemActive(subItem.href) 
+                    ? "text-green-400 bg-green-500/10" 
+                    : "text-muted-foreground hover:text-white hover:bg-white/5"
+                )}
+              >
+                <subItem.icon className="h-4 w-4 shrink-0" />
+                <span>{subItem.label}</span>
+              </button>
+            ))}
+          </CollapsibleContent>
+        </Collapsible>
+      )
+    }
+
+    const isPageActive = item.href && (
+      pathname === item.href || 
+      (pathname.startsWith(item.href.split('?')[0]) && item.href !== '/dashboard')
+    )
+    const activeViewParam = searchParams.get('view')
+    const isDashboardView = item.href?.includes('view=') 
+        ? activeViewParam === item.href.split('view=')[1] 
+        : false;
+    
+    const isActiveItem = isPageActive || isDashboardView || (pathname === '/dashboard' && !activeViewParam && item.id === 'dashboard')
+    
+    return (
+      <button
+        key={item.id}
+        onClick={() => item.href && handleNavigation(item.id, item.href)}
+        className={cn(
+          "flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-[13px] font-medium transition-all duration-200 group relative",
+          isActiveItem 
+            ? "bg-green-500/10 text-green-400" 
+            : "text-muted-foreground hover:bg-white/5 hover:text-white"
+        )}
+        title={collapsed ? item.label : undefined}
+      >
+        <item.icon className={cn("h-[18px] w-[18px] shrink-0 transition-colors", isActiveItem ? "text-green-400" : "text-muted-foreground/70 group-hover:text-white")} />
+        {!collapsed && (
+            <span>{item.label}</span>
+        )}
+        {collapsed && isActiveItem && (
+            <div className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-green-500 rounded-r-full" />
+        )}
+      </button>
+    )
   }
 
   return (
     <aside
-      className={`flex h-full flex-col bg-sidebar text-sidebar-foreground transition-all duration-300 ${
-        collapsed ? "w-[68px]" : "w-60"
-      }`}
+      className={cn(
+        "flex h-full flex-col bg-sidebar text-sidebar-foreground transition-all duration-300 border-r border-white/5",
+        collapsed ? "w-[68px]" : "w-[260px]"
+      )}
     >
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-5">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--sidebar-primary))]"
-          style={{ boxShadow: "0 0 16px hsl(152 55% 48% / 0.2)" }}>
-          <Shield className="h-4.5 w-4.5 text-[hsl(var(--sidebar-primary-foreground))]" />
-        </div>
-        {!collapsed && (
-          <div className="flex flex-col">
-            <span className="text-[15px] font-semibold tracking-tight text-white">
-              Sentinel
-            </span>
-            <span className="text-[10px] leading-none text-[hsl(var(--sidebar-foreground))]">
-              Employee Insights
-            </span>
+      {/* Header / Logo */}
+      <div className="flex items-center justify-between px-4 py-4 h-16">
+        <div className="flex items-center gap-3 transition-opacity duration-200">
+           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-500/10 shadow-[0_0_10px_-3px_rgba(34,197,94,0.4)]">
+            <MessageSquare className="h-4 w-4 text-green-500" />
           </div>
+          {!collapsed && (
+            <div className="flex flex-col animate-in fade-in duration-300">
+              <span className="text-[15px] font-semibold tracking-tight text-white leading-none">
+                Sentinel
+              </span>
+              <span className="text-[10px] text-muted-foreground pt-1">
+                Employee Insights
+              </span>
+            </div>
+          )}
+        </div>
+        {!collapsed && onToggleCollapse && (
+           <button onClick={onToggleCollapse} className="text-muted-foreground/50 hover:text-white transition-colors p-1">
+              <ChevronLeft className="h-4 w-4" />
+           </button>
         )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 pt-2">
-        {!collapsed && (
-          <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-sidebar-foreground/40">
-            {userRoleName === "admin" ? "Admin" : userRoleName === "manager" ? "Management" : "Personal"}
-          </p>
-        )}
-        <ul className="flex flex-col gap-1">
-          {navItems.map((item) => {
-            const isPageActive = item.href && pathname === item.href
-            const isActiveItem = isPageActive || (pathname === '/dashboard' && activeView === item.id)
-            return (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  onClick={() => handleNavigation(item.id, item.href)}
-                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-150 ${
-                    isActiveItem
-                      ? "bg-sidebar-primary text-white shadow-sm"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  }`}
-                >
-                  <item.icon className="h-[18px] w-[18px] shrink-0" />
-                  {!collapsed && <span>{item.label}</span>}
-                </button>
-              </li>
-            )
-          })}
-        </ul>
+      <nav className="flex-1 overflow-y-auto px-2 space-y-6 scrollbar-thin scrollbar-thumb-white/5 hover:scrollbar-thumb-white/10">
+        
+        {/* Primary Section */}
+        <div className="space-y-0.5">
+          {navItems.map((item) => renderNavItem(item))}
+        </div>
 
-        {!collapsed && (
-          <p className="mb-3 mt-6 px-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-sidebar-foreground/40">
-            Engines
-          </p>
-        )}
-        {/* Gradient divider */}
-        <div className="mx-3 mb-3 h-px bg-gradient-to-r from-transparent via-[var(--glass-border)] to-transparent" />
-        <ul className="flex flex-col gap-1">
-          {engineNavItems.map((item) => {
-            const isActiveItem = pathname === '/dashboard' && activeView === item.id
-            return (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  onClick={() => handleNavigation(item.id)}
-                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-150 ${
-                    isActiveItem
-                      ? "bg-sidebar-primary text-white shadow-sm"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  }`}
-                >
-                  <item.icon className="h-[18px] w-[18px] shrink-0" />
-                  {!collapsed && <span>{item.label}</span>}
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      </nav>
-
-      {/* Footer */}
-      <div className="mt-auto px-3 pb-4">
-        {!collapsed && (
-          <div className="mb-3 rounded-lg border border-[var(--glass-border)] bg-[hsl(var(--sidebar-accent))] px-4 py-3">
-            <div className="mb-2 flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[hsl(var(--sidebar-primary))] dot-pulse" />
-              <span className="text-[11px] font-medium text-[hsl(var(--sidebar-accent-foreground))]">System Online</span>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-2 text-[10px] text-[hsl(var(--sidebar-foreground))]">
-                <GitBranch className="h-3 w-3" />
-                <span>Two-Vault Active</span>
-              </div>
-              <div className="flex items-center gap-2 text-[10px] text-[hsl(var(--sidebar-foreground))]">
-                <Activity className="h-3 w-3" />
-                <span>Role: {userRoleName}</span>
-              </div>
-            </div>
+        {/* Collapsed: New Chat button */}
+        {collapsed && (
+          <div className="space-y-0.5 px-2">
+            <button
+              onClick={handleNewChat}
+              className="flex w-full items-center justify-center gap-2 rounded-md px-3 py-2.5 text-[13px] font-medium transition-all duration-200 group relative text-green-400 hover:bg-green-500/10"
+              title="New Chat"
+            >
+              <Plus className="h-[18px] w-[18px] shrink-0" />
+            </button>
           </div>
         )}
-        {onToggleCollapse && (
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            className="flex w-full items-center justify-center rounded-lg py-2 text-[hsl(var(--sidebar-foreground))]/50 transition-colors hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-accent-foreground))]"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {collapsed ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <ChevronLeft className="h-4 w-4" />
-            )}
-          </button>
+
+        {/* Recent Chats Section */}
+        {!collapsed && (
+          <div className="space-y-1">
+            <Collapsible open={recentChatsOpen} onOpenChange={setRecentChatsOpen}>
+              <CollapsibleTrigger asChild>
+                <button
+                  className="flex w-full items-center justify-between rounded-md px-3 py-2 text-[13px] font-medium transition-all duration-200 group text-muted-foreground hover:bg-white/5 hover:text-white"
+                >
+                  <div className="flex items-center gap-3">
+                    <MessageCircle className="h-[18px] w-[18px] shrink-0 text-muted-foreground/70 group-hover:text-white" />
+                    <span>Recent Chats</span>
+                  </div>
+                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", recentChatsOpen && "rotate-180")} />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-0.5 px-2 py-1 ml-3 border-l border-white/10">
+                <button
+                  onClick={handleNewChat}
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-[13px] cursor-pointer text-green-400 hover:bg-green-500/10 hover:text-green-400"
+                >
+                  <Plus className="h-4 w-4 shrink-0" />
+                  <span>New Chat</span>
+                </button>
+                {sortedChats.length === 0 ? (
+                  <p className="text-[12px] text-muted-foreground/60 px-3 py-2">No chats yet</p>
+                ) : (
+                  sortedChats.map((chat) => (
+                    <button
+                      key={chat.id}
+                      onClick={() => handleChatClick(chat.id)}
+                      className={cn(
+                        "flex w-full items-center gap-2 rounded-md px-3 py-2 text-[13px] cursor-pointer truncate",
+                        pathname === `/ask-sentinel?chatId=${chat.id}`
+                          ? "text-green-400 bg-green-500/10"
+                          : "text-muted-foreground hover:text-white hover:bg-white/5"
+                      )}
+                    >
+                      <MessageSquare className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{chat.title}</span>
+                    </button>
+                  ))
+                )}
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
         )}
+
+      </nav>
+
+      {/* User Info Footer */}
+      <div className="mt-auto border-t border-white/5 p-3">
+        <SettingsModal
+          trigger={
+            <div className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-white/5 cursor-pointer group">
+              <Avatar className="h-9 w-9 rounded-lg border border-white/10 group-hover:border-white/20 transition-colors">
+                  <AvatarFallback className="bg-green-600 text-[11px] text-white">
+                      {getInitials(userName)}
+                  </AvatarFallback>
+              </Avatar>
+              {!collapsed && (
+                  <div className="flex-1 overflow-hidden">
+                      <p className="text-[13px] font-medium text-white truncate leading-none group-hover:text-green-400 transition-colors">
+                          {userName}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground truncate leading-snug pt-1">
+                            {displayRole}
+                      </p>
+                  </div>
+              )}
+              {!collapsed && (
+                  <button 
+                    onClick={(e) => e.stopPropagation()}
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-white hover:bg-white/10 transition-colors"
+                    title="Settings"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </button>
+              )}
+            </div>
+          }
+        />
+          {collapsed && onToggleCollapse && (
+           <button 
+               onClick={onToggleCollapse}
+               className="mt-2 flex w-full justify-center text-muted-foreground hover:text-white p-2 hover:bg-white/5 rounded-md transition-colors"
+             >
+               <ChevronRight className="h-4 w-4" />
+           </button>
+          )}
       </div>
     </aside>
   )
