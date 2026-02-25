@@ -13,6 +13,20 @@ interface RiskAssessmentProps {
 }
 
 export function RiskAssessment({ employee }: RiskAssessmentProps) {
+  // Guard against undefined employee
+  if (!employee) {
+    return (
+      <Card className="bg-[#1a1a2e] border-white/5">
+        <CardHeader>
+          <CardTitle className="text-lg">Risk Assessment</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-slate-400">No employee data available</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
   const riskPercent =
     employee.risk_level === "CRITICAL"
       ? 90
@@ -35,18 +49,18 @@ export function RiskAssessment({ employee }: RiskAssessmentProps) {
         : "bg-[hsl(var(--sentinel-healthy))]/8 text-[hsl(var(--sentinel-healthy))] border-[hsl(var(--sentinel-healthy))]/15"
 
   const indicators = [
-    { key: "overwork", label: "Overwork", active: employee.indicators.overwork },
-    { key: "isolation", label: "Isolation", active: employee.indicators.isolation },
-    { key: "late_night", label: "After-Hours", active: employee.indicators.late_night_pattern },
-    { key: "weekend", label: "Weekend Work", active: employee.indicators.weekend_work },
-    { key: "comm_decline", label: "Comm. Decline", active: employee.indicators.communication_decline },
-    { key: "fragmentation", label: "Fragmentation", active: employee.indicators.fragmentation },
+    { key: "overwork", label: "Overwork", active: employee.indicators?.overwork || false },
+    { key: "isolation", label: "Isolation", active: employee.indicators?.isolation || false },
+    { key: "late_night", label: "After-Hours", active: employee.indicators?.late_night_pattern || false },
+    { key: "weekend", label: "Weekend Work", active: employee.indicators?.weekend_work || false },
+    { key: "comm_decline", label: "Comm. Decline", active: employee.indicators?.communication_decline || false },
+    { key: "fragmentation", label: "Fragmentation", active: employee.indicators?.fragmentation || false },
   ]
 
   const activeCount = indicators.filter((i) => i.active).length
 
   return (
-    <Card className="border-border bg-card shadow-sm">
+    <Card className={cn("border-border bg-card shadow-sm", (employee as any).className)}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-semibold text-foreground">Risk Assessment</CardTitle>

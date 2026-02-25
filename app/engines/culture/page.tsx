@@ -401,7 +401,7 @@ function CultureContent() {
                           {recentMoodHighlights.map((highlight, idx) => (
                             <div 
                               key={idx}
-                              className="flex items-center gap-3 p-3 rounded-lg bg-white/60 border border-rose-100"
+                              className="flex items-center gap-3 p-3 rounded-lg bg-[#1a1a2e] border border-rose-900/30"
                             >
                               <span className="text-xl">{highlight.emoji}</span>
                               <span className="text-sm text-foreground flex-1">{highlight.text}</span>
@@ -478,7 +478,7 @@ function CultureContent() {
                         className="flex-1 rounded-t transition-all hover:opacity-80 cursor-pointer group relative"
                         style={{ 
                           height: `${data.score}%`,
-                          background: `linear-gradient(to top, rgb(244, 63, 94, ${0.4 + data.score/200}), rgb(219, 39, 119, ${0.6 + data.score/250}))`
+                          backgroundColor: data.score > 70 ? '#22c55e' : data.score > 40 ? '#eab308' : '#ef4444'
                         }}
                       >
                         <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
@@ -654,17 +654,17 @@ function CultureContent() {
                     {workLifeBalance.map((metric) => (
                       <div 
                         key={metric.label}
-                        className="text-center p-4 rounded-xl bg-white/60 border border-rose-100"
+                        className="text-center p-4 rounded-xl bg-[#1a1a2e] border border-rose-900/30"
                       >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-100 mx-auto mb-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-900/30 mx-auto mb-3">
                           <metric.icon className="h-5 w-5 text-rose-500" />
                         </div>
-                        <p className="text-2xl font-bold text-rose-600">{metric.value.toFixed(0)}</p>
+                        <p className="text-2xl font-bold text-rose-400">{metric.value.toFixed(0)}</p>
                         <p className="text-xs text-muted-foreground mb-2">{metric.label}</p>
                         <div className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
                           metric.label === "After-hours Activity" || metric.label === "Meeting Load"
-                            ? (metric.change > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700')
-                            : (metric.change >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700')
+                            ? (metric.change > 0 ? 'bg-red-900/30 text-red-400' : 'bg-green-900/30 text-green-400')
+                            : (metric.change >= 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400')
                         }`}>
                           {metric.change >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                           {Math.abs(metric.change).toFixed(1)}%

@@ -119,6 +119,7 @@ export interface CultureThermometerMetrics {
   critical_members: number;
   graph_fragmentation: number;
   comm_decay_rate: number;
+  contagion_risk?: RiskLevel;
   total_members?: number;
   team_size?: number;
   member_count?: number;
@@ -130,6 +131,8 @@ export interface CultureThermometerData {
   team_risk: string;
   metrics: CultureThermometerMetrics;
   recommendation: string;
+  contagion_risk?: RiskLevel;
+  graph_fragmentation?: number;
 }
 
 // ============================================
@@ -196,6 +199,14 @@ export interface UserSummary {
   velocity?: number;
   confidence?: number;
   updated_at?: string;
+  belongingness_score?: number;
+  circadian_entropy?: number;
+  overwork?: boolean;
+  isolation?: boolean;
+  fragmentation?: boolean;
+  late_night_pattern?: boolean;
+  weekend_work?: boolean;
+  communication_decline?: boolean;
 }
 
 export interface CreatePersonaResponse {

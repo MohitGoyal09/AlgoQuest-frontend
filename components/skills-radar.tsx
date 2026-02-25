@@ -65,22 +65,23 @@ export function SkillsRadar({ data, className, height = 300 }: SkillsRadarProps)
     <div className={className}>
       <ResponsiveContainer width="100%" height={height}>
         <RadarChart data={chartData} margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
-          <PolarGrid stroke="#e2e8f0" />
+          <PolarGrid stroke="hsl(var(--border))" strokeOpacity={0.5} />
           <PolarAngleAxis
             dataKey="skill"
-            tick={{ fill: "#64748b", fontSize: 12 }}
+            tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
           />
           <PolarRadiusAxis
             angle={30}
             domain={[0, 100]}
-            tick={{ fill: "#94a3b8", fontSize: 10 }}
+            tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
             tickCount={6}
+            axisLine={false}
           />
           <Radar
             name="Skills"
             dataKey="value"
-            stroke="#3b82f6"
-            fill="#3b82f6"
+            stroke="hsl(var(--primary))"
+            fill="hsl(var(--primary))"
             fillOpacity={0.3}
             strokeWidth={2}
           />

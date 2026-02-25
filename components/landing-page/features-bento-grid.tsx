@@ -1,95 +1,130 @@
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { BarChart3, Database, Shield, Zap } from "lucide-react"
+import { Shield, Zap, Heart, Network, ArrowRight, TrendingUp, Users, Eye, Lock, MessageSquare, Target, Sparkles } from "lucide-react"
 
 export function FeaturesBentoGrid() {
   const features = [
     {
       title: "Safety Valve",
-      description: "Detect burnout signals before they impact your team. Sentinel monitors patterns to provide early warnings.",
+      description: "Detect burnout signals before they impact your team. Our AI monitors patterns to provide early warnings and actionable insights.",
       Icon: Shield,
-      className: "md:col-span-2 md:row-span-2",
       iconColor: "text-red-500",
       bgColor: "bg-red-500/10",
       borderColor: "border-red-500/20",
-      glowColor: "bg-red-500/20"
+      stats: "94% accuracy"
     },
     {
       title: "Talent Scout",
-      description: "Identify hidden high-performers and unearth potential leaders within your organization.",
+      description: "Identify hidden high-performers and unearth potential leaders within your organization through network analysis.",
       Icon: Zap,
-      className: "md:col-span-1 md:row-span-1",
-      iconColor: "text-yellow-500",
-      bgColor: "bg-yellow-500/10",
-      borderColor: "border-yellow-500/20",
-      glowColor: "bg-yellow-500/20"
+      iconColor: "text-amber-500",
+      bgColor: "bg-amber-500/10",
+      borderColor: "border-amber-500/20",
+      stats: "3.2x discovery"
     },
     {
-      title: "Culture Thermometer",
-      description: "Gauge team morale and engagement in real-time with anonymous feedback.",
-      Icon: BarChart3,
-      className: "md:col-span-1 md:row-span-1",
-      iconColor: "text-blue-500",
-      bgColor: "bg-blue-500/10",
-      borderColor: "border-blue-500/20",
-      glowColor: "bg-blue-500/20"
+      title: "Culture Engine",
+      description: "Gauge team morale and engagement in real-time with anonymous feedback and sentiment analysis.",
+      Icon: Heart,
+      iconColor: "text-pink-500",
+      bgColor: "bg-pink-500/10",
+      borderColor: "border-pink-500/20",
+      stats: "Real-time"
     },
     {
-      title: "Integrations",
-      description: "Connect with GitHub, Jira, Slack, and more.",
-      Icon: Database,
-      className: "md:col-span-2 md:row-span-1",
-      iconColor: "text-purple-500",
-      bgColor: "bg-purple-500/10",
-      borderColor: "border-purple-500/20",
-      glowColor: "bg-purple-500/20"
+      title: "Network Analysis",
+      description: "Understand communication patterns and identify key connectors in your organization.",
+      Icon: Network,
+      iconColor: "text-cyan-500",
+      bgColor: "bg-cyan-500/10",
+      borderColor: "border-cyan-500/20",
+      stats: "Deep insights"
     },
   ]
 
+  const benefits = [
+    {
+      icon: Lock,
+      title: "Privacy First",
+      description: "Employee data is always encrypted. No invasive tracking—only ethical, consent-based monitoring."
+    },
+    {
+      icon: Eye,
+      title: "Non-Invasive",
+      description: "Works with existing tools without monitoring personal messages or screen activity."
+    },
+    {
+      icon: Sparkles,
+      title: "AI-Powered",
+      description: "Advanced machine learning models trained on thousands of workplace patterns."
+    },
+    {
+      icon: Users,
+      title: "Team Focused",
+      description: "Built for managers who care about their people, not just metrics."
+    }
+  ]
+
   return (
-    <section id="features" className="py-24 bg-background relative overflow-hidden">
-      <div className="container px-6 mx-auto">
+    <section id="features" className="py-24 bg-slate-950 relative overflow-hidden">
+      {/* Background accents */}
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-green-500/5 rounded-full blur-3xl" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl" />
+
+      <div className="container px-6 mx-auto relative z-10">
+        {/* Section Header */}
         <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl mb-4">
-            Everything you need to <span className="text-green-500">empower your team</span>
+          <Badge variant="outline" className="mb-4 border-green-500/30 text-green-400 bg-green-500/10">
+            <Sparkles className="w-3 h-3 mr-1" />
+            AI-Powered
+          </Badge>
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6">
+            Everything you need to
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400"> build healthier teams</span>
           </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Sentinel provides the tools to understand, protect, and grow your engineering organization.
+          <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+            Sentinel provides the complete toolkit for understanding, protecting, and growing your engineering organization.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 md:grid-rows-2 gap-4 max-w-5xl mx-auto min-h-[600px]">
-           {features.map((feature, index) => (
-            <div
-              key={index}
-              className={cn(
-                "group relative p-8 rounded-3xl bg-card border hover:border-green-500/50 transition-all duration-300 overflow-hidden flex flex-col justify-between hover:shadow-2xl hover:shadow-green-500/10",
-                feature.className,
-                feature.borderColor
-              )}
-            >
-              <div
-                className={cn(
-                  "absolute -top-12 -right-12 w-32 h-32 rounded-full blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity duration-500",
-                  feature.glowColor
-                )}
-              />
-              
-              <div className="relative z-10">
+        {/* Features Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto mb-20">
+          {features.map((feature, index) => (
+            <Card key={index} className={cn(
+              "group relative bg-slate-900/80 border-slate-800 hover:border-slate-700 transition-all duration-300 hover:shadow-xl hover:shadow-black/20",
+              "hover:-translate-y-1"
+            )}>
+              <CardContent className="p-6">
                 <div className={cn("inline-flex p-3 rounded-xl mb-4 border", feature.bgColor, feature.borderColor)}>
                   <feature.Icon className={cn("h-6 w-6", feature.iconColor)} />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">{feature.title}</h3>
-                <p className="text-muted-foreground">{feature.description}</p>
-              </div>
-
-              <div className="relative z-10 mt-auto opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-y-4 group-hover:translate-y-0 pt-4">
-                <span className={cn("text-sm font-medium flex items-center gap-1", feature.iconColor)}>
-                  Learn more <span className="text-xs">→</span>
-                </span>
-              </div>
-            </div>
+                <div className="text-sm font-medium text-slate-500 mb-2">{feature.stats}</div>
+                <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">{feature.description}</p>
+              </CardContent>
+            </Card>
           ))}
+        </div>
+
+        {/* Benefits Section */}
+        <div className="max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {benefits.map((benefit, index) => (
+              <div key={index} className="flex gap-4 p-6 rounded-2xl bg-slate-900/50 border border-slate-800">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+                    <benefit.icon className="h-6 w-6 text-green-500" />
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-white mb-1">{benefit.title}</h4>
+                  <p className="text-slate-400 text-sm">{benefit.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </section>

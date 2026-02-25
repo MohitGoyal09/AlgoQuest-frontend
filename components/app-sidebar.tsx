@@ -18,16 +18,17 @@ import {
   Thermometer,
   Link,
   Plus,
-  MessageCircle
+  LogOut,
+  User as UserIcon,
 } from "lucide-react"
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { SettingsModal } from "@/components/settings-modal"
-import { useChatHistory } from "@/hooks/useChatHistory"
+import { createClient } from "@supabase/supabase-js"
 
 interface AppSidebarProps {
   activeView?: string;
@@ -67,9 +68,7 @@ export function AppSidebar({ activeView, onViewChange, collapsed, onToggleCollap
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { user, userRole, loading } = useAuth()
-  const { chats, loadChat, createNewChat } = useChatHistory()
   const [enginesOpen, setEnginesOpen] = useState(true)
-  const [recentChatsOpen, setRecentChatsOpen] = useState(true)
   
   if (loading) {
     return (
@@ -100,20 +99,6 @@ export function AppSidebar({ activeView, onViewChange, collapsed, onToggleCollap
     router.push(href)
     if (onViewChange) onViewChange(id)
   }
-
-  const handleNewChat = () => {
-    const newChat = createNewChat()
-    router.push(`/ask-sentinel?chatId=${newChat.id}`)
-  }
-
-  const handleChatClick = (chatId: string) => {
-    loadChat(chatId)
-    router.push(`/ask-sentinel?chatId=${chatId}`)
-  }
-
-  const sortedChats = [...chats].sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-  ).slice(0, 5)
 
   const isEngineSubItemActive = (href: string) => {
     return pathname === href || pathname.startsWith(href)
@@ -279,111 +264,99 @@ export function AppSidebar({ activeView, onViewChange, collapsed, onToggleCollap
         
         {/* Primary Section */}
         <div className="space-y-0.5">
-          {navItems.map((item) => renderNavItem(item))}
+          {navItems.map((item, index) => (
+            <div key={item.id || index}>
+              {renderNavItem(item)}
+            </div>
+          ))}
         </div>
 
-        {/* Collapsed: New Chat button */}
-        {collapsed && (
-          <div className="space-y-0.5 px-2">
-            <button
-              onClick={handleNewChat}
-              className="flex w-full items-center justify-center gap-2 rounded-md px-3 py-2.5 text-[13px] font-medium transition-all duration-200 group relative text-green-400 hover:bg-green-500/10"
-              title="New Chat"
-            >
-              <Plus className="h-[18px] w-[18px] shrink-0" />
-            </button>
-          </div>
-        )}
-
-        {/* Recent Chats Section */}
-        {!collapsed && (
-          <div className="space-y-1">
-            <Collapsible open={recentChatsOpen} onOpenChange={setRecentChatsOpen}>
-              <CollapsibleTrigger asChild>
-                <button
-                  className="flex w-full items-center justify-between rounded-md px-3 py-2 text-[13px] font-medium transition-all duration-200 group text-muted-foreground hover:bg-white/5 hover:text-white"
-                >
-                  <div className="flex items-center gap-3">
-                    <MessageCircle className="h-[18px] w-[18px] shrink-0 text-muted-foreground/70 group-hover:text-white" />
-                    <span>Recent Chats</span>
-                  </div>
-                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", recentChatsOpen && "rotate-180")} />
-                </button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-0.5 px-2 py-1 ml-3 border-l border-white/10">
-                <button
-                  onClick={handleNewChat}
-                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-[13px] cursor-pointer text-green-400 hover:bg-green-500/10 hover:text-green-400"
-                >
-                  <Plus className="h-4 w-4 shrink-0" />
-                  <span>New Chat</span>
-                </button>
-                {sortedChats.length === 0 ? (
-                  <p className="text-[12px] text-muted-foreground/60 px-3 py-2">No chats yet</p>
-                ) : (
-                  sortedChats.map((chat) => (
-                    <button
-                      key={chat.id}
-                      onClick={() => handleChatClick(chat.id)}
-                      className={cn(
-                        "flex w-full items-center gap-2 rounded-md px-3 py-2 text-[13px] cursor-pointer truncate",
-                        pathname === `/ask-sentinel?chatId=${chat.id}`
-                          ? "text-green-400 bg-green-500/10"
-                          : "text-muted-foreground hover:text-white hover:bg-white/5"
-                      )}
-                    >
-                      <MessageSquare className="h-4 w-4 shrink-0" />
-                      <span className="truncate">{chat.title}</span>
-                    </button>
-                  ))
-                )}
-              </CollapsibleContent>
-            </Collapsible>
-          </div>
-        )}
+        {/* New Chat Button */}
+        <div className="space-y-0.5 px-2">
+          <button
+            onClick={() => router.push("/ask-sentinel")}
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-[13px] font-medium transition-all duration-200 group text-green-400 hover:bg-green-500/10"
+          >
+            <Plus className="h-[18px] w-[18px] shrink-0" />
+            {!collapsed && <span>New Chat</span>}
+          </button>
+        </div>
 
       </nav>
 
       {/* User Info Footer */}
-      <div className="mt-auto border-t border-white/5 p-3">
-        <SettingsModal
-          trigger={
-            <div className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-white/5 cursor-pointer group">
-              <Avatar className="h-9 w-9 rounded-lg border border-white/10 group-hover:border-white/20 transition-colors">
-                  <AvatarFallback className="bg-green-600 text-[11px] text-white">
-                      {getInitials(userName)}
-                  </AvatarFallback>
-              </Avatar>
-              {!collapsed && (
-                  <div className="flex-1 overflow-hidden">
-                      <p className="text-[13px] font-medium text-white truncate leading-none group-hover:text-green-400 transition-colors">
-                          {userName}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground truncate leading-snug pt-1">
-                            {displayRole}
-                      </p>
-                  </div>
-              )}
-              {!collapsed && (
-                  <button 
-                    onClick={(e) => e.stopPropagation()}
-                    className="p-1.5 rounded-md text-muted-foreground hover:text-white hover:bg-white/10 transition-colors"
-                    title="Settings"
-                  >
-                    <Settings className="h-4 w-4" />
-                  </button>
-              )}
+      <div className="mt-auto border-t border-white/5 p-2">
+        <div className="relative">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              const dropdown = document.getElementById('user-dropdown')
+              dropdown?.classList.toggle('hidden')
+            }}
+            className="flex w-full items-center gap-3 rounded-lg p-2 transition-colors hover:bg-white/5 cursor-pointer group"
+          >
+            <Avatar className="h-9 w-9 rounded-lg border border-white/10 group-hover:border-white/20 transition-colors">
+                <AvatarFallback className="bg-green-600 text-[11px] text-white">
+                    {getInitials(userName)}
+                </AvatarFallback>
+            </Avatar>
+            {!collapsed && (
+                <div className="flex-1 overflow-hidden text-left">
+                    <p className="text-[13px] font-medium text-white truncate leading-none group-hover:text-green-400 transition-colors">
+                        {userName}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground truncate leading-snug pt-1">
+                          {displayRole}
+                    </p>
+                </div>
+            )}
+            {!collapsed && (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            )}
+          </button>
+          
+          {/* Dropdown Menu */}
+          {!collapsed && (
+            <div 
+              id="user-dropdown"
+              className="hidden absolute bottom-full left-0 right-0 mb-1 bg-[#0f172a] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50"
+            >
+              <div className="py-1">
+                <SettingsModal
+                  trigger={
+                    <button className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-muted-foreground hover:bg-white/5 hover:text-white transition-colors text-left">
+                      <Settings className="h-4 w-4" />
+                      <span>Settings</span>
+                    </button>
+                  }
+                />
+                <button
+                  onClick={async () => {
+                    const supabase = createClient(
+                      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+                      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+                    )
+                    await supabase.auth.signOut()
+                    window.location.href = '/login'
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors text-left"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Log out</span>
+                </button>
+              </div>
             </div>
-          }
-        />
-          {collapsed && onToggleCollapse && (
+          )}
+        </div>
+        
+        {collapsed && onToggleCollapse && (
            <button 
                onClick={onToggleCollapse}
                className="mt-2 flex w-full justify-center text-muted-foreground hover:text-white p-2 hover:bg-white/5 rounded-md transition-colors"
              >
                <ChevronRight className="h-4 w-4" />
            </button>
-          )}
+        )}
       </div>
     </aside>
   )

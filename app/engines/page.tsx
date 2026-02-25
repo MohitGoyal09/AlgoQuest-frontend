@@ -1,96 +1,45 @@
 "use client"
 
-import { Suspense, useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
-
-import { UserSelector } from "@/components/user-selector"
-import { RiskAssessment } from "@/components/risk-assessment"
-import { NetworkGraph } from "@/components/network-graph"
-import { VaultStatus } from "@/components/vault-status"
-import { StatCards } from "@/components/stat-cards"
-import { NudgeCard } from "@/components/nudge-card"
-import { SkillsRadar } from "@/components/skills-radar"
-import { TeamDistribution } from "@/components/team-distribution"
-import { ForecastChart } from "@/components/forecast-chart"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { ProtectedRoute } from "@/components/protected-route"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Button } from "@/components/ui/button"
-import { 
-  Shield, 
-  Users, 
-  Heart, 
-  Network, 
-  Sparkles,
-  TrendingUp,
-  Activity,
-  AlertTriangle,
-  Target,
-  Zap,
-  ChevronDown,
-  ChevronRight
+import { AnimatePresence, motion } from "framer-motion"
+import {
+  LayoutDashboard,
+  Users,
+  Cpu,
+  LogOut,
+  Settings
 } from "lucide-react"
 
-import { Employee, RiskLevel, toRiskLevel, NetworkNode, NetworkEdge } from "@/types"
+import { UserSelector } from "@/components/user-selector"
+import { ManagerOverview } from "@/components/dashboard/manager/overview"
+import { TeamRoster } from "@/components/dashboard/manager/team-roster"
 
 import { useRiskData } from "@/hooks/useRiskData"
 import { useNetworkData } from "@/hooks/useNetworkData"
 import { useTeamData } from "@/hooks/useTeamData"
-import { useRiskHistory } from "@/hooks/useRiskHistory"
 import { useUsers } from "@/hooks/useUsers"
 import { useNudge } from "@/hooks/useNudge"
 import { useForecast } from "@/hooks/useForecast"
+import { Employee, toRiskLevel } from "@/types"
 
-const ENGINE_CONFIGS = [
-  {
-    id: "safety",
-    name: "Safety Valve",
-    icon: Shield,
-    color: "text-red-500",
-    bgColor: "bg-red-500/10",
-    description: "Burnout detection & risk analysis"
-  },
-  {
-    id: "talent",
-    name: "Talent Scout",
-    icon: Sparkles,
-    color: "text-purple-500",
-    bgColor: "bg-purple-500/10",
-    description: "Hidden talent & skill discovery"
-  },
-  {
-    id: "culture",
-    name: "Culture",
-    icon: Heart,
-    color: "text-pink-500",
-    bgColor: "bg-pink-500/10",
-    description: "Team sentiment & health"
-  },
-  {
-    id: "network",
-    name: "Network",
-    icon: Network,
-    color: "text-blue-500",
-    bgColor: "bg-blue-500/10",
-    description: "Collaboration & connections"
-  }
-]
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button"
 
-function EnginesContent() {
+export default function EnginesPage() {
   const router = useRouter()
   const [selectedUserHash, setSelectedUserHash] = useState<string | null>(null)
-  const [expandedEngine, setExpandedEngine] = useState<string | null>("safety")
-
-  const { users, isLoading: usersLoading } = useUsers()
-
+  
+  // Data Hooks
+  const { users } = useUsers()
+  
   useEffect(() => {
     if (!selectedUserHash && users.length > 0) {
       setSelectedUserHash(users[0].user_hash)
     }
   }, [users, selectedUserHash])
 
+  // Transform User Data
   const employees = useMemo(() => {
     return users.map(u => ({
       user_hash: u.user_hash,
@@ -99,24 +48,15 @@ function EnginesContent() {
       risk_level: toRiskLevel(u.risk_level),
       velocity: u.velocity || 0,
       confidence: u.confidence || 0,
-      belongingness_score: 0.5,
+      belongingness_score: Math.random() * 0.5 + 0.5, // Mock belongingness if missing
       circadian_entropy: 0.5,
-      updated_at: u.updated_at || new Date().toISOString(),
-      persona: "Engineer",
+      updated_at: u.updated_at,
       indicators: {
-        overwork: false,
-        isolation: false,
-        fragmentation: false,
-        late_night_pattern: false,
-        weekend_work: false,
-        communication_decline: false
+        overwork: false, isolation: false, fragmentation: false,
+        late_night_pattern: false, weekend_work: false, communication_decline: false
       }
     } as Employee))
   }, [users])
-
-  const selectedBaseEmployee = useMemo(() =>
-    employees.find(e => e.user_hash === selectedUserHash) || employees[0] || null
-    , [employees, selectedUserHash])
 
   const { data: riskData } = useRiskData(selectedUserHash)
   const { data: nudgeData } = useNudge(selectedUserHash)
@@ -124,294 +64,87 @@ function EnginesContent() {
   const { data: teamData } = useTeamData()
   const { data: forecastData } = useForecast()
 
-  const currentEmployee = useMemo(() => {
-    if (!selectedBaseEmployee) return null
-    if (!riskData) return selectedBaseEmployee
-    return {
-      ...selectedBaseEmployee,
-      risk_level: riskData.risk_level,
-      velocity: riskData.velocity,
-      confidence: riskData.confidence,
-      belongingness_score: riskData.belongingness_score,
-      circadian_entropy: riskData.circadian_entropy,
-      indicators: {
-        overwork: riskData.indicators?.overwork || false,
-        isolation: riskData.indicators?.isolation || false,
-        fragmentation: riskData.indicators?.fragmentation || false,
-        late_night_pattern: riskData.indicators?.late_night_pattern || false,
-        weekend_work: riskData.indicators?.weekend_work || false,
-        communication_decline: riskData.indicators?.communication_decline || false,
-      }
-    } as Employee
-  }, [selectedBaseEmployee, riskData])
-
   const networkNodes = networkData?.nodes || []
   const networkEdges = networkData?.edges || []
 
-  const mappedTeamMetrics = useMemo(() => {
-    if (!teamData) return null
-    const total_members = employees.length
-    const healthy_count = employees.filter(e => e.risk_level === "LOW").length
-    const elevated_count = employees.filter(e => e.risk_level === "ELEVATED").length
-    const critical_count = employees.filter(e => e.risk_level === "CRITICAL").length
-    
-    return {
-      total_members,
-      healthy_count,
-      elevated_count,
-      critical_count,
-      avg_velocity: teamData.metrics?.avg_velocity || 0,
-    }
-  }, [teamData, employees])
-
-  const handleUserSelect = (emp: Employee) => {
-    setSelectedUserHash(emp.user_hash)
-  }
-
-  const toggleEngine = (engineId: string) => {
-    setExpandedEngine(expandedEngine === engineId ? null : engineId)
-  }
-
-  const hiddenGems = networkNodes.filter(n => (n as any).is_hidden_gem)
-
+  // Mock Consolidated Skills (Aggregate)
   const mockSkillsData = {
-    technical: 78,
-    communication: 85,
-    leadership: 72,
-    collaboration: 90,
-    adaptability: 68,
-    creativity: 75
+    technical: 78, communication: 85, leadership: 72,
+    collaboration: 90, adaptability: 68, creativity: 75
   }
 
   return (
-    <div className="flex flex-1 flex-col">
-      <ScrollArea className="flex-1">
-        <main className="flex flex-col gap-6 p-5 lg:p-8">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col gap-1">
-              <h2 className="text-xl font-bold tracking-tight text-foreground">Engines Dashboard</h2>
-              <p className="text-sm text-muted-foreground">Select an engine to view its analytics</p>
+    <div className="flex flex-col min-h-screen bg-slate-950 text-slate-200 font-sans dark">
+      
+      {/* ─── Header ────────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-40 border-b border-sidebar-border bg-slate-950/80 backdrop-blur-xl">
+        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-950/50 border border-indigo-500/30">
+              <Cpu className="h-5 w-5 text-indigo-400" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold tracking-tight text-slate-100">Manager Console</h1>
+              <p className="text-[11px] text-slate-400 font-medium tracking-wide">SENTINEL INTELLIGENCE SYSTEM</p>
             </div>
           </div>
+          
+           {/* Actions */}
+           <div className="flex items-center gap-4">
+              <UserSelector 
+                 selectedUser={employees.find(e => e.user_hash === selectedUserHash) || null} 
+                 onSelect={(e) => setSelectedUserHash(e.user_hash)} 
+                 employees={employees}
+              />
+              <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-100">
+                <Settings className="h-5 w-5" />
+              </Button>
+           </div>
+        </div>
+      </header>
 
-          {/* User Selector */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground" htmlFor="user-select">
-              Select Employee
-            </label>
-            <UserSelector
-              employees={employees}
-              selectedUser={currentEmployee}
-              onSelect={handleUserSelect}
-            />
-          </div>
+      {/* ─── Main Content ────────────────────────────────────────────── */}
+      <main className="container mx-auto px-6 py-8 flex-1">
+        
+        <Tabs defaultValue="overview" className="space-y-8">
+           <TabsList className="bg-slate-900/50 border border-border p-1 h-auto rounded-lg inline-flex">
+              <TabsTrigger 
+                 value="overview"
+                 className="px-6 py-2.5 rounded-md data-[state=active]:bg-indigo-600 data-[state=active]:text-slate-50 text-slate-400 transition-all font-medium flex items-center gap-2"
+              >
+                 <LayoutDashboard className="h-4 w-4" />
+                 Overview
+              </TabsTrigger>
+              <TabsTrigger 
+                 value="team"
+                 className="px-6 py-2.5 rounded-md data-[state=active]:bg-indigo-600 data-[state=active]:text-slate-50 text-slate-400 transition-all font-medium flex items-center gap-2"
+              >
+                 <Users className="h-4 w-4" />
+                 Team Roster
+              </TabsTrigger>
+           </TabsList>
 
-          {/* Engine Accordion */}
-          <div className="space-y-3">
-            {ENGINE_CONFIGS.map((engine) => {
-              const isExpanded = expandedEngine === engine.id
-              const Icon = engine.icon
+           <AnimatePresence mode="wait">
+              <TabsContent value="overview" className="focus:outline-none mt-0">
+                 <ManagerOverview 
+                    employees={employees}
+                    networkNodes={networkNodes}
+                    networkEdges={networkEdges}
+                    forecastData={(forecastData as any) || []}
+                    nudgeData={nudgeData}
+                    skillsData={mockSkillsData}
+                 />
+              </TabsContent>
 
-              return (
-                <Card key={engine.id} className="overflow-hidden">
-                  {/* Engine Header - Clickable */}
-                  <button
-                    onClick={() => toggleEngine(engine.id)}
-                    className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`p-2 rounded-lg ${engine.bgColor}`}>
-                        <Icon className={`h-5 w-5 ${engine.color}`} />
-                      </div>
-                      <div className="text-left">
-                        <h3 className="font-semibold">{engine.name}</h3>
-                        <p className="text-sm text-muted-foreground">{engine.description}</p>
-                      </div>
-                    </div>
-                    {isExpanded ? (
-                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    )}
-                  </button>
+              <TabsContent value="team" className="focus:outline-none mt-0">
+                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <TeamRoster employees={employees} />
+                 </div>
+              </TabsContent>
+           </AnimatePresence>
+        </Tabs>
 
-                  {/* Engine Content */}
-                  {isExpanded && (
-                    <CardContent className="border-t pt-6 space-y-6">
-                      {/* SAFETY VALVE */}
-                      {engine.id === "safety" && (
-                        <>
-                          {currentEmployee && (
-                            <>
-                              <RiskAssessment employee={currentEmployee} />
-                              <NudgeCard nudge={nudgeData} />
-                            </>
-                          )}
-                          {mappedTeamMetrics && <StatCards metrics={mappedTeamMetrics} />}
-                        </>
-                      )}
-
-                      {/* TALENT SCOUT */}
-                      {engine.id === "talent" && (
-                        <>
-                          <div className="grid gap-6 md:grid-cols-2">
-                            <Card>
-                              <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                  <Sparkles className="h-5 w-5 text-purple-500" />
-                                  Skills Profile
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <SkillsRadar data={mockSkillsData} height={300} />
-                              </CardContent>
-                            </Card>
-
-                            <Card>
-                              <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                  <Target className="h-5 w-5 text-purple-500" />
-                                  Network Centrality
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent className="space-y-4">
-                                <div className="flex justify-between items-center">
-                                  <span className="text-sm text-muted-foreground">Betweenness</span>
-                                  <Badge variant="outline">0.72</Badge>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-sm text-muted-foreground">Eigenvector</span>
-                                  <Badge variant="outline">0.85</Badge>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-sm text-muted-foreground">Collaboration Score</span>
-                                  <Badge variant="outline">90%</Badge>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          </div>
-
-                          {hiddenGems.length > 0 && (
-                            <Card className="border-purple-200 bg-purple-50/50">
-                              <CardHeader>
-                                <CardTitle className="flex items-center gap-2 text-purple-700">
-                                  <Sparkles className="h-5 w-5" />
-                                  Hidden Gems Detected
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="flex flex-wrap gap-2">
-                                  {hiddenGems.slice(0, 5).map((node: any, idx: number) => (
-                                    <Badge key={idx} variant="secondary" className="bg-purple-100 text-purple-700">
-                                      {node.id?.slice(0, 8)}...
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-                        </>
-                      )}
-
-                      {/* CULTURE */}
-                      {engine.id === "culture" && (
-                        <>
-                          {mappedTeamMetrics && <StatCards metrics={mappedTeamMetrics} />}
-                          <div className="grid gap-6 md:grid-cols-2">
-                            <Card>
-                              <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                  <Heart className="h-5 w-5 text-pink-500" />
-                                  Team Distribution
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <TeamDistribution teamData={teamData} />
-                              </CardContent>
-                            </Card>
-
-                            <Card>
-                              <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                  <TrendingUp className="h-5 w-5 text-pink-500" />
-                                  Forecast
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <ForecastChart />
-                              </CardContent>
-                            </Card>
-                          </div>
-                        </>
-                      )}
-
-                      {/* NETWORK */}
-                      {engine.id === "network" && (
-                        <>
-                          <Card>
-                            <CardHeader>
-                              <CardTitle className="flex items-center gap-2">
-                                <Network className="h-5 w-5 text-blue-500" />
-                                Team Network Graph
-                              </CardTitle>
-                            </CardHeader>
-                            <CardContent className="h-[400px]">
-                              <NetworkGraph 
-                                nodes={networkNodes} 
-                                edges={networkEdges} 
-                                height={380}
-                              />
-                            </CardContent>
-                          </Card>
-
-                          <div className="grid gap-4 md:grid-cols-3">
-                            <Card>
-                              <CardHeader className="pb-2">
-                                <CardTitle className="text-sm">Team Density</CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold">0.72</div>
-                                <p className="text-xs text-muted-foreground">Collaboration strength</p>
-                              </CardContent>
-                            </Card>
-                            <Card>
-                              <CardHeader className="pb-2">
-                                <CardTitle className="text-sm">Avg. Path Length</CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold">2.3</div>
-                                <p className="text-xs text-muted-foreground">Degrees of separation</p>
-                              </CardContent>
-                            </Card>
-                            <Card>
-                              <CardHeader className="pb-2">
-                                <CardTitle className="text-sm">Islands</CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold">1</div>
-                                <p className="text-xs text-muted-foreground">Disconnected groups</p>
-                              </CardContent>
-                            </Card>
-                          </div>
-                        </>
-                      )}
-                    </CardContent>
-                  )}
-                </Card>
-              )
-            })}
-          </div>
-        </main>
-      </ScrollArea>
+      </main>
     </div>
-  )
-}
-
-export default function EnginesPage() {
-  return (
-    <ProtectedRoute>
-      <EnginesContent />
-    </ProtectedRoute>
   )
 }

@@ -519,7 +519,7 @@ function NetworkContent() {
                     {networkNodes.filter(n => n.is_hidden_gem).slice(0, 3).map((node, idx) => (
                       <div 
                         key={node.id}
-                        className="p-4 rounded-xl bg-white/60 border border-cyan-100"
+                        className="p-4 rounded-xl bg-[#0f172a] border border-cyan-900/30"
                       >
                         <div className="flex items-center gap-3 mb-3">
                           <Avatar className="h-10 w-10">

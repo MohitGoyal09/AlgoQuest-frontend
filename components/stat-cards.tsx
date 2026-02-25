@@ -8,7 +8,7 @@ import { useCountUp } from "@/hooks/useCountUp"
 import { Sparkline } from "@/components/sparkline"
 
 interface StatCardsProps {
-  metrics: TeamMetrics
+  metrics?: TeamMetrics
 }
 
 /** Single metric card with CountUp animation, glow border, and sparkline */
@@ -105,11 +105,22 @@ function MetricCard({
 }
 
 export function StatCards({ metrics }: StatCardsProps) {
+  // Guard against undefined metrics
+  if (!metrics) {
+    return (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-24 rounded-xl bg-white/5 animate-pulse" />
+        ))}
+      </div>
+    )
+  }
+
   const containerRef = useStaggerMount(".stat-card", [
-    metrics.total_members,
-    metrics.healthy_count,
-    metrics.elevated_count,
-    metrics.critical_count,
+    metrics.total_members || 0,
+    metrics.healthy_count || 0,
+    metrics.elevated_count || 0,
+    metrics.critical_count || 0,
   ])
 
   const stats: Array<{
@@ -122,48 +133,48 @@ export function StatCards({ metrics }: StatCardsProps) {
   }> = [
       {
         label: "Total Members",
-        value: metrics.total_members,
+        value: metrics.total_members || 0,
         icon: Users,
         subtitle: "Active in system",
         riskLevel: "info",
-        trend: [8, 9, 9, 10, 10, 11, metrics.total_members],
+        trend: [8, 9, 9, 10, 10, 11, metrics.total_members || 0],
       },
       {
         label: "Healthy",
-        value: metrics.healthy_count,
+        value: metrics.healthy_count || 0,
         icon: Heart,
-        subtitle: `${Math.round((metrics.healthy_count / metrics.total_members) * 100)}% of team`,
+        subtitle: `${metrics.total_members ? Math.round((metrics.healthy_count / metrics.total_members) * 100) : 0}% of team`,
         riskLevel: "healthy",
-        trend: [5, 6, 5, 7, 6, 7, metrics.healthy_count],
+        trend: [5, 6, 5, 7, 6, 7, metrics.healthy_count || 0],
       },
       {
         label: "Elevated",
-        value: metrics.elevated_count,
+        value: metrics.elevated_count || 0,
         icon: TrendingUp,
         subtitle: "Monitoring closely",
         riskLevel: "elevated",
-        trend: [1, 2, 2, 3, 2, 3, metrics.elevated_count],
+        trend: [1, 2, 2, 3, 2, 3, metrics.elevated_count || 0],
       },
       {
         label: "Critical",
-        value: metrics.critical_count,
+        value: metrics.critical_count || 0,
         icon: AlertTriangle,
         subtitle: "Immediate attention",
         riskLevel: "critical",
-        trend: [0, 0, 1, 0, 1, 1, metrics.critical_count],
+        trend: [0, 0, 1, 0, 1, 1, metrics.critical_count || 0],
       },
       {
         label: "Avg Velocity",
-        value: metrics.avg_velocity.toFixed(2),
+        value: (metrics.avg_velocity || 0).toFixed(2),
         icon: Activity,
-        subtitle: metrics.avg_velocity > 1.5 ? "Above threshold" : "Normal range",
-        riskLevel: metrics.avg_velocity > 1.5 ? "elevated" : "healthy",
+        subtitle: (metrics.avg_velocity || 0) > 1.5 ? "Above threshold" : "Normal range",
+        riskLevel: (metrics.avg_velocity || 0) > 1.5 ? "elevated" : "healthy",
       },
       {
         label: "Contagion Risk",
-        value: metrics.contagion_risk,
+        value: metrics.contagion_risk || "LOW",
         icon: Shield,
-        subtitle: `Frag: ${(metrics.graph_fragmentation * 100).toFixed(0)}%`,
+        subtitle: `Frag: ${((metrics.graph_fragmentation || 0) * 100).toFixed(0)}%`,
         riskLevel:
           metrics.contagion_risk === "CRITICAL"
             ? "critical"

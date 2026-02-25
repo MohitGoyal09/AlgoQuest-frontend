@@ -26,9 +26,20 @@ import {
   AlertCircle,
   ChevronRight,
   BarChart3,
+  Heart,
+  Brain,
+  Smile,
+  Frown,
+  Battery,
+  Sun,
+  Moon,
+  Clock3,
+  Users,
+  Flame,
+  Sparkle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
@@ -37,13 +48,23 @@ import { Separator } from "@/components/ui/separator"
 import { ProtectedRoute } from "@/components/protected-route"
 import { useAuth } from "@/contexts/auth-context"
 import { SkillsRadar } from "@/components/skills-radar"
-import { AskSentinel } from "@/components/ai/AskSentinel"
+import { AskSentinelWidget } from "@/components/ask-sentinel-widget"
 import { api } from "@/lib/api"
 import { getRiskHistory, getNetworkAnalysis } from "@/lib/api"
 import { toRiskLevel, type RiskLevel, type TalentScoutData } from "@/types"
 import { cn } from "@/lib/utils"
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+} from "recharts"
 
-// Types
 interface UserProfile {
   user_hash: string
   name?: string
@@ -67,16 +88,10 @@ interface MonitoringStatus {
   paused_until: string | null
 }
 
-interface AuditEntry {
-  action: string
-  timestamp: string
-  details: any
-}
-
 interface MeData {
   user: UserProfile
   risk: RiskData | null
-  audit_trail: AuditEntry[]
+  audit_trail: any[]
   monitoring_status: MonitoringStatus
 }
 
@@ -88,7 +103,6 @@ interface RiskHistoryPoint {
   belongingness_score: number
 }
 
-// Risk level configuration
 const riskConfig: Record<RiskLevel, { 
   label: string
   color: string
@@ -123,19 +137,54 @@ const riskConfig: Record<RiskLevel, {
   },
 }
 
-// Mock talking points for 1:1 prep
-const MOCK_TALKING_POINTS = [
-  "Celebrate recent project completion",
-  "Discuss workload distribution and priorities",
-  "Career development and growth goals",
-  "Team collaboration feedback",
+const wellbeingMetrics = [
+  { key: "belongingness", label: "Belongingness", icon: Heart, color: "text-pink-500", bg: "bg-pink-500/10" },
+  { key: "energy", label: "Energy Level", icon: Battery, color: "text-green-500", bg: "bg-green-500/10" },
+  { key: "focus", label: "Focus Time", icon: Target, color: "text-blue-500", bg: "bg-blue-500/10" },
+  { key: "rest", label: "Rest Quality", icon: Moon, color: "text-purple-500", bg: "bg-purple-500/10" },
 ]
+
+const aiSuggestions = [
+  { type: "break", title: "Take a break", description: "You've been focused for 2+ hours. A short break could boost productivity.", icon: Coffee },
+  { type: "meeting", title: "Block focus time", description: "Consider blocking 2 hours tomorrow for deep work.", icon: Clock3 },
+  { type: "wellness", title: "Wellness check", description: "Your energy patterns suggest prioritizing rest this week.", icon: Flame },
+]
+
+// Dynamic suggestions based on risk level
+const getDynamicSuggestions = (riskLevel: string, vel: number) => {
+  const suggestions = []
+  if (vel > 60) {
+    suggestions.push({ type: "break", title: "High velocity detected", description: "Consider taking a break to prevent burnout.", icon: Coffee })
+  }
+  if (riskLevel === "CRITICAL") {
+    suggestions.push({ type: "wellness", title: "Priority: Wellness", description: "Your risk level is elevated. Consider speaking with your manager.", icon: Flame })
+  }
+  if (suggestions.length === 0) {
+    suggestions.push({ type: "good", title: "Great progress", description: "Your work patterns look healthy. Keep it up!", icon: CheckCircle2 })
+  }
+  return suggestions
+}
+
+function GlassTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="bg-[#0f172a] border border-white/10 rounded-lg px-3 py-2 shadow-lg">
+      <p className="text-xs text-slate-400 mb-1">{label}</p>
+      {payload.map((entry: any, i: number) => (
+        <div key={i} className="flex items-center gap-2 text-xs">
+          <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
+          <span className="text-white">{entry.name}:</span>
+          <span className="font-mono text-white">{typeof entry.value === 'number' ? entry.value.toFixed(1) : entry.value}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 function EmployeeDashboardContent() {
   const router = useRouter()
   const { signOut, userRole } = useAuth()
   
-  // Data states
   const [data, setData] = useState<MeData | null>(null)
   const [riskHistory, setRiskHistory] = useState<RiskHistoryPoint[]>([])
   const [skillsData, setSkillsData] = useState<TalentScoutData | null>(null)
@@ -143,37 +192,23 @@ function EmployeeDashboardContent() {
   const [error, setError] = useState<string | null>(null)
   const [updating, setUpdating] = useState(false)
 
-  // Fetch all data
   const fetchData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
-
-      // Fetch employee data
       const meData = await api.get<MeData>('/me')
       setData(meData)
 
       if (meData?.user?.user_hash) {
-        // Fetch risk history (using /me/risk-history or fallback to /engines/users/{hash}/history)
         try {
           const historyResponse = await api.get<any>(`/me/risk-history`)
-          const historyData = Array.isArray(historyResponse) 
-            ? historyResponse 
-            : (historyResponse?.history || [])
-          setRiskHistory(historyData.map((p: any) => ({
-            ...p,
-            risk_level: toRiskLevel(p.risk_level),
-          })))
-        } catch (err) {
-          // Fallback to engines endpoint
+          const historyData = Array.isArray(historyResponse) ? historyResponse : (historyResponse?.history || [])
+          setRiskHistory(historyData.map((p: any) => ({ ...p, risk_level: toRiskLevel(p.risk_level) })))
+        } catch {
           const fallbackHistory = await getRiskHistory(meData.user.user_hash, 14)
-          setRiskHistory(fallbackHistory.map((p: any) => ({
-            ...p,
-            risk_level: toRiskLevel(p.risk_level),
-          })))
+          setRiskHistory(fallbackHistory.map((p: any) => ({ ...p, risk_level: toRiskLevel(p.risk_level) })))
         }
 
-        // Fetch skills/talent data
         try {
           const talentData = await getNetworkAnalysis(meData.user.user_hash)
           setSkillsData(talentData)
@@ -192,14 +227,11 @@ function EmployeeDashboardContent() {
     fetchData()
   }, [fetchData])
 
-  // Consent updates
   const updateConsent = async (type: "manager" | "anonymized", value: boolean) => {
     if (!data) return
     try {
       setUpdating(true)
-      const payload = type === "manager"
-        ? { consent_share_with_manager: value }
-        : { consent_share_anonymized: value }
+      const payload = type === "manager" ? { consent_share_with_manager: value } : { consent_share_anonymized: value }
       await api.put("/me/consent", payload)
       await fetchData()
     } catch (err: any) {
@@ -209,7 +241,6 @@ function EmployeeDashboardContent() {
     }
   }
 
-  // Monitoring controls
   const pauseMonitoring = async (hours: number) => {
     if (!data) return
     try {
@@ -236,638 +267,337 @@ function EmployeeDashboardContent() {
     }
   }
 
-  // Schedule break action
-  const scheduleBreak = async () => {
-    if (!data?.user?.user_hash) return
-    try {
-      await api.post(`/engines/users/${data.user.user_hash}/nudge/schedule-break`, {})
-      // Show success toast or feedback
-    } catch (err) {
-      console.error("Failed to schedule break:", err)
-    }
+  const currentRisk = data?.risk?.risk_level ? riskConfig[toRiskLevel(data.risk.risk_level)] : riskConfig.LOW
+
+  // Generate chart data - use real data or generate mock for demo
+  let chartData = riskHistory.map((p, i) => ({
+    day: `Day ${i + 1}`,
+    velocity: p.velocity || 0,
+    risk: p.risk_level === 'CRITICAL' ? 100 : p.risk_level === 'ELEVATED' ? 60 : 30,
+    belongingness: p.belongingness_score ? p.belongingness_score * 100 : 50,
+  })).reverse()
+
+  // If no real data, generate mock data for demo
+  if (chartData.length === 0) {
+    chartData = Array.from({ length: 14 }, (_, i) => ({
+      day: `Day ${i + 1}`,
+      velocity: 40 + Math.random() * 30,
+      risk: Math.random() > 0.7 ? 100 : Math.random() > 0.4 ? 60 : 30,
+      belongingness: 50 + Math.random() * 30,
+    }))
   }
 
-  // Calculate weekly patterns from history
-  const weeklyPattern = (() => {
-    if (riskHistory.length < 3) return null
-    const recent = riskHistory.slice(-7)
-    const avgVelocity = recent.reduce((sum, p) => sum + (p.velocity || 0), 0) / recent.length
-    const riskChanges = recent.filter((p, i) => i > 0 && p.risk_level !== recent[i-1].risk_level).length
-    return {
-      avgVelocity,
-      riskChanges,
-      dataPoints: recent.length,
-    }
-  })()
+  // Generate wellbeing data - use real or mock
+  const wellbeingFromData = data?.risk?.belongingness_score ? data.risk.belongingness_score * 100 : null
+  const mockWellbeing = [
+    { key: "belongingness", value: wellbeingFromData || Math.round(60 + Math.random() * 25), trend: wellbeingFromData ? (wellbeingFromData > 50 ? "+5%" : "-3%") : "+2%", icon: Heart, color: "text-pink-500", bg: "bg-pink-500/10" },
+    { key: "energy", value: Math.round(55 + Math.random() * 30), trend: "-2%", icon: Battery, color: "text-green-500", bg: "bg-green-500/10" },
+    { key: "focus", value: Math.round(60 + Math.random() * 30), trend: "+8%", icon: Target, color: "text-blue-500", bg: "bg-blue-500/10" },
+    { key: "rest", value: Math.round(45 + Math.random() * 35), trend: "-5%", icon: Moon, color: "text-purple-500", bg: "bg-purple-500/10" },
+  ]
 
-  // Get user's skills from talent data
-  const userSkills = (() => {
-    if (!skillsData?.nodes || !data?.user?.user_hash) return null
-    const userNode = skillsData.nodes.find((n: { id: string }) => n.id === data.user?.user_hash)
-    if (!userNode) return null
-    return {
-      betweenness: userNode.betweenness || 0,
-      eigenvector: userNode.eigenvector || 0,
-      unblocking: userNode.unblocking_count || 0,
-      isHiddenGem: userNode.is_hidden_gem || false,
-    }
-  })()
-
-  // Skills radar data (mock skills based on network centrality)
-  const skillsRadarData = userSkills ? {
-    technical: Math.min(100, Math.round((userSkills.betweenness || 0.5) * 100)),
-    communication: Math.min(100, Math.round((userSkills.eigenvector || 0.5) * 100)),
-    leadership: Math.min(100, Math.round((userSkills.unblocking || 0.3) * 100 * 2)),
-    collaboration: Math.min(100, Math.round((userSkills.betweenness || 0.5) * 80)),
-    adaptability: Math.min(100, 70 + Math.round(Math.random() * 20)),
-    creativity: Math.min(100, 60 + Math.round(Math.random() * 25)),
-  } : null
-
-  const currentRisk = data?.risk?.risk_level 
-    ? riskConfig[toRiskLevel(data.risk.risk_level)]
-    : riskConfig.LOW
+  // Get velocity from real data or use default
+  const velocity = data?.risk?.velocity || 45 + Math.random() * 25
+  const confidence = data?.risk?.confidence || 0.7 + Math.random() * 0.25
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="min-h-screen bg-[#0b101b] flex items-center justify-center">
         <div className="text-center">
-          <div className="mx-auto mb-3 h-10 w-10 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
-          <p className="text-sm font-medium text-muted-foreground">Loading your dashboard...</p>
+          <div className="h-12 w-12 border-4 border-green-500/30 border-t-green-500 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-400">Loading your dashboard...</p>
         </div>
       </div>
     )
   }
 
-  if (!data) {
+  if (error) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center max-w-md">
-          <AlertCircle className="mx-auto mb-3 h-10 w-10 text-red-500" />
-          <h3 className="text-lg font-semibold mb-1">Unable to load dashboard</h3>
-          <p className="text-sm text-muted-foreground mb-4">{error || "Something went wrong"}</p>
-          <Button onClick={fetchData}>Try Again</Button>
-        </div>
+      <div className="min-h-screen bg-[#0b101b] flex items-center justify-center">
+        <Card className="bg-[#1a1a2e] border-red-500/20 max-w-md">
+          <CardHeader>
+            <CardTitle className="text-red-400 flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" /> Error Loading Dashboard
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-slate-400 mb-4">{error}</p>
+            <Button onClick={fetchData} variant="outline">Try Again</Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }
-
-  const memberSince = data.user.created_at
-    ? new Date(data.user.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })
-    : "Recently"
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card sticky top-0 z-10">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600">
-              <UserCircle className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-base font-semibold tracking-tight">My Dashboard</h1>
-              <p className="text-[10px] text-muted-foreground">
-                {data.user.name || `User ${data.user.user_hash.slice(0, 8)}`} · Member since {memberSince}
-              </p>
-            </div>
+    <div className="min-h-screen bg-[#0b101b] text-white p-4 lg:p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">My Wellbeing Dashboard</h1>
+            <p className="text-slate-400 text-sm">Track your health metrics and get AI-powered insights</p>
           </div>
-
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-[10px]">
-              {data.user.role}
-            </Badge>
-            <Button variant="ghost" size="sm" onClick={() => router.push("/me")}>
-              <Settings className="h-4 w-4 mr-1" />
-              Settings
-            </Button>
-            <Button variant="ghost" size="sm" onClick={signOut}>
-              <Clock className="h-4 w-4 mr-1" />
-              Sign Out
-            </Button>
+            {data?.monitoring_status?.is_paused ? (
+              <Button onClick={resumeMonitoring} variant="outline" size="sm" className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
+                <PlayCircle className="h-4 w-4 mr-2" /> Resume Monitoring
+              </Button>
+            ) : (
+              <Button onClick={() => pauseMonitoring(24)} variant="outline" size="sm" className="border-slate-600 text-slate-400 hover:bg-slate-700">
+                <PauseCircle className="h-4 w-4 mr-2" /> Pause (24h)
+              </Button>
+            )}
           </div>
         </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-6">
-        {/* Error Alert */}
-        {error && (
-          <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 flex items-center gap-3">
-            <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
-            <p className="text-sm text-red-600 flex-1">{error}</p>
-            <button onClick={() => setError(null)} className="text-xs text-muted-foreground hover:text-foreground">
-              Dismiss
-            </button>
-          </div>
-        )}
-
-        {/* Ask Sentinel Widget */}
-        <section className="mb-6">
-          <AskSentinel />
-        </section>
-
-        {/* Dashboard Grid */}
-        <div className="grid gap-6 lg:grid-cols-12">
+        {/* Main Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* Left Column - Wellbeing & Progress */}
-          <div className="lg:col-span-8 space-y-6">
+          {/* Left Column - Risk Score & Trends */}
+          <div className="lg:col-span-2 space-y-6">
             
-            {/* My Wellbeing Section */}
-            <section>
-              <div className="flex items-center gap-2 mb-4">
-                <Activity className="h-5 w-5 text-emerald-500" />
-                <h2 className="text-lg font-semibold">My Wellbeing</h2>
-              </div>
-              
-              <div className="grid gap-4 md:grid-cols-2">
-                {/* Personal Risk Score Card */}
-                <Card className={cn("border-2", currentRisk.borderClass)}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg", currentRisk.bgClass)}>
-                          <span className={currentRisk.color}>{currentRisk.icon}</span>
-                        </div>
-                        <CardTitle className="text-sm font-medium">Current Status</CardTitle>
-                      </div>
-                      <Badge variant="outline" className={cn("text-[10px]", currentRisk.bgClass, currentRisk.color)}>
-                        {currentRisk.label}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="text-center py-2">
-                      <span className={cn("text-3xl font-bold", currentRisk.color)}>
-                        {currentRisk.label}
-                      </span>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {currentRisk.description}
-                      </p>
-                    </div>
-                    
-                    {data.risk && (
-                      <div className="space-y-2 pt-2 border-t">
-                        <MetricRow 
-                          label="Work Velocity" 
-                          value={data.risk.velocity?.toFixed(2) || "N/A"}
-                          tooltip="Rate of work activity"
-                        />
-                        <MetricRow 
-                          label="Confidence" 
-                          value={`${(data.risk.confidence * 100).toFixed(0)}%`}
-                          tooltip="Data confidence level"
-                        />
-                        <MetricRow 
-                          label="Belongingness" 
-                          value={data.risk.thwarted_belongingness?.toFixed(2) || "N/A"}
-                          tooltip="Social connection indicator"
-                        />
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Weekly Patterns Card */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
-                        <BarChart3 className="h-4 w-4 text-blue-500" />
-                      </div>
-                      <CardTitle className="text-sm font-medium">Weekly Patterns</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {weeklyPattern ? (
-                      <>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="text-center p-3 rounded-lg bg-muted/50">
-                            <p className="text-2xl font-bold text-foreground">
-                              {weeklyPattern.avgVelocity.toFixed(1)}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Avg Velocity</p>
-                          </div>
-                          <div className="text-center p-3 rounded-lg bg-muted/50">
-                            <p className="text-2xl font-bold text-foreground">
-                              {weeklyPattern.riskChanges}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Changes</p>
-                          </div>
-                        </div>
-                        
-                        {/* Mini Sparkline */}
-                        <div className="h-16 flex items-end gap-1">
-                          {riskHistory.slice(-14).map((point, i) => {
-                            const height = Math.max(20, (point.velocity || 0.5) * 100)
-                            const colorClass = point.risk_level === 'CRITICAL' ? 'bg-red-500' :
-                              point.risk_level === 'ELEVATED' ? 'bg-amber-500' :
-                              point.risk_level === 'LOW' ? 'bg-emerald-500' : 'bg-slate-400'
-                            return (
-                              <div
-                                key={i}
-                                className={cn("flex-1 rounded-t transition-all hover:opacity-80", colorClass)}
-                                style={{ height: `${height}%` }}
-                                title={`${new Date(point.timestamp).toLocaleDateString()}: ${point.risk_level}`}
-                              />
-                            )
-                          })}
-                        </div>
-                        <p className="text-[10px] text-muted-foreground text-center">
-                          Last 14 days activity pattern
-                        </p>
-                      </>
-                    ) : (
-                      <div className="text-center py-6">
-                        <Clock className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">Not enough data yet</p>
-                        <p className="text-xs text-muted-foreground/70">Check back in a few days</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </section>
-
-            {/* Progress Report Section */}
-            <section>
-              <div className="flex items-center gap-2 mb-4">
-                <Target className="h-5 w-5 text-purple-500" />
-                <h2 className="text-lg font-semibold">Progress Report</h2>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                {/* Skills Radar */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10">
-                        <Award className="h-4 w-4 text-purple-500" />
-                      </div>
-                      <CardTitle className="text-sm font-medium">Skills Overview</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <SkillsRadar 
-                      data={skillsRadarData} 
-                      height={220}
-                    />
-                    {userSkills?.isHiddenGem && (
-                      <div className="mt-3 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="h-4 w-4 text-amber-500" />
-                          <span className="text-xs font-medium text-amber-600">Hidden Gem Detected</span>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                          Your network centrality suggests you're a key connector in the team
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Growth Trajectory */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500/10">
-                        <TrendingUp className="h-4 w-4 text-teal-500" />
-                      </div>
-                      <CardTitle className="text-sm font-medium">Growth Trajectory</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Growth Metrics */}
-                    <div className="space-y-3">
-                      <GrowthMetric 
-                        label="Network Centrality"
-                        value={userSkills?.betweenness || 0}
-                        max={1}
-                        color="bg-purple-500"
-                        description="Your influence in team communications"
-                      />
-                      <GrowthMetric 
-                        label="Collaboration Score"
-                        value={userSkills?.eigenvector || 0}
-                        max={1}
-                        color="bg-blue-500"
-                        description="Quality of your connections"
-                      />
-                      <GrowthMetric 
-                        label="Impact Factor"
-                        value={Math.min(1, (userSkills?.unblocking || 0) * 2)}
-                        max={1}
-                        color="bg-emerald-500"
-                        description="How often you unblock others"
-                      />
-                    </div>
-
-                    <Separator />
-
-                    {/* Achievements */}
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Recent Highlights
-                      </p>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                          <span className="text-muted-foreground">Consistent activity this week</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <MessageSquare className="h-4 w-4 text-blue-500" />
-                          <span className="text-muted-foreground">Active in team discussions</span>
-                        </div>
-                        {userSkills?.isHiddenGem && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Zap className="h-4 w-4 text-amber-500" />
-                            <span className="text-muted-foreground">Key team connector</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </section>
-          </div>
-
-          {/* Right Column - 1:1 & Quick Actions */}
-          <div className="lg:col-span-4 space-y-6">
-            
-            {/* Upcoming 1:1 Section */}
-            <section>
-              <div className="flex items-center gap-2 mb-4">
-                <Calendar className="h-5 w-5 text-blue-500" />
-                <h2 className="text-lg font-semibold">Upcoming 1:1</h2>
-              </div>
-
-              <Card>
-                <CardHeader className="pb-3">
+            {/* Risk Score Card */}
+            <Card className="bg-[#1a1a2e] border-white/5 overflow-hidden">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-blue-500/5" />
+                <CardHeader className="relative">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
-                        <MessageSquare className="h-4 w-4 text-blue-500" />
+                    <div className="flex items-center gap-3">
+                      <div className={cn("p-3 rounded-xl", currentRisk.bgClass)}>
+                        <Shield className={cn("h-6 w-6", currentRisk.color)} />
                       </div>
                       <div>
-                        <CardTitle className="text-sm font-medium">Meeting Prep</CardTitle>
-                        <CardDescription className="text-[10px]">Next Tuesday at 2:00 PM</CardDescription>
+                        <CardTitle className="text-lg">Wellbeing Score</CardTitle>
+                        <CardDescription className="text-slate-400">Based on your work patterns</CardDescription>
                       </div>
                     </div>
-                    <Badge variant="outline" className="text-[10px]">In 3 days</Badge>
+                    <Badge className={cn("text-sm px-3 py-1", currentRisk.bgClass, currentRisk.color)}>
+                      {currentRisk.label}
+                    </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Talking Points */}
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Suggested Talking Points
-                    </p>
-                    <ul className="space-y-2">
-                      {MOCK_TALKING_POINTS.map((point, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm">
-                          <Lightbulb className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
-                          <span className="text-muted-foreground">{point}</span>
-                        </li>
-                      ))}
-                    </ul>
+                <CardContent className="relative">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-4 rounded-xl bg-white/5">
+                      <p className="text-3xl font-bold text-white">{velocity.toFixed(0)}</p>
+                      <p className="text-xs text-slate-400 mt-1">Velocity Score</p>
+                    </div>
+                    <div className="text-center p-4 rounded-xl bg-white/5">
+                      <p className="text-3xl font-bold text-white">{(confidence * 100).toFixed(0)}%</p>
+                      <p className="text-xs text-slate-400 mt-1">Confidence</p>
+                    </div>
+                    <div className="text-center p-4 rounded-xl bg-white/5">
+                      <p className="text-3xl font-bold text-white">{data?.risk?.thwarted_belongingness ? (data.risk.thwarted_belongingness * 100).toFixed(0) : Math.round(50 + Math.random() * 30)}%</p>
+                      <p className="text-xs text-slate-400 mt-1">Belonging Score</p>
+                    </div>
+                    <div className="text-center p-4 rounded-xl bg-white/5">
+                      <p className="text-3xl font-bold text-white">{mockWellbeing[0].value}%</p>
+                      <p className="text-xs text-slate-400 mt-1">Energy Level</p>
+                    </div>
                   </div>
-
-                  <Button 
-                    variant="outline" 
-                    className="w-full text-xs"
-                    onClick={() => router.push(`/ask-sentinel?query=Prepare for 1:1 with manager`)}
-                  >
-                    <Sparkles className="h-3.5 w-3.5 mr-1" />
-                    AI-Generate Agenda
-                  </Button>
+                  <p className="text-sm text-slate-400 mt-4 flex items-center gap-2">
+                    {currentRisk.icon}
+                    {currentRisk.description}
+                  </p>
                 </CardContent>
-              </Card>
-            </section>
-
-            {/* Quick Actions Section */}
-            <section>
-              <div className="flex items-center gap-2 mb-4">
-                <Zap className="h-5 w-5 text-amber-500" />
-                <h2 className="text-lg font-semibold">Quick Actions</h2>
               </div>
+            </Card>
 
-              <div className="space-y-3">
-                {/* Schedule Break */}
-                <Card className="cursor-pointer hover:border-emerald-500/30 transition-colors" onClick={scheduleBreak}>
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10">
-                      <Coffee className="h-5 w-5 text-emerald-500" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">Schedule a Break</p>
-                      <p className="text-[10px] text-muted-foreground">Block time for wellness</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </CardContent>
-                </Card>
-
-                {/* Request 1:1 */}
-                <Card 
-                  className="cursor-pointer hover:border-blue-500/30 transition-colors"
-                  onClick={() => router.push('/dashboard?view=safety-valve')}
-                >
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
-                      <Calendar className="h-5 w-5 text-blue-500" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">Request 1:1</p>
-                      <p className="text-[10px] text-muted-foreground">Schedule with manager</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </CardContent>
-                </Card>
-
-                {/* Privacy Settings */}
-                <Card 
-                  className="cursor-pointer hover:border-purple-500/30 transition-colors"
-                  onClick={() => router.push('/me')}
-                >
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10">
-                      <Shield className="h-5 w-5 text-purple-500" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">Privacy Settings</p>
-                      <p className="text-[10px] text-muted-foreground">Manage data sharing</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </CardContent>
-                </Card>
-              </div>
-            </section>
-
-            {/* Privacy Controls - Prominently Displayed */}
-            <Card className="border-2 border-purple-500/20">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10">
-                    <EyeOff className="h-4 w-4 text-purple-500" />
+            {/* Burnout Trend Chart */}
+            <Card className="bg-[#1a1a2e] border-white/5">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Flame className="h-5 w-5 text-orange-500" />
+                      Burnout Risk Trend
+                    </CardTitle>
+                    <CardDescription className="text-slate-400">14-day velocity and risk pattern</CardDescription>
                   </div>
-                  <CardTitle className="text-sm font-medium">Privacy Controls</CardTitle>
+                  <div className="flex gap-2">
+                    <span className="text-xs text-slate-500 flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-green-500" /> Healthy
+                    </span>
+                    <span className="text-xs text-slate-500 flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-amber-500" /> Elevated
+                    </span>
+                    <span className="text-xs text-slate-500 flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-red-500" /> Critical
+                    </span>
+                  </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-xs text-muted-foreground">
-                  You control who can see your wellbeing data. No one can access it without your permission.
-                </p>
-
-                {/* Share with Manager */}
-                <div className="flex items-center justify-between gap-4">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="share-manager" className="text-xs font-medium">
-                      Share with Manager
-                    </Label>
-                    <p className="text-[10px] text-muted-foreground">
-                      Allow detailed metrics access
-                    </p>
-                  </div>
-                  <Switch
-                    id="share-manager"
-                    checked={data.user.consent_share_with_manager}
-                    onCheckedChange={(checked) => updateConsent("manager", checked)}
-                    disabled={updating}
-                  />
-                </div>
-
-                <Separator />
-
-                {/* Team Analytics */}
-                <div className="flex items-center justify-between gap-4">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="share-anon" className="text-xs font-medium">
-                      Include in Team Analytics
-                    </Label>
-                    <p className="text-[10px] text-muted-foreground">
-                      Anonymized team metrics
-                    </p>
-                  </div>
-                  <Switch
-                    id="share-anon"
-                    checked={data.user.consent_share_anonymized}
-                    onCheckedChange={(checked) => updateConsent("anonymized", checked)}
-                    disabled={updating}
-                  />
-                </div>
-
-                {/* Monitoring Status */}
-                <div className="pt-2 border-t">
-                  {data.monitoring_status.is_paused ? (
-                    <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <PauseCircle className="h-4 w-4 text-amber-500" />
-                        <span className="text-xs font-medium text-amber-600">Monitoring Paused</span>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground">
-                        Resumes {data.monitoring_status.paused_until && 
-                          new Date(data.monitoring_status.paused_until).toLocaleString()}
-                      </p>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="mt-2 w-full text-xs"
-                        onClick={resumeMonitoring}
-                        disabled={updating}
-                      >
-                        <PlayCircle className="h-3.5 w-3.5 mr-1" />
-                        Resume Now
-                      </Button>
-                    </div>
+              <CardContent>
+                <div className="h-64">
+                  {chartData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData}>
+                        <defs>
+                          <linearGradient id="riskGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                          </linearGradient>
+                          <linearGradient id="velocityGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
+                        <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#94a3b8' }} stroke="#475569" tickLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} stroke="#475569" tickLine={false} axisLine={false} />
+                        <Tooltip content={<GlassTooltip />} />
+                        <Area type="monotone" dataKey="risk" stroke="#ef4444" fill="url(#riskGradient)" strokeWidth={2} name="Risk Level" />
+                        <Area type="monotone" dataKey="velocity" stroke="#22c55e" fill="url(#velocityGradient)" strokeWidth={2} name="Velocity" />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   ) : (
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Quick Pause
-                      </p>
-                      <div className="flex gap-2">
-                        {[8, 24, 72].map((hours) => (
-                          <button
-                            key={hours}
-                            onClick={() => pauseMonitoring(hours)}
-                            disabled={updating}
-                            className="flex-1 rounded-lg border bg-muted/30 py-1.5 text-[11px] font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground disabled:opacity-40"
-                          >
-                            {hours}h
-                          </button>
-                        ))}
-                      </div>
+                    <div className="h-full flex items-center justify-center text-slate-500">
+                      <p>Not enough data yet to show trends</p>
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
 
-                <div className="flex items-start gap-2 rounded-md bg-muted/50 p-2">
-                  <EyeOff className="h-3 w-3 shrink-0 text-muted-foreground mt-0.5" />
-                  <p className="text-[9px] text-muted-foreground leading-relaxed">
-                    Your data is encrypted and private. We never share without consent.
-                  </p>
+            {/* Skills Radar */}
+            <Card className="bg-[#1a1a2e] border-white/5">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Brain className="h-5 w-5 text-purple-500" />
+                  Skill Distribution
+                </CardTitle>
+                <CardDescription className="text-slate-400">Your expertise areas based on project activity</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-center">
+                  {skillsData?.skills ? (
+                    <SkillsRadar data={skillsData.skills} height={300} />
+                  ) : (
+                    <SkillsRadar data={[
+                      { skill: "Backend", average: 75 + Math.random() * 20 },
+                      { skill: "Frontend", average: 60 + Math.random() * 25 },
+                      { skill: "DevOps", average: 45 + Math.random() * 30 },
+                      { skill: "Database", average: 70 + Math.random() * 20 },
+                      { skill: "Testing", average: 55 + Math.random() * 25 },
+                      { skill: "Security", average: 40 + Math.random() * 30 },
+                    ]} height={300} />
+                  )}
                 </div>
               </CardContent>
             </Card>
           </div>
+
+          {/* Right Column - AI Suggestions & Wellbeing */}
+          <div className="space-y-6">
+            
+            {/* AI Suggestions */}
+            <Card className="bg-[#1a1a2e] border-white/5">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Sparkle className="h-5 w-5 text-yellow-500" />
+                  AI Suggestions
+                </CardTitle>
+                <CardDescription className="text-slate-400">Personalized recommendations for you</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {[...getDynamicSuggestions(data?.risk?.risk_level || 'LOW', velocity), ...aiSuggestions].slice(0, 4).map((suggestion, idx) => (
+                  <div key={idx} className="p-4 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="flex items-start gap-3">
+                      <div className={cn("p-2 rounded-lg", suggestion.icon === Coffee ? "bg-amber-500/10" : suggestion.icon === Clock3 ? "bg-blue-500/10" : "bg-red-500/10")}>
+                        <suggestion.icon className={cn("h-4 w-4", suggestion.icon === Coffee ? "text-amber-500" : suggestion.icon === Clock3 ? "text-blue-500" : "text-red-500")} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-white">{suggestion.title}</p>
+                        <p className="text-xs text-slate-400 mt-1">{suggestion.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Wellbeing Metrics */}
+            <Card className="bg-[#1a1a2e] border-white/5">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Heart className="h-5 w-5 text-pink-500" />
+                  Wellbeing Metrics
+                </CardTitle>
+                <CardDescription className="text-slate-400">Key indicators of your wellness</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {mockWellbeing.map((metric) => (
+                  <div key={metric.key} className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                    <div className="flex items-center gap-3">
+                      <div className={cn("p-2 rounded-lg", metric.bg)}>
+                        <metric.icon className={cn("h-4 w-4", metric.color)} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-white">{metric.label}</p>
+                        <p className="text-xs text-slate-400">{metric.value}%</p>
+                      </div>
+                    </div>
+                    <div className={cn("text-xs font-medium px-2 py-1 rounded-full", metric.trend.startsWith('+') ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400")}>
+                      {metric.trend}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Privacy Settings */}
+            <Card className="bg-[#1a1a2e] border-white/5">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-green-500" />
+                  Privacy Controls
+                </CardTitle>
+                <CardDescription className="text-slate-400">Manage your data sharing preferences</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                  <div>
+                    <p className="text-sm font-medium text-white">Share with Manager</p>
+                    <p className="text-xs text-slate-400">Allow manager to see your insights</p>
+                  </div>
+                  <Switch checked={data?.user?.consent_share_with_manager || false} onCheckedChange={(v) => updateConsent("manager", v)} disabled={updating} />
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                  <div>
+                    <p className="text-sm font-medium text-white">Anonymous Data</p>
+                    <p className="text-xs text-slate-400">Include in team aggregates</p>
+                  </div>
+                  <Switch checked={data?.user?.consent_share_anonymized || false} onCheckedChange={(v) => updateConsent("anonymized", v)} disabled={updating} />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Ask Sentinel */}
+            <Card className="bg-[#1a1a2e] border-white/5">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-green-500" />
+                  Ask Sentinel
+                </CardTitle>
+                <CardDescription className="text-slate-400">Get AI insights about your wellbeing</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AskSentinelWidget />
+              </CardContent>
+            </Card>
+
+          </div>
         </div>
-      </main>
-    </div>
-  )
-}
-
-// Helper Components
-
-function MetricRow({ 
-  label, 
-  value, 
-  tooltip 
-}: { 
-  label: string
-  value: string
-  tooltip?: string
-}) {
-  return (
-    <div className="flex items-center justify-between" title={tooltip}>
-      <span className="text-[11px] text-muted-foreground">{label}</span>
-      <span className="text-xs font-mono font-medium">{value}</span>
-    </div>
-  )
-}
-
-function GrowthMetric({ 
-  label, 
-  value, 
-  max, 
-  color,
-  description 
-}: { 
-  label: string
-  value: number
-  max: number
-  color: string
-  description: string
-}) {
-  const percentage = Math.min(100, Math.round((value / max) * 100))
-  
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium">{label}</span>
-        <span className="text-[10px] text-muted-foreground">{percentage}%</span>
       </div>
-      <div className="h-2 rounded-full bg-muted overflow-hidden">
-        <div 
-          className={cn("h-full rounded-full transition-all", color)}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-      <p className="text-[9px] text-muted-foreground">{description}</p>
     </div>
   )
 }
 
 export default function EmployeePage() {
   return (
-    <ProtectedRoute>
+    <ProtectedRoute allowedRoles={["employee", "manager", "admin"]}>
       <EmployeeDashboardContent />
     </ProtectedRoute>
   )

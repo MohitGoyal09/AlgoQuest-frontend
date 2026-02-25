@@ -28,8 +28,8 @@ const RiskNode = ({ data }: any) => {
   }
 
   // Visual Enhancement: Larger Nodes based on influence
-  // Base 24px + scaling factor. Makes "Important" nodes stand out more.
-  const r = 24 + (betweenness || 0) * 30
+  // Base 16px + scaling factor. Makes "Important" nodes stand out more.
+  const r = 16 + (betweenness || 0) * 15
   const size = r * 2
 
   return (
@@ -82,7 +82,7 @@ export function InteractiveNetworkGraph({ nodes, edges, onNodeClick }: Interacti
   // Calculate initial nodes with updated size logic
   const initialNodes = useMemo(() => nodes.map((n) => {
     // Must match the radius calculation in RiskNode for proper centering
-    const r = 24 + (n.betweenness || 0) * 30
+    const r = 16 + (n.betweenness || 0) * 15
     return {
       id: n.id,
       type: 'riskNode',

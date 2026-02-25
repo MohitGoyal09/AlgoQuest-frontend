@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import {
   Shield,
@@ -15,16 +15,43 @@ import {
   ChevronRight,
   RefreshCw,
   LayoutDashboard,
-  TrendingUp,
   Gauge,
-  Radio,
+  Server,
+  Zap,
+  Search,
+  Download,
+  Trash2,
+  Edit,
+  MoreHorizontal,
+  UserCog,
+  Loader2,
+  X,
+  Save
 } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ProtectedRoute } from "@/components/protected-route"
 import { api } from "@/lib/api"
+import { cn } from "@/lib/utils"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface SystemHealth {
   status: string
@@ -65,6 +92,8 @@ interface AuditLog {
 
 interface User {
   user_hash: string
+  email: string | null
+  name: string | null
   role: string
   consent_share_with_manager: boolean
   consent_share_anonymized: boolean
@@ -74,20 +103,58 @@ interface User {
   has_manager: boolean
 }
 
+interface Manager {
+  user_hash: string
+  role: string
+}
+
+const MOCK_SERVICES = [
+  { name: "API Gateway", status: "operational" as const, latency: "24ms", uptime: "99.99%" },
+  { name: "PostgreSQL Database", status: "operational" as const, latency: "12ms", uptime: "99.95%" },
+  { name: "Redis Cache", status: "operational" as const, latency: "2ms", uptime: "100%" },
+  { name: "AI Insight Engine", status: "degraded" as const, latency: "450ms", uptime: "98.50%" },
+  { name: "Celery Workers", status: "operational" as const, latency: "N/A", uptime: "99.90%" },
+]
+
+const getRiskBadge = (level: string) => {
+  switch (level) {
+    case "CRITICAL": return "bg-red-500/15 text-red-500 border-red-500/20"
+    case "ELEVATED": return "bg-amber-500/15 text-amber-500 border-amber-500/20"
+    case "LOW": return "bg-emerald-500/15 text-emerald-500 border-emerald-500/20"
+    default: return "bg-slate-500/15 text-slate-400 border-slate-500/20"
+  }
+}
+
+const formatAction = (action: string) => {
+  return action.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
+}
+
 function AdminPageContent() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("health")
   const [health, setHealth] = useState<SystemHealth | null>(null)
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [users, setUsers] = useState<User[]>([])
+  const [managers, setManagers] = useState<Manager[]>([])
   const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date())
 
-  // Filters
   const [auditDays, setAuditDays] = useState("7")
-  const [auditAction, setAuditAction] = useState("")
-  const [userRole, setUserRole] = useState("")
+  const [auditAction, setAuditAction] = useState("all")
   const [auditOffset, setAuditOffset] = useState(0)
+  const [userRole, setUserRole] = useState("all")
+  const [userSearch, setUserSearch] = useState("")
+
+  const [editUser, setEditUser] = useState<User | null>(null)
+  const [editEmail, setEditEmail] = useState("")
+  const [roleUser, setRoleUser] = useState<User | null>(null)
+  const [newRole, setNewRole] = useState("")
+  const [deleteUser, setDeleteUser] = useState<User | null>(null)
+  const [assignManagerUser, setAssignManagerUser] = useState<User | null>(null)
+  const [selectedManager, setSelectedManager] = useState("")
 
   useEffect(() => {
     fetchHealthData()
@@ -98,6 +165,7 @@ function AdminPageContent() {
       setLoading(true)
       const response = await api.get<SystemHealth>("/admin/health")
       setHealth(response as SystemHealth)
+      setLastRefreshed(new Date())
       setError(null)
     } catch (err: any) {
       setError(err.response?.data?.detail || "Failed to load system health")
@@ -110,7 +178,7 @@ function AdminPageContent() {
     try {
       setLoading(true)
       let url = `/admin/audit-logs?days=${auditDays}&limit=50&offset=${auditOffset}`
-      if (auditAction) url += `&action_type=${auditAction}`
+      if (auditAction && auditAction !== "all") url += `&action_type=${auditAction}`
       
       const response = await api.get<{ logs: AuditLog[] }>(url)
       setAuditLogs((response as { logs: AuditLog[] }).logs)
@@ -126,7 +194,7 @@ function AdminPageContent() {
     try {
       setLoading(true)
       let url = "/admin/users?limit=100"
-      if (userRole) url += `&role=${userRole}`
+      if (userRole && userRole !== "all") url += `&role=${userRole}`
       
       const response = await api.get<{ users: User[] }>(url)
       setUsers((response as { users: User[] }).users)
@@ -138,443 +206,585 @@ function AdminPageContent() {
     }
   }
 
-  const getRiskBadge = (level: string) => {
-    switch (level) {
-      case "CRITICAL": return "bg-red-500/15 text-[hsl(var(--sentinel-critical))] border-red-500/20"
-      case "ELEVATED": return "bg-amber-500/15 text-[hsl(var(--sentinel-elevated))] border-amber-500/20"
-      case "LOW": return "bg-emerald-500/15 text-[hsl(var(--sentinel-healthy))] border-emerald-500/20"
-      default: return "bg-muted/30 text-muted-foreground border-[var(--glass-border)]"
+  const fetchManagers = async () => {
+    try {
+      const response = await api.get<{ managers: Manager[] }>("/admin/managers")
+      setManagers((response as { managers: Manager[] }).managers)
+    } catch (err: any) {
+      console.error("Failed to load managers:", err)
     }
   }
 
-  const formatAction = (action: string) => {
-    return action.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
+  const handleRoleChange = async () => {
+    if (!roleUser || !newRole) return
+    setActionLoading("role")
+    try {
+      await api.post(`/admin/user/${roleUser.user_hash}/role?new_role=${newRole}`)
+      setSuccess(`Role changed to ${newRole} successfully`)
+      setRoleUser(null)
+      setNewRole("")
+      fetchUsers()
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Failed to change role")
+    } finally {
+      setActionLoading(null)
+    }
   }
 
-  // ─── Loading ─────────────────────────────────────────
+  const handleDeleteUser = async () => {
+    if (!deleteUser) return
+    setActionLoading("delete")
+    try {
+      await api.delete(`/admin/user/${deleteUser.user_hash}`)
+      setSuccess(`User deleted successfully`)
+      setDeleteUser(null)
+      fetchUsers()
+      fetchHealthData()
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Failed to delete user")
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleUpdateProfile = async () => {
+    if (!editUser || !editEmail) return
+    setActionLoading("edit")
+    try {
+      await api.put(`/admin/user/${editUser.user_hash}?email=${encodeURIComponent(editEmail)}`)
+      setSuccess("Profile updated successfully")
+      setEditUser(null)
+      setEditEmail("")
+      fetchUsers()
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Failed to update profile")
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleAssignManager = async () => {
+    if (!assignManagerUser || !selectedManager) return
+    setActionLoading("manager")
+    try {
+      await api.post(`/admin/user/${assignManagerUser.user_hash}/manager?manager_hash=${selectedManager}`)
+      setSuccess("Manager assigned successfully")
+      setAssignManagerUser(null)
+      setSelectedManager("")
+      fetchUsers()
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Failed to assign manager")
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === "users") {
+      fetchUsers()
+      fetchManagers()
+    }
+    if (activeTab === "audit") {
+      fetchAuditLogs()
+    }
+  }, [activeTab, userRole, auditDays, auditAction, auditOffset])
+
+  const filteredUsers = useMemo(() => {
+    return users.filter(user => 
+      user.user_hash.toLowerCase().includes(userSearch.toLowerCase())
+    )
+  }, [users, userSearch])
+
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [error])
+
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(null), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [success])
+
   if (loading && !health) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto mb-3 h-10 w-10 rounded-full border-2 border-[hsl(var(--sentinel-healthy))] border-t-transparent animate-spin" />
-          <p className="text-sm font-medium text-muted-foreground">Loading admin dashboard…</p>
+      <div className="flex h-screen items-center justify-center bg-[#0b101b]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative h-12 w-12">
+            <div className="absolute inset-0 rounded-full border-t-2 border-primary animate-spin"></div>
+            <div className="absolute inset-2 rounded-full border-t-2 border-indigo-500 animate-spin reverse"></div>
+          </div>
+          <p className="text-sm font-medium text-slate-400">Initializing Engine Room...</p>
         </div>
       </div>
     )
   }
 
-  const tabs = [
-    { id: "health", label: "System Health", icon: <Gauge className="h-3.5 w-3.5" /> },
-    { id: "users", label: "Users", icon: <Users className="h-3.5 w-3.5" /> },
-    { id: "audit", label: "Audit Logs", icon: <FileText className="h-3.5 w-3.5" /> },
-  ]
-
   return (
-    <div className="flex flex-col bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <Shield className="h-5 w-5 text-primary-foreground" />
+    <div className="flex flex-col min-h-screen bg-[#0b101b] text-slate-200 font-sans selection:bg-indigo-500/30">
+      {error && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 animate-in slide-in-from-top-2">
+          <AlertTriangle className="h-5 w-5 text-red-500" />
+          <p className="text-sm font-medium text-red-400">{error}</p>
+          <Button variant="ghost" size="sm" onClick={() => setError(null)} className="ml-2 h-auto p-1 text-red-400 hover:text-red-300">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      {success && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-lg border border-green-500/20 bg-green-500/10 px-4 py-3 animate-in slide-in-from-top-2">
+          <CheckCircle2 className="h-5 w-5 text-green-500" />
+          <p className="text-sm font-medium text-green-400">{success}</p>
+          <Button variant="ghost" size="sm" onClick={() => setSuccess(null)} className="ml-2 h-auto p-1 text-green-400 hover:text-green-300">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      <header className="sticky top-0 z-40 border-b border-white/5 bg-[#0b101b]/80 backdrop-blur-xl">
+        <div className="container mx-auto flex h-16 items-center justify-between px-6">
+          <div className="flex items-center gap-4">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#1a1a2e] border border-amber-500/30">
+              <Shield className="h-5 w-5 text-amber-500" />
             </div>
             <div>
-              <h1 className="text-[15px] font-semibold tracking-tight text-foreground">Admin Dashboard</h1>
-              <p className="text-[10px] text-muted-foreground leading-none mt-0.5">System administration and monitoring</p>
+              <h1 className="text-lg font-bold tracking-tight text-white">Admin Panel</h1>
+              <p className="text-[11px] text-slate-400 font-medium">System Administration & Diagnostics</p>
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <Badge
-              className="text-[10px] bg-[hsl(var(--sentinel-gem)/0.15)] text-[hsl(var(--sentinel-gem))] border-[hsl(var(--sentinel-gem)/0.3)]"
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => router.push("/dashboard?view=admin")}
+              className="gap-2 text-slate-400 hover:text-white hover:bg-white/5"
             >
-              Admin
+              <LayoutDashboard className="h-4 w-4" />
+              Command Center
+            </Button>
+            <Badge variant="outline" className="ml-2 border-amber-500/30 text-amber-500 bg-amber-500/05 font-mono">
+              ROOT_ACCESS
             </Badge>
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="flex items-center gap-1.5 rounded-lg bg-[hsl(var(--primary))] px-3 py-2 text-[12px] font-medium text-[hsl(var(--primary-foreground))] transition-all hover:opacity-90"
-              style={{ boxShadow: "0 0 12px hsl(152 55% 48% / 0.15)" }}
-            >
-              <LayoutDashboard className="h-3.5 w-3.5" />
-              Dashboard
-            </button>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-5 py-8 view-transition-enter">
-        {/* Error */}
-        {error && (
-          <div className="mb-6 flex items-center gap-3 rounded-xl border border-[hsl(var(--sentinel-critical)/0.3)] bg-[hsl(var(--sentinel-critical)/0.06)] px-5 py-3.5">
-            <AlertTriangle className="h-4 w-4 shrink-0 text-[hsl(var(--sentinel-critical))]" />
-            <p className="text-sm text-[hsl(var(--sentinel-critical))]">{error}</p>
-            <button onClick={() => setError(null)} className="ml-auto text-xs text-muted-foreground hover:text-foreground">
-              Dismiss
-            </button>
-          </div>
-        )}
-
-        {/* ═══════════ TAB NAVIGATION ═══════════ */}
-        <div className="flex items-center gap-1 rounded-xl border border-[var(--glass-border)] bg-[var(--glass-bg)] p-1 mb-6 w-fit">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => {
-                setActiveTab(tab.id)
-                if (tab.id === "users" && users.length === 0) fetchUsers()
-                if (tab.id === "audit" && auditLogs.length === 0) fetchAuditLogs()
-              }}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-medium transition-all ${activeTab === tab.id
-                  ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-[var(--glass-bg-hover)]"
-                }`}
-              style={activeTab === tab.id ? { boxShadow: "0 0 12px hsl(152 55% 48% / 0.15)" } : undefined}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* ═══════════ SYSTEM HEALTH ═══════════ */}
-        {activeTab === "health" && health && (
-          <div className="space-y-5">
-            {/* System Status Banner */}
-            <div
-              className="glass-card glass-card-accent glass-card-accent--healthy rounded-xl p-5"
-              style={{ boxShadow: "var(--glow-healthy)" }}
-            >
-              <div className="flex items-center gap-4">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/10">
-                  <CheckCircle2 className="h-5 w-5 text-[hsl(var(--sentinel-healthy))]" />
-                </div>
-                <div>
-                  <h3 className="text-[15px] font-semibold text-foreground">System Healthy</h3>
-                  <p className="text-[11px] font-mono text-muted-foreground">
-                    Last updated: {new Date(health.timestamp).toLocaleString()}
-                  </p>
-                </div>
-                <div className="ml-auto">
-                  <span className="relative flex h-3 w-3">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-[hsl(var(--sentinel-healthy))] opacity-75 animate-ping" />
-                    <span className="relative inline-flex h-3 w-3 rounded-full bg-[hsl(var(--sentinel-healthy))]" />
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Key Metrics */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <StatCard
-                title="Total Users"
-                value={health.database.total_users.toString()}
-                subtitle="Registered accounts"
-                icon={<Users className="h-4 w-4 text-muted-foreground" />}
-              />
-              <StatCard
-                title="Total Events"
-                value={health.database.total_events.toLocaleString()}
-                subtitle="Tracked activities"
-                icon={<Database className="h-4 w-4 text-muted-foreground" />}
-              />
-              <StatCard
-                title="At Risk"
-                value={health.risk_summary.at_risk_total.toString()}
-                subtitle={`${health.risk_summary.critical_count} critical, ${health.risk_summary.elevated_count} elevated`}
-                icon={<AlertTriangle className="h-4 w-4 text-[hsl(var(--sentinel-critical))]" />}
-                valueColor="text-[hsl(var(--sentinel-critical))]"
-              />
-              <StatCard
-                title="Consent Rate"
-                value={`${health.users.consent_rate.percentage}%`}
-                subtitle={`${health.users.consent_rate.consented}/${health.users.consent_rate.total} users`}
-                icon={<Lock className="h-4 w-4 text-muted-foreground" />}
-              />
-            </div>
-
-            {/* Role Distribution */}
-            <div className="glass-card rounded-xl p-6">
-              <div className="flex items-center gap-2.5 mb-5">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <h3 className="text-[13px] font-semibold text-foreground">User Distribution by Role</h3>
-              </div>
-              <div className="grid gap-3 md:grid-cols-3">
-                {Object.entries(health.users.by_role).map(([role, count]) => (
-                  <div key={role} className="flex items-center justify-between rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] p-4 transition-colors hover:bg-[var(--glass-bg-hover)]">
-                    <div className="flex items-center gap-3">
-                      <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${role === "admin" ? "bg-[hsl(var(--sentinel-gem)/0.1)]" :
-                          role === "manager" ? "bg-[hsl(var(--sentinel-info)/0.1)]" :
-                            "bg-muted/30"
-                        }`}>
-                        {role === "admin" ? <Shield className="h-4 w-4 text-[hsl(var(--sentinel-gem))]" /> :
-                          role === "manager" ? <Users className="h-4 w-4 text-[hsl(var(--sentinel-info))]" /> :
-                            <Activity className="h-4 w-4 text-muted-foreground" />}
-                      </div>
-                      <div>
-                        <p className="text-[13px] font-medium text-foreground capitalize">{role}s</p>
-                        <p className="text-[10px] font-mono text-muted-foreground">{count} users</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Activity 24h */}
-            <div className="glass-card rounded-xl p-6">
-              <div className="flex items-center gap-2.5 mb-5">
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                <h3 className="text-[13px] font-semibold text-foreground">Activity (Last 24 Hours)</h3>
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="flex items-center justify-between rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] p-4">
-                  <div className="flex items-center gap-3">
-                    <Database className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-[13px] font-medium text-foreground">New Events</p>
-                      <p className="text-[10px] text-muted-foreground">Tracked in last 24h</p>
-                    </div>
-                  </div>
-                  <span className="text-xl font-bold font-mono text-foreground">{health.activity_24h.events}</span>
-                </div>
-                <div className="flex items-center justify-between rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] p-4">
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-[13px] font-medium text-foreground">Audit Logs</p>
-                      <p className="text-[10px] text-muted-foreground">Created in last 24h</p>
-                    </div>
-                  </div>
-                  <span className="text-xl font-bold font-mono text-foreground">{health.activity_24h.audit_logs}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ═══════════ USERS TAB ═══════════ */}
-        {activeTab === "users" && (
-          <div className="space-y-5">
-            <div className="flex items-center gap-3">
-              <Select value={userRole} onValueChange={setUserRole}>
-                <SelectTrigger className="w-[160px] border-[var(--glass-border)] bg-[var(--glass-bg)] text-[12px]">
-                  <SelectValue placeholder="Filter by role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All roles</SelectItem>
-                  <SelectItem value="employee">Employee</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                onClick={fetchUsers}
-                size="sm"
-                className="text-[12px]"
+      <main className="container mx-auto px-6 py-8 flex-1">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <TabsList className="bg-[#111827] border border-white/5 p-1 h-auto w-fit">
+              <TabsTrigger value="health" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white px-4 py-2 text-xs font-medium gap-2">
+                <Activity className="h-3.5 w-3.5" /> System Health
+              </TabsTrigger>
+              <TabsTrigger value="users" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white px-4 py-2 text-xs font-medium gap-2">
+                <Users className="h-3.5 w-3.5" /> All Users
+              </TabsTrigger>
+              <TabsTrigger value="audit" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white px-4 py-2 text-xs font-medium gap-2">
+                <FileText className="h-3.5 w-3.5" /> Audit Logs
+              </TabsTrigger>
+            </TabsList>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-slate-500 font-mono hidden sm:block">
+                LAST SYNC: {lastRefreshed.toLocaleTimeString()}
+              </span>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="h-8 border-white/10 hover:bg-white/5 text-slate-400 hover:text-white"
+                onClick={() => {
+                  if (activeTab === "health") fetchHealthData()
+                  if (activeTab === "users") fetchUsers()
+                  if (activeTab === "audit") fetchAuditLogs()
+                }}
               >
-                <RefreshCw className="mr-2 h-3.5 w-3.5" />
-                Load Users
+                <RefreshCw className={cn("h-3.5 w-3.5 mr-2", loading ? "animate-spin" : "")} />
+                Refresh
               </Button>
             </div>
+          </div>
 
-            {users.length > 0 && (
-              <div className="glass-card rounded-xl overflow-hidden">
-                <ScrollArea className="h-[600px]">
-                  <table className="w-full">
-                    <thead className="sticky top-0 border-b border-[var(--glass-border)]" style={{ background: "hsl(var(--card))" }}>
-                      <tr>
-                        <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">User Hash</th>
-                        <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Role</th>
-                        <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Risk Level</th>
-                        <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Consent</th>
-                        <th className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Manager</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--glass-border)]">
-                      {users.map((user) => (
-                        <tr key={user.user_hash} className="transition-colors hover:bg-[var(--glass-bg-hover)]">
-                          <td className="px-5 py-3.5 font-mono text-[11px] text-muted-foreground">{user.user_hash.slice(0, 16)}…</td>
-                          <td className="px-5 py-3.5">
-                            <Badge variant="outline" className="capitalize text-[10px] border-[var(--glass-border)]">
+          <TabsContent value="health" className="space-y-6 focus-visible:outline-none animate-in fade-in slide-in-from-bottom-2 duration-500">
+            {health && (
+              <>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  <StatBlock label="Total Users" value={health.database.total_users.toString()} icon={<Users className="h-4 w-4" />} color="indigo" />
+                  <StatBlock label="Total Events" value={health.database.total_events.toLocaleString()} icon={<Database className="h-4 w-4" />} color="emerald" />
+                  <StatBlock label="Risk Alerts" value={health.risk_summary.at_risk_total.toString()} icon={<AlertTriangle className="h-4 w-4" />} color="amber" />
+                  <StatBlock label="Consent Rate" value={`${health.users.consent_rate.percentage}%`} icon={<Lock className="h-4 w-4" />} color="purple" />
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2">
+                  <Card className="col-span-2 md:col-span-1 bg-[#111827]/50 border-white/10">
+                    <CardHeader className="pb-3 border-b border-white/5">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2 text-white">
+                        <Server className="h-4 w-4 text-indigo-400" />
+                        Infrastructure Status
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-4"> 
+                      <div className="space-y-1">
+                        {MOCK_SERVICES.map((service, i) => (
+                          <div key={i} className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className={cn("h-2.5 w-2.5 rounded-full ring-2 ring-offset-2 ring-offset-[#111827]", service.status === "operational" ? "bg-emerald-500 ring-emerald-500/20" : "bg-amber-500 ring-amber-500/20")} />
+                              <span className="text-sm font-medium text-slate-200">{service.name}</span>
+                            </div>
+                            <div className="flex items-center gap-4 text-xs text-slate-400">
+                              <span className="font-mono">Lat: <span className="text-slate-200">{service.latency}</span></span>
+                              <Badge variant="outline" className={cn("border-0 bg-opacity-10 uppercase tracking-wider text-[10px]", service.status === "operational" ? "bg-emerald-500 text-emerald-400" : "bg-amber-500 text-amber-400")}>
+                                {service.status}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-[#111827]/50 border-white/10">
+                    <CardHeader className="pb-3 border-b border-white/5">
+                      <CardTitle className="text-sm font-medium text-white">Risk Distribution</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6 space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-slate-400">Critical</span>
+                        <Badge className="bg-red-500/20 text-red-400 border-red-500/30">{health.risk_summary.critical_count}</Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-slate-400">Elevated</span>
+                        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">{health.risk_summary.elevated_count}</Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-slate-400">Healthy</span>
+                        <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">{health.database.total_users - health.risk_summary.at_risk_total}</Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </>
+            )}
+          </TabsContent>
+
+          <TabsContent value="users" className="space-y-6 focus-visible:outline-none animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center bg-[#111827]/50 p-4 rounded-xl border border-white/10">
+              <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+                  <Input 
+                    placeholder="Search users..." 
+                    className="pl-9 bg-[#0b101b] border-white/10 w-full md:w-[250px] text-sm"
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                  />
+                </div>
+                <Select value={userRole} onValueChange={(val) => { setUserRole(val); fetchUsers() }}>
+                  <SelectTrigger className="w-[150px] bg-[#0b101b] border-white/10">
+                    <SelectValue placeholder="Role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    <SelectItem value="employee">Employee</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+                </div>
+              <div className="text-sm text-slate-500">
+                {filteredUsers.length} users found
+              </div>
+            </div>
+
+            <Card className="bg-[#111827]/50 border-white/10 backdrop-blur-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-white/5">
+                    <tr className="border-b border-white/10">
+                      <th className="text-left text-xs font-semibold uppercase tracking-wider text-slate-400 h-12 px-4">User</th>
+                      <th className="text-left text-xs font-semibold uppercase tracking-wider text-slate-400 h-12 px-4">Role</th>
+                      <th className="text-left text-xs font-semibold uppercase tracking-wider text-slate-400 h-12 px-4">Risk Level</th>
+                      <th className="text-center text-xs font-semibold uppercase tracking-wider text-slate-400 h-12 px-4">Manager</th>
+                      <th className="text-center text-xs font-semibold uppercase tracking-wider text-slate-400 h-12 px-4">Consent</th>
+                      <th className="text-right text-xs font-semibold uppercase tracking-wider text-slate-400 h-12 px-4">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {filteredUsers.length > 0 ? (
+                      filteredUsers.map((user) => (
+                        <tr key={user.user_hash} className="hover:bg-white/[0.02]">
+                          <td className="px-4 py-3">
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium text-white">{user.name || user.user_hash.slice(0, 8) + "..."}</span>
+                              {user.email && <span className="text-xs text-slate-500">{user.email}</span>}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <Badge variant="secondary" className="capitalize text-[10px] bg-white/10 text-slate-300">
                               {user.role}
                             </Badge>
                           </td>
-                          <td className="px-5 py-3.5">
-                            <span className={`inline-flex rounded-md border px-2 py-0.5 text-[10px] font-semibold ${getRiskBadge(user.risk_level)}`}>
+                          <td className="px-4 py-3">
+                            <Badge variant="outline" className={cn("text-[10px] border-0", getRiskBadge(user.risk_level))}>
                               {user.risk_level}
-                            </span>
+                            </Badge>
                           </td>
-                          <td className="px-5 py-3.5">
-                            {user.consent_share_with_manager ? (
-                              <CheckCircle2 className="h-4 w-4 text-[hsl(var(--sentinel-healthy))]" />
-                            ) : (
-                              <span className="text-muted-foreground/40">—</span>
-                            )}
-                          </td>
-                          <td className="px-5 py-3.5">
+                          <td className="px-4 py-3 text-center">
                             {user.has_manager ? (
-                              <CheckCircle2 className="h-4 w-4 text-[hsl(var(--sentinel-info))]" />
+                              <CheckCircle2 className="h-4 w-4 text-emerald-500 mx-auto" />
                             ) : (
-                              <span className="text-muted-foreground/40">—</span>
+                              <span className="text-slate-600">-</span>
                             )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {user.consent_share_with_manager ? (
+                              <Lock className="h-3.5 w-3.5 text-indigo-400 mx-auto" />
+                            ) : (
+                              <span className="text-slate-600">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white" onClick={() => { setEditUser(user); setEditEmail(user.email || "") }}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white" onClick={() => { setRoleUser(user); setNewRole(user.role) }}>
+                                <UserCog className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white" onClick={() => { setAssignManagerUser(user); setSelectedManager(user.has_manager ? "remove" : "") }}>
+                                <Users className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" onClick={() => setDeleteUser(user)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </ScrollArea>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="h-32 text-center text-slate-500">
+                          No users found matching your criteria.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
-            )}
+            </Card>
+          </TabsContent>
 
-            {users.length === 0 && !loading && (
-              <div className="glass-card rounded-xl p-12 text-center">
-                <Users className="mx-auto mb-3 h-8 w-8 text-muted-foreground/30" />
-                <p className="text-sm font-medium text-muted-foreground">Click "Load Users" to view the user list</p>
+          <TabsContent value="audit" className="space-y-6 focus-visible:outline-none animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center bg-[#111827]/50 p-4 rounded-xl border border-white/10">
+              <div className="flex gap-3">
+                <Select value={auditDays} onValueChange={setAuditDays}>
+                  <SelectTrigger className="w-[140px] bg-[#0b101b] border-white/10">
+                    <SelectValue placeholder="Period" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Last 24 Hours</SelectItem>
+                    <SelectItem value="7">Last 7 Days</SelectItem>
+                    <SelectItem value="30">Last 30 Days</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={auditAction} onValueChange={setAuditAction}>
+                  <SelectTrigger className="w-[160px] bg-[#0b101b] border-white/10">
+                    <SelectValue placeholder="Action Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Actions</SelectItem>
+                    <SelectItem value="data_access">Data Access</SelectItem>
+                    <SelectItem value="consent">Consent Change</SelectItem>
+                    <SelectItem value="authentication">Auth Events</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* ═══════════ AUDIT LOGS TAB ═══════════ */}
-        {activeTab === "audit" && (
-          <div className="space-y-5">
-            <div className="flex flex-wrap items-center gap-3">
-              <Select value={auditDays} onValueChange={setAuditDays}>
-                <SelectTrigger className="w-[140px] border-[var(--glass-border)] bg-[var(--glass-bg)] text-[12px]">
-                  <SelectValue placeholder="Time period" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Last 24 hours</SelectItem>
-                  <SelectItem value="7">Last 7 days</SelectItem>
-                  <SelectItem value="30">Last 30 days</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={auditAction} onValueChange={setAuditAction}>
-                <SelectTrigger className="w-[160px] border-[var(--glass-border)] bg-[var(--glass-bg)] text-[12px]">
-                  <SelectValue placeholder="Filter by action" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All actions</SelectItem>
-                  <SelectItem value="data_access">Data Access</SelectItem>
-                  <SelectItem value="consent">Consent Changes</SelectItem>
-                  <SelectItem value="login">Login/Auth</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Button onClick={fetchAuditLogs} size="sm" className="text-[12px]">
-                <RefreshCw className="mr-2 h-3.5 w-3.5" />
-                Load Logs
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setAuditOffset(Math.max(0, auditOffset - 50))} disabled={auditOffset === 0} className="border-white/10">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-xs font-mono text-slate-500 w-20 text-center">OFFSET: {auditOffset}</span>
+                <Button variant="outline" size="sm" onClick={() => setAuditOffset(auditOffset + 50)} className="border-white/10">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
-            {auditLogs.length > 0 && (
-              <div className="glass-card rounded-xl p-5">
-                <ScrollArea className="h-[600px]">
-                  <div className="space-y-3">
-                    {auditLogs.map((log) => (
-                      <div
-                        key={log.id}
-                        className="rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] p-4 transition-colors hover:bg-[var(--glass-bg-hover)]"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="inline-flex rounded-md border border-[var(--glass-border)] bg-[var(--glass-bg)] px-2 py-0.5 text-[10px] font-semibold text-foreground">
-                                {formatAction(log.action)}
-                              </span>
-                              <span className="text-[10px] font-mono text-muted-foreground">
-                                {new Date(log.timestamp).toLocaleString()}
-                              </span>
-                            </div>
-                            <p className="font-mono text-[10px] text-muted-foreground">
-                              User: {log.user_hash.slice(0, 16)}…
-                            </p>
-                          </div>
-                        </div>
-                        {log.details && Object.keys(log.details).length > 0 && (
-                          <div className="mt-2.5 rounded-lg bg-muted/30 p-2.5">
-                            <pre className="text-[10px] font-mono text-muted-foreground overflow-x-auto">
-                              {JSON.stringify(log.details, null, 2)}
-                            </pre>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-
-                {/* Pagination */}
-                <div className="mt-4 flex items-center justify-between border-t border-[var(--glass-border)] pt-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-[12px] border-[var(--glass-border)]"
-                    onClick={() => {
-                      setAuditOffset(Math.max(0, auditOffset - 50))
-                      fetchAuditLogs()
-                    }}
-                    disabled={auditOffset === 0}
-                  >
-                    <ChevronLeft className="mr-1 h-3.5 w-3.5" />
-                    Previous
-                  </Button>
-                  <span className="text-[11px] font-mono text-muted-foreground">
-                    Offset: {auditOffset}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-[12px] border-[var(--glass-border)]"
-                    onClick={() => {
-                      setAuditOffset(auditOffset + 50)
-                      fetchAuditLogs()
-                    }}
-                  >
-                    Next
-                    <ChevronRight className="ml-1 h-3.5 w-3.5" />
-                  </Button>
-                </div>
+            <Card className="bg-[#111827]/50 border-white/10 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-white/5 text-xs uppercase text-slate-400 font-semibold">
+                    <tr>
+                      <th className="px-6 py-3 border-b border-white/10 w-[200px]">Timestamp</th>
+                      <th className="px-6 py-3 border-b border-white/10 w-[150px]">Action</th>
+                      <th className="px-6 py-3 border-b border-white/10">User</th>
+                      <th className="px-6 py-3 border-b border-white/10">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {auditLogs.length > 0 ? (
+                      auditLogs.map((log) => (
+                        <tr key={log.id} className="hover:bg-white/[0.02]">
+                          <td className="px-6 py-3 font-mono text-xs text-slate-400 whitespace-nowrap">
+                            {new Date(log.timestamp).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-3">
+                            <Badge variant="outline" className="border-indigo-500/20 text-indigo-400 bg-indigo-500/10 text-[10px] uppercase">
+                              {formatAction(log.action)}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-3 font-mono text-xs text-slate-300">
+                            {log.user_hash?.slice(0, 8)}...
+                          </td>
+                          <td className="px-6 py-3">
+                            <code className="text-[10px] text-slate-500 font-mono bg-black/20 px-2 py-1 rounded block truncate max-w-[400px]">
+                              {JSON.stringify(log.details)}
+                            </code>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} className="h-32 text-center text-slate-500">
+                          No audit logs found for this period.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
-            )}
-
-            {auditLogs.length === 0 && !loading && (
-              <div className="glass-card rounded-xl p-12 text-center">
-                <FileText className="mx-auto mb-3 h-8 w-8 text-muted-foreground/30" />
-                <p className="text-sm font-medium text-muted-foreground">Click "Load Logs" to view audit history</p>
-              </div>
-            )}
-          </div>
-        )}
+            </Card>
+          </TabsContent>
+        </Tabs>
       </main>
+
+      <Dialog open={!!editUser} onOpenChange={() => setEditUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit User Profile</DialogTitle>
+            <DialogDescription>Update user information for {editUser?.user_hash.slice(0, 8)}...</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <label className="text-sm font-medium">Email Address</label>
+            <Input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="user@example.com" className="mt-2" />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditUser(null)}>Cancel</Button>
+            <Button onClick={handleUpdateProfile} disabled={actionLoading === "edit"}>
+              {actionLoading === "edit" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!roleUser} onOpenChange={() => setRoleUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change User Role</DialogTitle>
+            <DialogDescription>Update role for {roleUser?.user_hash.slice(0, 8)}...</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <label className="text-sm font-medium">New Role</label>
+            <Select value={newRole} onValueChange={setNewRole}>
+              <SelectTrigger className="mt-2">
+                <SelectValue placeholder="Select role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="employee">Employee</SelectItem>
+                <SelectItem value="manager">Manager</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRoleUser(null)}>Cancel</Button>
+            <Button onClick={handleRoleChange} disabled={actionLoading === "role" || newRole === roleUser?.role}>
+              {actionLoading === "role" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserCog className="h-4 w-4 mr-2" />}
+              Change Role
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteUser} onOpenChange={() => setDeleteUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-red-400">Delete User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete user {deleteUser?.user_hash.slice(0, 8)}...? 
+              This action cannot be undone and will remove all associated data.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteUser(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteUser} disabled={actionLoading === "delete"} className="bg-red-600 hover:bg-red-700">
+              {actionLoading === "delete" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Delete User
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!assignManagerUser} onOpenChange={() => setAssignManagerUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Manager</DialogTitle>
+            <DialogDescription>
+              Assign a manager to {assignManagerUser?.user_hash.slice(0, 8)}...
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <label className="text-sm font-medium">Select Manager</label>
+            <Select value={selectedManager} onValueChange={setSelectedManager}>
+              <SelectTrigger className="mt-2">
+                <SelectValue placeholder="Select manager" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="remove">Remove Manager</SelectItem>
+                {managers.map((manager) => (
+                  <SelectItem key={manager.user_hash} value={manager.user_hash}>
+                    {manager.user_hash.slice(0, 8)}...
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignManagerUser(null)}>Cancel</Button>
+            <Button onClick={handleAssignManager} disabled={actionLoading === "manager" || !selectedManager}>
+              {actionLoading === "manager" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Users className="h-4 w-4 mr-2" />}
+              Assign Manager
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
-// ─── Sub-components ──────────────────────────────────────
+function StatBlock({ label, value, icon, color }: { label: string, value: string, icon: React.ReactNode, color: string }) {
+  const colorClass = {
+    indigo: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
+    emerald: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+    amber: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+    purple: "text-purple-400 bg-purple-500/10 border-purple-500/20"
+  }[color] || "text-slate-400 bg-slate-500/10 border-slate-500/20";
 
-function StatCard({
-  title,
-  value,
-  subtitle,
-  icon,
-  valueColor = "text-foreground",
-}: {
-  title: string
-  value: string
-  subtitle: string
-  icon: React.ReactNode
-  valueColor?: string
-}) {
   return (
-    <div className="glass-card rounded-xl p-5">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</p>
-        {icon}
+    <Card className="bg-[#111827]/50 border-white/10">
+      <div className="p-5 flex items-start justify-between">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">{label}</p>
+          <h3 className="text-2xl font-bold font-mono text-white">{value}</h3>
+        </div>
+        <div className={`p-2 rounded-lg border ${colorClass}`}>
+          {icon}
+        </div>
       </div>
-      <p className={`text-2xl font-bold font-mono ${valueColor}`}>{value}</p>
-      <p className="text-[10px] text-muted-foreground mt-1">{subtitle}</p>
-    </div>
+    </Card>
   )
 }
 

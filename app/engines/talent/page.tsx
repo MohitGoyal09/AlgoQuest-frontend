@@ -353,7 +353,9 @@ function TalentContent() {
                       </div>
                       <div className="text-right">
                         <p className="text-2xl font-bold text-fuchsia-400">
-                          {Math.round(skillsDistribution.reduce((a, b) => a + b.average, 0) / skillsDistribution.length)}
+                          {skillsDistribution?.length > 0 
+                            ? Math.round(skillsDistribution.reduce((a, b) => a + (b.average || 0), 0) / skillsDistribution.length)
+                            : 0}
                         </p>
                         <p className="text-xs text-fuchsia-500/60">/ 100</p>
                       </div>
@@ -418,11 +420,10 @@ function TalentContent() {
                     {selectedProfile ? (
                       <div className="grid gap-6 md:grid-cols-2">
                         <div>
-                          <SkillsRadar 
-                            data={selectedProfile.skills} 
-                            height={320}
-                            className="bg-white/50 rounded-xl"
-                          />
+<SkillsRadar 
+                             data={selectedProfile.skills} 
+                             height={320}
+                           />
                         </div>
                         <div className="space-y-4">
                           <div>

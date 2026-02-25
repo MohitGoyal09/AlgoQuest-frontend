@@ -26,9 +26,6 @@ import { api } from "@/lib/api"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Separator } from "@/components/ui/separator"
 import { 
   Activity, 
   Shield, 
@@ -37,8 +34,24 @@ import {
   AlertTriangle,
   CheckCircle2,
   Users,
-  RefreshCw
+  RefreshCw,
+  Sparkles,
+  Zap,
+  BarChart3
 } from "lucide-react"
+
+// Admin Components
+import { GlobalStatsCards } from "@/components/dashboard/admin/global-stats"
+import { OrgHealthMap } from "@/components/dashboard/admin/org-health-map"
+import { AdminQuickActions } from "@/components/dashboard/admin/admin-actions"
+import { AuditLogFeed } from "@/components/dashboard/admin/audit-log"
+
+// Manager Components
+// Manager Components
+import { TeamStatsRow } from "@/components/dashboard/manager/team-stats-row"
+import { TeamGrid } from "@/components/dashboard/manager/team-grid"
+import { AnonymityToggle } from "@/components/dashboard/manager/anonymity-toggle"
+import { IndividualInsights } from "@/components/dashboard/manager/individual-insights"
 
 // Types
 import { Employee, UserSummary, toRiskLevel, PersonaType } from "@/types"
@@ -93,10 +106,14 @@ interface MeData {
 function DashboardContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const activeView = searchParams.get('view') || 'dashboard'
+  const activeView = searchParams.get("view") || "dashboard"
+  const detailedUserHash = searchParams.get("uid")
   
   const { userRole, signOut } = useAuth()
   const [selectedUserHash, setSelectedUserHash] = useState<string | null>(null)
+  
+  // Manager view state
+  const [isAnonymized, setIsAnonymized] = useState(true)
   
   // Mobile/desktop sidebar is now handled in layout, but mobile trigger might be needed
   // However, we rely on layout for sidebar rendering.
@@ -170,9 +187,15 @@ function DashboardContent() {
   // Default view is dashboard for all roles
   useEffect(() => {
     if (!activeView || activeView === "profile") {
-      router.push('/dashboard?view=dashboard')
+      if (isAdmin) {
+        router.push('/dashboard?view=admin')
+      } else if (isManager) {
+        router.push('/dashboard?view=team')
+      } else {
+        router.push('/dashboard?view=dashboard')
+      }
     }
-  }, [userRole])
+  }, [userRole, isAdmin, isManager])
 
   // 1. Fetch Users
   const { users, isLoading: usersLoading } = useUsers()
@@ -273,23 +296,31 @@ function DashboardContent() {
 
   // Map Team Metrics - Dynamic calculation from actual data
   const mappedTeamMetrics = useMemo(() => {
-    if (!teamData) return null
-
     // Calculate counts from actual employees data
     const total_members = employees.length
     const healthy_count = employees.filter(e => e.risk_level === "LOW" || !e.risk_level).length
     const elevated_count = employees.filter(e => e.risk_level === "ELEVATED").length
     const critical_count = employees.filter(e => e.risk_level === "CRITICAL").length
 
+    const avgVelocity = teamData?.metrics?.avg_velocity || employees.reduce((acc, e) => acc + (e.velocity || 0), 0) / (employees.length || 1)
+    const graphFragmentation = teamData?.metrics?.graph_fragmentation || 0
+    const commDecayRate = teamData?.metrics?.comm_decay_rate || 0
+    const teamRisk = teamData?.team_risk || "LOW"
+
+    // Calculate burnout risk as percentage (based on critical + elevated)
+    const atRisk = critical_count + elevated_count
+    const burnout_risk = total_members > 0 ? Math.round((atRisk / total_members) * 100) : 0
+
     return {
       total_members,
       healthy_count,
       elevated_count,
       critical_count,
-      avg_velocity: teamData.metrics.avg_velocity,
-      graph_fragmentation: teamData.metrics.graph_fragmentation,
-      comm_decay_rate: teamData.metrics.comm_decay_rate,
-      contagion_risk: toRiskLevel(teamData.team_risk)
+      avg_velocity: avgVelocity,
+      graph_fragmentation: graphFragmentation,
+      comm_decay_rate: commDecayRate,
+      contagion_risk: toRiskLevel(teamRisk),
+      burnout_risk
     }
   }, [teamData, employees])
 
@@ -347,262 +378,249 @@ function DashboardContent() {
     return () => clearInterval(interval)
   }, [handleRefresh])
 
+  // Determine effective employee for detail viewing - must be called unconditionally
+  const detailEmployee = useMemo(() => 
+    employees.find(e => e.user_hash === detailedUserHash) || employees[0], 
+    [employees, detailedUserHash]
+  );
+
   if (!currentEmployee) {
      return <div className="flex h-full items-center justify-center">Loading Dashboard...</div>
   }
 
   return (
-    <div className="flex flex-1 flex-col">
-        <DashboardHeader
-          selectedUser={currentEmployee}
-          activeView={activeView}
-        />
+    <div className="flex flex-1 flex-col h-full bg-[#0b101b]">
+      <DashboardHeader 
+        selectedUser={currentEmployee} 
+        activeView={activeView} 
+      />
 
-        <ScrollArea className="flex-1">
-          <main className="flex flex-col gap-6 p-5 lg:p-8">
-{/* ==================== OVERVIEW ==================== */}
-            {activeView === "dashboard" && (
-              <>
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col gap-1">
-                    <h2 className="text-xl font-bold tracking-tight text-foreground">Team Dashboard</h2>
-                    <p className="text-sm text-muted-foreground">Real-time team health metrics and individual risk analysis.</p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRefresh}
-                    disabled={isRefreshing}
-                    className="gap-2"
-                  >
-                    <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                    {isRefreshing ? 'Refreshing...' : 'Refresh'}
-                  </Button>
+      <ScrollArea className="flex-1">
+        <main className="flex flex-col gap-6 p-5 lg:p-8 pb-20">
+          
+          {/* ==================== 1. DEFAULT DASHBOARD (Employee View) ==================== */}
+          {activeView === "dashboard" && (
+            <div className="space-y-6 animate-in fade-in duration-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold tracking-tight text-white mb-1">My Dashboard</h2>
+                  <p className="text-sm text-slate-400">Personal wellness insights and team activity feed.</p>
                 </div>
-
-                <AskSentinelWidget />
-
-                <AskSentinel />
-
-                {mappedTeamMetrics && <StatCards metrics={mappedTeamMetrics} />}
-
-                <div className="flex flex-col gap-1.5">
-                  <label
-                    className="text-xs font-medium text-muted-foreground"
-                    htmlFor="user-select"
-                  >
-                    Active User Analysis
-                  </label>
-                  <UserSelector
-                    employees={employees}
-                    selectedUser={currentEmployee}
-                    onSelect={handleUserSelect}
-                  />
+                <div className="flex items-center gap-3">
+                   <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing} className="gap-2 border-white/10 hover:bg-white/5">
+                      <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                      {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                   </Button>
+                   <AskSentinelWidget />
                 </div>
+              </div>
 
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                  <div className="flex flex-col gap-6 lg:col-span-1">
-                    <NudgeCard nudge={nudgeData || undefined} />
-                  </div>
-                  <div className="flex flex-col gap-6 lg:col-span-2">
-                    <VelocityChart history={history} />
-                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                      <ActivityFeed events={mappedEvents} />
-                      <VaultStatus eventCount={recentEvents.length} userCount={employees.length} />
+              {/* Top Stats Cards */}
+              <StatCards metrics={mappedTeamMetrics} />
+
+              {/* Main Grid Layout */}
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
+                
+                {/* Left Column - Risk & Metrics */}
+                <Card className="col-span-4 bg-[#111827]/50 border-white/10 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                       <Shield className="h-5 w-5 text-emerald-400" />
+                       Risk Factors
+                    </CardTitle>
+                    <CardDescription>Real-time analysis of work patterns and wellbeing indicators.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <RiskAssessment riskData={riskData} useMock={!riskData} />
+                  </CardContent>
+                </Card>
+
+                {/* Right Column - Activity Feed */}
+                <Card className="col-span-3 bg-[#111827]/50 border-white/10 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                       <Activity className="h-5 w-5 text-blue-400" />
+                       Recent Activity
+                    </CardTitle>
+                    <CardDescription>Latest system events and alerts.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="h-[400px]">
+                    <ActivityFeed events={mappedEvents} />
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Secondary Grid */}
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
+                 <div className="col-span-4 bg-[#111827]/50 border border-white/10 rounded-xl p-6">
+                    <h3 className="text-lg font-semibold mb-4 text-white">Velocity Trend</h3>
+                    <div className="h-[300px]">
+                       <VelocityChart data={history} />
                     </div>
-                  </div>
-                </div>
-
-                <TeamDistribution employees={employees} />
-              </>
-            )}
-
-            {/* SAFETY VALVE */}
-            {activeView === "safety-valve" && (
-              <>
-                <ViewHeader
-                  title="Safety Valve Engine"
-                  description="Individual burnout detection and prevention."
-                />
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-muted-foreground" htmlFor="user-select">Select User</label>
-                  <UserSelector
-                    employees={employees}
-                    selectedUser={currentEmployee}
-                    onSelect={handleUserSelect}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                  <RiskAssessment employee={currentEmployee} />
-                  <div className="flex flex-col gap-6 lg:col-span-2">
-                    <AgendaGenerator
-                      userHash={currentEmployee.user_hash}
-                      userName={currentEmployee.name}
-                      riskLevel={currentEmployee.risk_level}
-                      pattern="Late nights +3 days this week"
-                      context="Post-sprint, unexplained"
-                    />
-                    <NudgeCard nudge={nudgeData || undefined} />
-                  </div>
-                </div>
-                <ActivityFeed events={mappedEvents} />
-              </>
-            )}
-
-            {/* TALENT SCOUT */}
-            {activeView === "talent-scout" && (
-              <>
-                <ViewHeader
-                  title="Talent Scout Engine"
-                  description="Network analysis to identify hidden gems."
-                />
-
-                <NetworkGraph nodes={networkNodes} edges={networkEdges} />
-
-                {/* Performers List or Hidden Gems */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  {networkNodes
-                    .sort((a, b) => (b.betweenness || 0) - (a.betweenness || 0))
-                    .map((node) => (
-                      <div
-                        key={node.id}
-                        className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-5 shadow-sm"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono text-sm font-semibold text-foreground">{node.label}</span>
-                          <span className="text-[10px] text-muted-foreground">ID: {node.id.slice(0, 4)}</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <p className="text-[10px] text-muted-foreground">Betweenness</p>
-                            <p className="font-mono text-sm font-semibold text-foreground">
-                              {(node.betweenness || 0).toFixed(2)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </>
-            )}
-
-            {/* CULTURE THERMOMETER */}
-            {activeView === "culture" && (
-              <>
-                <ViewHeader title="Culture Thermometer" description="Team-level health monitoring with SIR epidemic model." />
-                {mappedTeamMetrics && <StatCards metrics={mappedTeamMetrics} />}
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                  <TeamDistribution employees={employees} />
-                  <ForecastChart data={forecastData} isLoading={forecastLoading} />
-                </div>
-                <NetworkGraph nodes={networkNodes} edges={networkEdges} />
-              </>
-            )}
-
-            {/* NETWORK GRAPH */}
-            {activeView === "network" && (
-              <>
-                <ViewHeader title="Network Graph" description="Team interaction topology." />
-                <NetworkGraph nodes={networkNodes} edges={networkEdges} />
-                <VaultStatus eventCount={recentEvents.length} userCount={employees.length} />
-              </>
-            )}
-
-            {/* SIMULATION */}
-            {activeView === "simulation" && (
-              <>
-              <ViewHeader title="Simulation Mode" description="Generate digital twins and inject events." />
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                  <SimulationPanel
-                    onInjectEvent={handleSimulationInject}
-                    onRunSimulation={handleCreatePersona}
-                  />
-                  <VaultStatus eventCount={recentEvents.length} userCount={employees.length} />
-                </div>
-
-                <UserSelector
-                  employees={employees}
-                  selectedUser={currentEmployee}
-                  onSelect={handleUserSelect}
-                />
-                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                   <RiskAssessment employee={currentEmployee} />
-                   <div className="lg:col-span-2">
-                     <VelocityChart history={history} />
-                   </div>
                  </div>
-               </>
-            )}
+                 <div className="col-span-3">
+                    <NudgeCard nudge={nudgeData} />
+                 </div>
+              </div>
+            </div>
+          )}
 
-            {/* MANAGER TEAM VIEW */}
-            {activeView === "team" && (
-              <div className="space-y-6">
-                <div className="flex flex-col gap-1">
-                  <h2 className="text-xl font-bold tracking-tight text-foreground">Team Dashboard</h2>
-                  <p className="text-sm text-muted-foreground">Your team's health metrics and member overview.</p>
-                </div>
-                
-                {mappedTeamMetrics && <StatCards metrics={mappedTeamMetrics as any} />}
-                
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                  <TeamDistribution employees={employees} />
-                  {/* Potentially another chart here to match layout, e.g. Velocity or Forecast */}
-                  <ForecastChart data={forecastData} isLoading={forecastLoading} />
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                     <h3 className="text-lg font-semibold tracking-tight text-foreground">Employee Roster</h3>
-                     <Button variant="outline" size="sm" className="h-8 gap-1">
-                        Filter
+          {/* ==================== 2. ADMIN DASHBOARD (Global Command Center) ==================== */}
+          {activeView === "admin" && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+               <div className="flex items-center justify-between border-b border-white/10 pb-6">
+                  <div>
+                     <h1 className="text-3xl font-bold tracking-tight text-white mb-2 bg-gradient-to-r from-amber-200 to-yellow-500 bg-clip-text text-transparent">
+                        Platform Command Center
+                     </h1>
+                     <p className="text-slate-400">Global system status, organizational health, and security controls.</p>
+                  </div>
+                  <div className="flex gap-3">
+                     <Badge variant="outline" className="border-amber-500/30 text-amber-400 bg-amber-500/10 px-3 py-1">
+                        <Shield className="w-3 h-3 mr-2" /> Admin Access
+                     </Badge>
+                     <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-black font-semibold">
+                        System Report
                      </Button>
                   </div>
-                  <EmployeeTable employees={employees} />
-                </div>
-              </div>
-            )}
+               </div>
 
-            {/* ADMIN VIEW */}
-            {activeView === "admin" && (
-              <div className="space-y-6">
-                <div className="flex flex-col gap-1">
-                  <h2 className="text-xl font-bold tracking-tight text-foreground">Admin Dashboard</h2>
-                  <p className="text-sm text-muted-foreground">System administration and user management.</p>
-                </div>
-                
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{employees.length}</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">At Risk</CardTitle>
-                      <AlertTriangle className="h-4 w-4 text-red-500" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-red-600">
-                        {employees.filter(e => e.risk_level === 'CRITICAL' || e.risk_level === 'ELEVATED').length}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-                
-                <Button onClick={() => router.push('/admin')}>
-                  Go to Full Admin Panel
-                </Button>
-              </div>
-            )}
+               <GlobalStatsCards />
 
-          </main>
-        </ScrollArea>
+               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  <div className="col-span-2 space-y-8">
+                     <OrgHealthMap />
+                     <Card className="bg-[#111827]/80 border-white/10">
+                        <CardHeader>
+                           <CardTitle className="text-white">Recent System Events</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                           <AuditLogFeed />
+                        </CardContent>
+                     </Card>
+                  </div>
+                  <div className="col-span-1">
+                     <AdminQuickActions />
+                  </div>
+               </div>
+            </div>
+          )}
+
+          {/* ==================== 3. MANAGER DASHBOARD (Team Overview) ==================== */}
+          {activeView === "team" && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+               <div className="flex items-center justify-between">
+                  <div>
+                     <h1 className="text-2xl font-bold text-white">Team Dashboard</h1>
+                     <p className="text-slate-400 text-sm">Manage team velocity, burnout risk, and wellbeing.</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                     <AnonymityToggle 
+                        isAnonymized={isAnonymized} 
+                        onToggle={() => setIsAnonymized(!isAnonymized)} 
+                     />
+                  </div>
+               </div>
+
+               {/* Team Stats Row */}
+               <TeamStatsRow metrics={mappedTeamMetrics} />
+
+               {/* Main Content Grid */}
+               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Team Members List */}
+                  <div className="lg:col-span-2">
+                     <Card className="bg-[#1a1a2e] border-white/5">
+                        <CardHeader>
+                           <CardTitle className="text-lg flex items-center gap-2">
+                              <Users className="h-5 w-5 text-blue-400" />
+                              Team Members ({employees.length})
+                           </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                           <TeamGrid employees={employees} isAnonymized={isAnonymized} />
+                        </CardContent>
+                     </Card>
+                  </div>
+
+                  {/* Right Sidebar */}
+                  <div className="space-y-6">
+                     {/* Team Health Summary */}
+                     <Card className="bg-[#1a1a2e] border-white/5">
+                        <CardHeader>
+                           <CardTitle className="text-lg flex items-center gap-2">
+                              <Shield className="h-5 w-5 text-green-400" />
+                              Team Health
+                           </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                           <div className="flex justify-between items-center">
+                              <span className="text-slate-400">Healthy</span>
+                              <span className="text-green-400 font-medium">{mappedTeamMetrics.healthy_count}</span>
+                           </div>
+                           <div className="flex justify-between items-center">
+                              <span className="text-slate-400">Elevated</span>
+                              <span className="text-amber-400 font-medium">{mappedTeamMetrics.elevated_count}</span>
+                           </div>
+                           <div className="flex justify-between items-center">
+                              <span className="text-slate-400">Critical</span>
+                              <span className="text-red-400 font-medium">{mappedTeamMetrics.critical_count}</span>
+                           </div>
+                           <div className="pt-2 border-t border-white/5">
+                              <div className="flex justify-between items-center">
+                                 <span className="text-slate-400">Avg Velocity</span>
+                                 <span className="text-white font-mono">{mappedTeamMetrics.avg_velocity.toFixed(1)}</span>
+                              </div>
+                           </div>
+                        </CardContent>
+                     </Card>
+
+                     {/* Quick Actions */}
+                     <Card className="bg-[#1a1a2e] border-white/5">
+                        <CardHeader>
+                           <CardTitle className="text-lg flex items-center gap-2">
+                              <Zap className="h-5 w-5 text-purple-400" />
+                              Quick Actions
+                           </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                           <Button variant="outline" className="w-full justify-start border-white/10 text-slate-300 hover:bg-white/5">
+                              <Users className="h-4 w-4 mr-2" />
+                              View Team Roster
+                           </Button>
+                           <Button variant="outline" className="w-full justify-start border-white/10 text-slate-300 hover:bg-white/5">
+                              <BarChart3 className="h-4 w-4 mr-2" />
+                              View Analytics
+                           </Button>
+                           <Button variant="outline" className="w-full justify-start border-white/10 text-slate-300 hover:bg-white/5">
+                              <Sparkles className="h-4 w-4 mr-2" />
+                              Get AI Insights
+                           </Button>
+                        </CardContent>
+                     </Card>
+                  </div>
+               </div>
+            </div>
+          )}
+
+          {/* ==================== 4. INDIVIDUAL INSIGHTS (Drill-down) ==================== */}
+          {activeView === "employee-detail" && (
+             <IndividualInsights 
+                employee={detailEmployee}
+                isAnonymized={isAnonymized}
+                onBack={() => router.push("/dashboard?view=team")}
+                onToggleAnonymity={() => setIsAnonymized(!isAnonymized)}
+             />
+          )}
+
+          {/* ==================== 5. OTHER VIEWS ==================== */}
+          {activeView === "simulation" && <SimulationPanel />}
+          {activeView === "network" && <NetworkGraph nodes={networkNodes} edges={networkEdges} />}
+          {activeView === "safety-valve" && <div className="text-center p-10 text-slate-400">Safety Valve Module Coming Soon</div>}
+          {activeView === "talent-scout" && <div className="text-center p-10 text-slate-400">Talent Scout Module Coming Soon</div>}
+          {activeView === "culture" && <div className="text-center p-10 text-slate-400">Culture Metrics Module Coming Soon</div>}
+
+        </main>
+      </ScrollArea>
     </div>
   )
 }
