@@ -70,7 +70,7 @@ function NetworkContent() {
       "Skyler White", "Avery Brown", "Reese Witherspoon", "Charlie Puth", "Harper Lee"
     ]
     const roles = ["Engineer", "Designer", "Manager", "Analyst", "Lead", "Director"]
-    const riskLevels = ["healthy", "healthy", "healthy", "elevated", "critical"] as const
+    const riskLevels = ["LOW", "LOW", "LOW", "ELEVATED", "CRITICAL"] as const
 
     return names.map((name, idx) => ({
       id: `node-${idx}`,
@@ -155,9 +155,9 @@ function NetworkContent() {
 
   const getRiskBadge = (risk: string) => {
     switch (risk) {
-      case "high": return "bg-red-100 text-red-700 border-red-200"
-      case "medium": return "bg-yellow-100 text-yellow-700 border-yellow-200"
-      default: return "bg-green-100 text-green-700 border-green-200"
+      case "high": return "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/30"
+      case "medium": return "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-500/15 dark:text-yellow-400 dark:border-yellow-500/30"
+      default: return "bg-green-100 text-green-700 border-green-200 dark:bg-green-500/15 dark:text-green-400 dark:border-green-500/30"
     }
   }
 

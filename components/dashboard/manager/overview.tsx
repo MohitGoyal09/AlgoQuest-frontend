@@ -10,7 +10,6 @@ import { NetworkGraph } from "@/components/network-graph"
 import { SkillsRadar } from "@/components/skills-radar"
 import { ForecastChart } from "@/components/forecast-chart"
 import { NudgeCard } from "@/components/nudge-card"
-import { CentralityMetric } from "@/components/dashboard/engines/engine-content"
 
 // Using existing types or create locally if needed
 import { Employee, NetworkNode, NetworkEdge, NudgeData } from "@/types"
@@ -84,7 +83,7 @@ export function ManagerOverview({
            </CardTitle>
         </CardHeader>
         <CardContent className="pt-4 h-[200px]">
-           <ForecastChart data={forecastData} />
+           <ForecastChart data={forecastData as any} />
         </CardContent>
       </Card>
 

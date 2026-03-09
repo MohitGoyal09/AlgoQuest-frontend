@@ -10,7 +10,7 @@ interface AnonymityToggleProps {
 
 export function AnonymityToggle({ isAnonymized, onToggle }: AnonymityToggleProps) {
   return (
-    <div className="flex items-center space-x-2 bg-[#0b101b] border border-white/10 px-4 py-2 rounded-full">
+    <div className="flex items-center space-x-2 bg-background border border-white/10 px-4 py-2 rounded-full">
       <div className={`p-1.5 rounded-full ${isAnonymized ? 'bg-purple-500/20 text-purple-400' : 'bg-slate-700/50 text-slate-400'}`}>
         {isAnonymized ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
       </div>

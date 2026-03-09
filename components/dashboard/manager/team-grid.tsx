@@ -50,9 +50,9 @@ export function TeamGrid({ employees, isAnonymized }: TeamGridProps) {
           <p className="text-sm mt-1">Team members will appear here once assigned</p>
         </div>
       ) : (
-        <div className="bg-[#0b101b] border border-white/10 rounded-xl overflow-hidden shadow-2xl shadow-black/50">
+        <div className="bg-background border border-white/10 rounded-xl overflow-hidden shadow-2xl shadow-black/50">
       <div className="p-4 border-b border-white/10 flex justify-between items-center bg-white/5">
-        <h3 className="font-semibold text-lg text-white flex items-center gap-2">
+        <h3 className="font-semibold text-lg text-foreground flex items-center gap-2">
           <Badge variant="outline" className="bg-primary/20 text-primary border-primary/50 text-xs">Beta</Badge>
           Team Roster
         </h3>

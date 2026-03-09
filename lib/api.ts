@@ -352,6 +352,7 @@ export async function checkHealth(): Promise<boolean> {
 export interface AgendaTalkingPoint {
   id: number;
   text: string;
+  type?: string;
 }
 
 export interface AgendaSuggestion {
@@ -388,12 +389,18 @@ export interface SemanticQueryResult {
   risk_level: string;
   insights: string[];
   suggested_action: string;
+  velocity?: number;
+  betweenness?: number;
+  eigenvector?: number;
+  skills?: string[];
+  tenure_months?: number;
 }
 
 export interface SemanticQueryResponse {
   query: string;
   results: SemanticQueryResult[];
-  summary: string;
+  summary?: string;
+  response?: string;
 }
 
 /**

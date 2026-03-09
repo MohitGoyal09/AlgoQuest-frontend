@@ -2,6 +2,7 @@ import React from "react"
 import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import { AuthProvider } from '@/contexts/auth-context'
+import { ThemeProvider } from '@/components/theme-provider'
 import { ClientLayout } from "@/components/layout/client-layout"
 import { AmbientBackground } from "@/components/ambient-background"
 import { RouteProgressBar } from "@/components/route-progress-bar"
@@ -33,15 +34,17 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`} suppressHydrationWarning>
-        <AmbientBackground />
-        <RouteProgressBar />
-        <AuthProvider>
-          <ClientLayout>
-            {children}
-          </ClientLayout>
-        </AuthProvider>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+          <AmbientBackground />
+          <RouteProgressBar />
+          <AuthProvider>
+            <ClientLayout>
+              {children}
+            </ClientLayout>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

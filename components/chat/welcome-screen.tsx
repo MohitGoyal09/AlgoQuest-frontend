@@ -58,14 +58,14 @@ export function WelcomeScreen({ onSendMessage, userName = "User" }: WelcomeScree
       {/* Greeting Section */}
       <div className="text-center space-y-6 animate-in fade-in zoom-in-95 duration-700">
         <div className="relative inline-block">
-          <div className="h-20 w-20 mx-auto bg-[#1e1e20] border border-white/10 rounded-2xl flex items-center justify-center shadow-2xl mb-2 relative z-10 group">
+          <div className="h-20 w-20 mx-auto bg-card border border-border rounded-2xl flex items-center justify-center shadow-2xl mb-2 relative z-10 group">
             <div className="absolute inset-0 bg-green-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <Shield className="h-10 w-10 text-green-500 drop-shadow-[0_0_15px_rgba(34,197,94,0.5)]" />
           </div>
         </div>
         
         <div className="space-y-2">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
             Hello, <span className="text-emerald-400">{userName}</span>
             </h1>
             <p className="text-lg text-muted-foreground/60 font-medium">
@@ -76,30 +76,30 @@ export function WelcomeScreen({ onSendMessage, userName = "User" }: WelcomeScree
 
       {/* Main Input Area */}
       <div className="w-full max-w-2xl relative animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
-        <div className="relative bg-[#09090b]/60 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl transition-all duration-300 ring-1 ring-white/5 focus-within:ring-green-500/30 focus-within:border-green-500/30 group">
+        <div className="relative bg-background/60 backdrop-blur-xl border border-border rounded-3xl shadow-2xl transition-all duration-300 ring-1 ring-border focus-within:ring-green-500/30 focus-within:border-green-500/30 group">
           <form onSubmit={handleSubmit} className="p-2">
             <textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask about team health, risks, or performance..."
-              className="w-full bg-transparent px-4 py-3 text-[15px] placeholder:text-muted-foreground/40 focus:outline-none resize-none min-h-[60px] max-h-[200px] text-white"
+              className="w-full bg-transparent px-4 py-3 text-[15px] placeholder:text-muted-foreground/40 focus:outline-none resize-none min-h-[60px] max-h-[200px] text-foreground"
               onKeyDown={handleKeyDown}
               rows={1}
             />
             
             <div className="flex items-center justify-between px-2 pb-1.5 mt-2">
               <div className="flex items-center gap-1">
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground/40 hover:text-white hover:bg-white/10 transition-colors">
+                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground/40 hover:text-foreground hover:bg-muted transition-colors">
                   <Paperclip className="h-4 w-4" />
                 </Button>
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground/40 hover:text-white hover:bg-white/10 transition-colors">
+                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground/40 hover:text-foreground hover:bg-muted transition-colors">
                   <Globe className="h-4 w-4" />
                 </Button>
               </div>
 
               <div className="flex items-center gap-2">
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground/40 hover:text-white hover:bg-white/10 transition-colors">
+                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground/40 hover:text-foreground hover:bg-muted transition-colors">
                   <Mic className="h-4 w-4" />
                 </Button>
                 <Button 
@@ -125,14 +125,14 @@ export function WelcomeScreen({ onSendMessage, userName = "User" }: WelcomeScree
             <Card 
                 key={index}
                 onClick={() => onSendMessage(card.prompt)}
-                className="group relative overflow-hidden bg-[#121214] border-white/5 hover:border-white/10 transition-all duration-300 cursor-pointer hover:bg-[#1a1a1c]"
+                className="group relative overflow-hidden bg-card border-border/50 hover:border-border transition-all duration-300 cursor-pointer hover:bg-accent"
             >
                 <div className="p-5 flex items-start gap-4">
-                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 group-hover:bg-white/10 transition-colors">
+                    <div className="p-2.5 rounded-xl bg-muted border border-border group-hover:bg-muted/80 transition-colors">
                         {card.icon}
                     </div>
                     <div className="space-y-1">
-                        <h3 className="font-medium text-sm text-gray-200 group-hover:text-white transition-colors">
+                        <h3 className="font-medium text-sm text-foreground group-hover:text-foreground transition-colors">
                             {card.title}
                         </h3>
                         <p className="text-xs text-muted-foreground/60 leading-relaxed">

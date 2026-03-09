@@ -16,9 +16,9 @@ const DEPARTMENTS = [
 
 export function OrgHealthMap() {
   return (
-    <Card className="col-span-1 lg:col-span-2 bg-[#0b101b] border-white/10">
+    <Card className="col-span-1 lg:col-span-2 bg-background border-white/10">
       <CardHeader>
-        <CardTitle className="flex justify-between items-center text-white">
+        <CardTitle className="flex justify-between items-center text-foreground">
           <span>Organization Map</span>
           <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-400">
             Heatmap View
@@ -61,7 +61,7 @@ export function OrgHealthMap() {
                          'bg-teal-950/40 border-teal-500 shadow-teal-900/20'}
                      `}
                    >
-                      <span className="font-bold text-xs text-white">{dept.members}</span>
+                      <span className="font-bold text-xs text-foreground">{dept.members}</span>
                    </div>
                    <div className="mt-2 text-xs font-medium text-slate-300 bg-black/60 px-2 py-0.5 rounded-full border border-white/10">
                       {dept.name}

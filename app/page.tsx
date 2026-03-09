@@ -157,7 +157,7 @@ export default function Home() {
         </section>
 
         {/* CTA Section */}
-        <section className="py-24 bg-[#0b101b] relative overflow-hidden">
+        <section className="py-24 bg-background relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(34,197,94,0.1)_0%,_transparent_70%)]" />
           <div className="container px-6 mx-auto text-center relative z-10">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">

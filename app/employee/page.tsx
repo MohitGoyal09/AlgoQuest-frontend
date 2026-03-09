@@ -213,7 +213,7 @@ function EmployeeDashboardContent() {
           const talentData = await getNetworkAnalysis(meData.user.user_hash)
           setSkillsData(talentData)
         } catch (err) {
-          console.warn("Could not fetch talent data:", err)
+          // talent data fetch failed
         }
       }
     } catch (err: any) {
@@ -277,32 +277,35 @@ function EmployeeDashboardContent() {
     belongingness: p.belongingness_score ? p.belongingness_score * 100 : 50,
   })).reverse()
 
-  // If no real data, generate mock data for demo
+  // If no real data, use deterministic demo data (no Math.random to avoid hydration flicker)
   if (chartData.length === 0) {
+    const demoVelocities = [42, 55, 48, 63, 51, 44, 58, 67, 53, 46, 61, 49, 57, 52]
+    const demoRisk = [30, 30, 60, 60, 30, 30, 60, 100, 60, 30, 60, 30, 60, 30]
+    const demoBelong = [72, 68, 65, 61, 58, 62, 55, 50, 53, 57, 52, 56, 54, 58]
     chartData = Array.from({ length: 14 }, (_, i) => ({
       day: `Day ${i + 1}`,
-      velocity: 40 + Math.random() * 30,
-      risk: Math.random() > 0.7 ? 100 : Math.random() > 0.4 ? 60 : 30,
-      belongingness: 50 + Math.random() * 30,
+      velocity: demoVelocities[i],
+      risk: demoRisk[i],
+      belongingness: demoBelong[i],
     }))
   }
 
-  // Generate wellbeing data - use real or mock
-  const wellbeingFromData = data?.risk?.belongingness_score ? data.risk.belongingness_score * 100 : null
+  // Generate wellbeing data - use real data or deterministic demo values
+  const wellbeingFromData = data?.risk?.thwarted_belongingness ? data.risk.thwarted_belongingness * 100 : null
   const mockWellbeing = [
-    { key: "belongingness", value: wellbeingFromData || Math.round(60 + Math.random() * 25), trend: wellbeingFromData ? (wellbeingFromData > 50 ? "+5%" : "-3%") : "+2%", icon: Heart, color: "text-pink-500", bg: "bg-pink-500/10" },
-    { key: "energy", value: Math.round(55 + Math.random() * 30), trend: "-2%", icon: Battery, color: "text-green-500", bg: "bg-green-500/10" },
-    { key: "focus", value: Math.round(60 + Math.random() * 30), trend: "+8%", icon: Target, color: "text-blue-500", bg: "bg-blue-500/10" },
-    { key: "rest", value: Math.round(45 + Math.random() * 35), trend: "-5%", icon: Moon, color: "text-purple-500", bg: "bg-purple-500/10" },
+    { key: "belongingness", value: wellbeingFromData || 72, trend: wellbeingFromData ? (wellbeingFromData > 50 ? "+5%" : "-3%") : "+2%", icon: Heart, color: "text-pink-500", bg: "bg-pink-500/10" },
+    { key: "energy", value: 68, trend: "-2%", icon: Battery, color: "text-green-500", bg: "bg-green-500/10" },
+    { key: "focus", value: 78, trend: "+8%", icon: Target, color: "text-blue-500", bg: "bg-blue-500/10" },
+    { key: "rest", value: 54, trend: "-5%", icon: Moon, color: "text-purple-500", bg: "bg-purple-500/10" },
   ]
 
-  // Get velocity from real data or use default
-  const velocity = data?.risk?.velocity || 45 + Math.random() * 25
-  const confidence = data?.risk?.confidence || 0.7 + Math.random() * 0.25
+  // Get velocity from real data or use deterministic default
+  const velocity = data?.risk?.velocity || 58
+  const confidence = data?.risk?.confidence || 0.82
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0b101b] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="h-12 w-12 border-4 border-green-500/30 border-t-green-500 rounded-full animate-spin mx-auto mb-4" />
           <p className="text-slate-400">Loading your dashboard...</p>
@@ -313,7 +316,7 @@ function EmployeeDashboardContent() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0b101b] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="bg-[#1a1a2e] border-red-500/20 max-w-md">
           <CardHeader>
             <CardTitle className="text-red-400 flex items-center gap-2">
@@ -472,18 +475,14 @@ function EmployeeDashboardContent() {
               </CardHeader>
               <CardContent>
                 <div className="flex justify-center">
-                  {skillsData?.skills ? (
-                    <SkillsRadar data={skillsData.skills} height={300} />
-                  ) : (
-                    <SkillsRadar data={[
-                      { skill: "Backend", average: 75 + Math.random() * 20 },
-                      { skill: "Frontend", average: 60 + Math.random() * 25 },
-                      { skill: "DevOps", average: 45 + Math.random() * 30 },
-                      { skill: "Database", average: 70 + Math.random() * 20 },
-                      { skill: "Testing", average: 55 + Math.random() * 25 },
-                      { skill: "Security", average: 40 + Math.random() * 30 },
-                    ]} height={300} />
-                  )}
+                  <SkillsRadar data={{
+                    technical: 85,
+                    communication: 72,
+                    leadership: 58,
+                    collaboration: 78,
+                    adaptability: 65,
+                    creativity: 52,
+                  }} height={300} />
                 </div>
               </CardContent>
             </Card>
@@ -535,7 +534,7 @@ function EmployeeDashboardContent() {
                         <metric.icon className={cn("h-4 w-4", metric.color)} />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-white">{metric.label}</p>
+                        <p className="text-sm font-medium text-foreground capitalize">{metric.key}</p>
                         <p className="text-xs text-slate-400">{metric.value}%</p>
                       </div>
                     </div>

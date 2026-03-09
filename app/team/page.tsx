@@ -27,6 +27,7 @@ import { ProtectedRoute } from "@/components/protected-route"
 import { TeamNarrative } from "@/components/ai/TeamNarrative"
 import { SkillsRadar } from "@/components/skills-radar"
 import { api } from "@/lib/api"
+import { ExportReport } from "@/components/export-report"
 
 interface TeamMember {
   pseudonym: string
@@ -126,24 +127,19 @@ function TeamPageContent() {
 
   const fetchTeamData = useCallback(async () => {
     if (authLoading) return
-    
+
     try {
       setLoading(true)
-      console.log(`[team] Fetching team data...`)
-      
+
       const [teamRes, analyticsRes] = await Promise.all([
         api.get<TeamData>('/team/?limit=1000'),
         api.get<TeamAnalytics>('/team/analytics?days=30')
       ])
-      
-      console.log('[team] Team response:', teamRes)
+
       setTeamData(teamRes as TeamData)
       setAnalytics(analyticsRes as TeamAnalytics)
       setError(null)
     } catch (err: any) {
-      console.error('[team] Error fetching team data:', err)
-      console.error('[team] Response status:', err.response?.status)
-      console.error('[team] Response data:', err.response?.data)
       setError(err.response?.data?.detail || err.message || "Failed to load team data")
     } finally {
       setLoading(false)
@@ -176,10 +172,10 @@ function TeamPageContent() {
 
   const getRiskColor = (level: string) => {
     switch (level) {
-      case "CRITICAL": return "bg-red-100 text-red-800 border-red-200"
-      case "ELEVATED": return "bg-amber-100 text-amber-800 border-amber-200"
-      case "LOW": return "bg-green-100 text-green-800 border-green-200"
-      default: return "bg-gray-100 text-gray-800 border-gray-200"
+      case "CRITICAL": return "bg-red-100 text-red-800 border-red-200 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/30"
+      case "ELEVATED": return "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/30"
+      case "LOW": return "bg-green-100 text-green-800 border-green-200 dark:bg-green-500/15 dark:text-green-400 dark:border-green-500/30"
+      default: return "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-500/15 dark:text-gray-400 dark:border-gray-500/30"
     }
   }
 
@@ -282,9 +278,30 @@ function TeamPageContent() {
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard")}>
-            Back to Dashboard
-          </Button>
+          <div className="flex items-center gap-2">
+            <ExportReport
+              title="Team Report"
+              columns={[
+                { key: "name", label: "Name" },
+                { key: "risk_level", label: "Risk Level" },
+                { key: "consent", label: "Consent" },
+              ]}
+              data={(teamData.team?.members || []).map((m: any) => ({
+                name: m.pseudonym || `User ${m.real_hash?.slice(0, 6) || "—"}`,
+                risk_level: m.risk_level || "LOW",
+                consent: m.has_consent ? "Granted" : "Not Granted",
+              }))}
+              summary={[{
+                "Team Size": totalCount,
+                "Health Score": analytics?.health_score ? `${analytics.health_score}%` : "N/A",
+                "Consent Rate": teamData.consent_summary?.percentage ? `${teamData.consent_summary.percentage}%` : "N/A",
+                "At Risk": teamData.metrics?.at_risk_count || 0,
+              }]}
+            />
+            <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard")}>
+              Back to Dashboard
+            </Button>
+          </div>
         </div>
       </header>
 

@@ -43,6 +43,7 @@ export function CommandPalette({ onNavigate }: CommandPaletteProps) {
         () => [
             // Navigation
             { id: 'dashboard', label: 'Go to Dashboard', category: 'navigation', icon: LayoutDashboard, action: () => onNavigate('dashboard') },
+            { id: 'data-pipeline', label: 'Data Pipeline', category: 'navigation', icon: Zap, action: () => onNavigate('data-ingestion') },
             { id: 'safety-valve', label: 'Safety Valve Engine', category: 'navigation', icon: Shield, action: () => onNavigate('safety-valve') },
             { id: 'talent-scout', label: 'Talent Scout Engine', category: 'navigation', icon: Sparkles, action: () => onNavigate('talent-scout') },
             { id: 'culture', label: 'Culture Thermometer', category: 'navigation', icon: Thermometer, action: () => onNavigate('culture') },
@@ -51,6 +52,8 @@ export function CommandPalette({ onNavigate }: CommandPaletteProps) {
             { id: 'me', label: 'My Wellbeing', category: 'navigation', icon: User, action: () => onNavigate('me') },
             { id: 'team', label: 'My Team', category: 'navigation', icon: Users, action: () => onNavigate('team') },
             { id: 'admin', label: 'Admin Panel', category: 'navigation', icon: Settings, action: () => onNavigate('admin') },
+            { id: 'audit-log', label: 'Audit Log', category: 'navigation', icon: Shield, action: () => onNavigate('audit-log') },
+            { id: 'privacy', label: 'Privacy Dashboard', category: 'navigation', icon: Shield, action: () => onNavigate('privacy') },
             // Actions
             { id: 'toggle-sidebar', label: 'Toggle Sidebar', category: 'actions', icon: ArrowRight, shortcut: '[', action: () => { /* handled externally */ } },
         ],

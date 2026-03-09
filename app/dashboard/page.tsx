@@ -21,6 +21,8 @@ import { ForecastChart } from "@/components/forecast-chart"
 import { AgendaGenerator } from "@/components/copilot/AgendaGenerator"
 import { AskSentinel } from "@/components/ai/AskSentinel"
 import { AskSentinelWidget } from "@/components/ask-sentinel-widget"
+import { ExecutiveSummary } from "@/components/executive-summary"
+import { BurnoutPrediction } from "@/components/burnout-prediction"
 import { useAuth } from "@/contexts/auth-context"
 import { api } from "@/lib/api"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -338,21 +340,20 @@ function DashboardContent() {
       await injectEvent(currentEmployee.user_hash, eventType)
       setTimeout(() => refetchEvents(), 1000) // Refresh feed
     } catch (e) {
-      console.error("Simulation injection failed", e)
+      // injection failed
     }
   }
 
   const handleCreatePersona = async (personaId: string) => {
     const validPersonas: PersonaType[] = ['alex_burnout', 'sarah_gem', 'jordan_steady', 'maria_contagion'];
     if (!validPersonas.includes(personaId as PersonaType)) {
-      console.error(`Invalid persona type: ${personaId}`);
       return;
     }
     try {
       const email = `${personaId.split('_')[0]}@simulation.com`
       await createPersona(email, personaId as PersonaType)
     } catch (e) {
-      console.error("Failed to create persona", e)
+      // persona creation failed
     }
   }
 
@@ -389,7 +390,7 @@ function DashboardContent() {
   }
 
   return (
-    <div className="flex flex-1 flex-col h-full bg-[#0b101b]">
+    <div className="flex flex-1 flex-col h-full bg-background">
       <DashboardHeader 
         selectedUser={currentEmployee} 
         activeView={activeView} 
@@ -403,7 +404,7 @@ function DashboardContent() {
             <div className="space-y-6 animate-in fade-in duration-500">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold tracking-tight text-white mb-1">My Dashboard</h2>
+                  <h2 className="text-2xl font-bold tracking-tight text-foreground mb-1">My Dashboard</h2>
                   <p className="text-sm text-slate-400">Personal wellness insights and team activity feed.</p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -415,6 +416,9 @@ function DashboardContent() {
                 </div>
               </div>
 
+              {/* AI Executive Summary */}
+              <ExecutiveSummary metrics={mappedTeamMetrics} />
+
               {/* Top Stats Cards */}
               <StatCards metrics={mappedTeamMetrics} />
 
@@ -422,7 +426,7 @@ function DashboardContent() {
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
                 
                 {/* Left Column - Risk & Metrics */}
-                <Card className="col-span-4 bg-[#111827]/50 border-white/10 backdrop-blur-sm">
+                <Card className="col-span-4 bg-card/50 border-border backdrop-blur-sm">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                        <Shield className="h-5 w-5 text-emerald-400" />
@@ -431,12 +435,12 @@ function DashboardContent() {
                     <CardDescription>Real-time analysis of work patterns and wellbeing indicators.</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <RiskAssessment riskData={riskData} useMock={!riskData} />
+                    <RiskAssessment employee={currentEmployee as any} />
                   </CardContent>
                 </Card>
 
                 {/* Right Column - Activity Feed */}
-                <Card className="col-span-3 bg-[#111827]/50 border-white/10 backdrop-blur-sm">
+                <Card className="col-span-3 bg-card/50 border-border backdrop-blur-sm">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                        <Activity className="h-5 w-5 text-blue-400" />
@@ -450,16 +454,19 @@ function DashboardContent() {
                 </Card>
               </div>
 
+              {/* Burnout Prediction */}
+              <BurnoutPrediction riskData={riskData ?? undefined} history={history} />
+
               {/* Secondary Grid */}
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
                  <div className="col-span-4 bg-[#111827]/50 border border-white/10 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold mb-4 text-white">Velocity Trend</h3>
+                    <h3 className="text-lg font-semibold mb-4 text-foreground">Velocity Trend</h3>
                     <div className="h-[300px]">
-                       <VelocityChart data={history} />
+                       <VelocityChart history={history} />
                     </div>
                  </div>
                  <div className="col-span-3">
-                    <NudgeCard nudge={nudgeData} />
+                    <NudgeCard nudge={nudgeData ?? undefined} />
                  </div>
               </div>
             </div>
@@ -490,9 +497,9 @@ function DashboardContent() {
                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   <div className="col-span-2 space-y-8">
                      <OrgHealthMap />
-                     <Card className="bg-[#111827]/80 border-white/10">
+                     <Card className="bg-card/80 border-border">
                         <CardHeader>
-                           <CardTitle className="text-white">Recent System Events</CardTitle>
+                           <CardTitle className="text-foreground">Recent System Events</CardTitle>
                         </CardHeader>
                         <CardContent>
                            <AuditLogFeed />
@@ -511,7 +518,7 @@ function DashboardContent() {
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                <div className="flex items-center justify-between">
                   <div>
-                     <h1 className="text-2xl font-bold text-white">Team Dashboard</h1>
+                     <h1 className="text-2xl font-bold text-foreground">Team Dashboard</h1>
                      <p className="text-slate-400 text-sm">Manage team velocity, burnout risk, and wellbeing.</p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -529,7 +536,7 @@ function DashboardContent() {
                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Team Members List */}
                   <div className="lg:col-span-2">
-                     <Card className="bg-[#1a1a2e] border-white/5">
+                     <Card className="bg-card border-border/50">
                         <CardHeader>
                            <CardTitle className="text-lg flex items-center gap-2">
                               <Users className="h-5 w-5 text-blue-400" />
@@ -545,7 +552,7 @@ function DashboardContent() {
                   {/* Right Sidebar */}
                   <div className="space-y-6">
                      {/* Team Health Summary */}
-                     <Card className="bg-[#1a1a2e] border-white/5">
+                     <Card className="bg-card border-border/50">
                         <CardHeader>
                            <CardTitle className="text-lg flex items-center gap-2">
                               <Shield className="h-5 w-5 text-green-400" />
@@ -568,14 +575,14 @@ function DashboardContent() {
                            <div className="pt-2 border-t border-white/5">
                               <div className="flex justify-between items-center">
                                  <span className="text-slate-400">Avg Velocity</span>
-                                 <span className="text-white font-mono">{mappedTeamMetrics.avg_velocity.toFixed(1)}</span>
+                                 <span className="text-foreground font-mono">{mappedTeamMetrics.avg_velocity.toFixed(1)}</span>
                               </div>
                            </div>
                         </CardContent>
                      </Card>
 
                      {/* Quick Actions */}
-                     <Card className="bg-[#1a1a2e] border-white/5">
+                     <Card className="bg-card border-border/50">
                         <CardHeader>
                            <CardTitle className="text-lg flex items-center gap-2">
                               <Zap className="h-5 w-5 text-purple-400" />
@@ -615,9 +622,104 @@ function DashboardContent() {
           {/* ==================== 5. OTHER VIEWS ==================== */}
           {activeView === "simulation" && <SimulationPanel />}
           {activeView === "network" && <NetworkGraph nodes={networkNodes} edges={networkEdges} />}
-          {activeView === "safety-valve" && <div className="text-center p-10 text-slate-400">Safety Valve Module Coming Soon</div>}
-          {activeView === "talent-scout" && <div className="text-center p-10 text-slate-400">Talent Scout Module Coming Soon</div>}
-          {activeView === "culture" && <div className="text-center p-10 text-slate-400">Culture Metrics Module Coming Soon</div>}
+          {/* Safety Valve Engine View */}
+          {activeView === "safety-valve" && (
+            <div className="space-y-6 animate-in fade-in duration-500">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground mb-1">Safety Valve Engine</h2>
+                <p className="text-sm text-muted-foreground">IPT-based burnout detection using behavioral signals.</p>
+              </div>
+              <div className="grid gap-6 md:grid-cols-2">
+                <Card className="bg-card/50 border-border backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Shield className="h-5 w-5 text-emerald-400" />Risk Assessment</CardTitle>
+                  </CardHeader>
+                  <CardContent><RiskAssessment employee={currentEmployee as any} /></CardContent>
+                </Card>
+                <BurnoutPrediction riskData={riskData ?? undefined} history={history} />
+              </div>
+              <Card className="bg-card/50 border-border backdrop-blur-sm">
+                <CardHeader><CardTitle>How Safety Valve Works</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {[
+                      { title: "1. Signal Collection", desc: "Monitors commit times, Slack patterns, Jira velocity, and calendar load to detect behavioral shifts." },
+                      { title: "2. IPT Risk Scoring", desc: "Applies Joiner's Interpersonal-Psychological Theory — measuring thwarted belongingness and perceived burdensomeness." },
+                      { title: "3. Proactive Nudges", desc: "Generates manager nudges: schedule 1:1, adjust workload, or recognize contributions." },
+                    ].map((s) => (
+                      <div key={s.title} className="p-4 rounded-lg bg-muted/30 border border-border">
+                        <h4 className="text-sm font-semibold text-foreground mb-1">{s.title}</h4>
+                        <p className="text-xs text-muted-foreground">{s.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+          {/* Talent Scout Engine View */}
+          {activeView === "talent-scout" && (
+            <div className="space-y-6 animate-in fade-in duration-500">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground mb-1">Talent Scout Engine</h2>
+                <p className="text-sm text-muted-foreground">Graph-based analysis to discover hidden gems and high-impact contributors.</p>
+              </div>
+              <div className="grid gap-6 md:grid-cols-3">
+                {[
+                  { label: "Betweenness Centrality", desc: "How often a person bridges disconnected groups.", tag: "Identifies: Connectors", color: "text-purple-400" },
+                  { label: "Eigenvector Centrality", desc: "Connected to other important people with outsized influence.", tag: "Identifies: Influencers", color: "text-blue-400" },
+                  { label: "Unblocking Score", desc: "Frequency of unblocking teammates via PR reviews and pair sessions.", tag: "Identifies: Hidden Gems", color: "text-emerald-400" },
+                ].map((m) => (
+                  <Card key={m.label} className="bg-card/50 border-border">
+                    <CardHeader><CardTitle className={`text-sm ${m.color}`}>{m.label}</CardTitle></CardHeader>
+                    <CardContent>
+                      <p className="text-xs text-muted-foreground mb-2">{m.desc}</p>
+                      <Badge variant="outline" className="text-xs">{m.tag}</Badge>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              <Card className="bg-card/50 border-border">
+                <CardHeader><CardTitle>Team Network Graph</CardTitle><CardDescription>Collaboration patterns across the team.</CardDescription></CardHeader>
+                <CardContent className="h-[400px]"><NetworkGraph nodes={networkNodes} edges={networkEdges} /></CardContent>
+              </Card>
+            </div>
+          )}
+          {/* Culture Thermometer Engine View */}
+          {activeView === "culture" && (
+            <div className="space-y-6 animate-in fade-in duration-500">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground mb-1">Culture Thermometer</h2>
+                <p className="text-sm text-muted-foreground">SIR epidemiological model applied to organizational sentiment.</p>
+              </div>
+              <div className="grid gap-6 md:grid-cols-2">
+                <Card className="bg-card/50 border-border">
+                  <CardHeader><CardTitle>SIR Contagion Forecast</CardTitle><CardDescription>Susceptible → Infected → Recovered dynamics.</CardDescription></CardHeader>
+                  <CardContent className="h-[300px]"><ForecastChart data={forecastData} isLoading={forecastLoading} /></CardContent>
+                </Card>
+                <Card className="bg-card/50 border-border">
+                  <CardHeader><CardTitle>Model Components</CardTitle></CardHeader>
+                  <CardContent className="space-y-3">
+                    {[
+                      { letter: "S", label: "Susceptible", desc: "Members at risk of morale decline based on proximity to negative patterns.", color: "blue" },
+                      { letter: "I", label: "Infected", desc: "Members showing negative shifts — reduced communication, late-night work.", color: "red" },
+                      { letter: "R", label: "Recovered", desc: "Members who improved after intervention — validates nudges work.", color: "emerald" },
+                    ].map((s) => (
+                      <div key={s.letter} className="flex items-start gap-3">
+                        <div className={`h-8 w-8 rounded-full bg-${s.color}-500/10 flex items-center justify-center shrink-0`}>
+                          <span className={`text-xs font-bold text-${s.color}-400`}>{s.letter}</span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{s.label}</p>
+                          <p className="text-xs text-muted-foreground">{s.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
 
         </main>
       </ScrollArea>

@@ -41,7 +41,7 @@ export default function TeamHealthPage() {
 
   return (
     <ProtectedRoute>
-      <div className="flex flex-colmin-h-screen bg-background p-6 lg:p-8 space-y-8">
+      <div className="flex flex-col min-h-screen bg-background p-6 lg:p-8 space-y-8">
         
         {/* Header */}
         <div className="flex flex-col gap-1">

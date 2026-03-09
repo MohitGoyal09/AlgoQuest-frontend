@@ -141,7 +141,7 @@ export function IndividualInsights({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{(employee.confidence * 100).toFixed(0)}%</div>
-            <Progress value={employee.confidence * 100} className="h-2 mt-2 bg-muted" indicatorClassName={`${employee.confidence > 0.7 ? "bg-red-500" : "bg-primary"}`} />
+            <Progress value={employee.confidence * 100} className={`h-2 mt-2 bg-muted [&>div]:${employee.confidence > 0.7 ? "bg-red-500" : "bg-primary"}`} />
             <p className="text-xs text-muted-foreground mt-2">+12% from last week</p>
           </CardContent>
         </Card>

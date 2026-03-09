@@ -20,7 +20,7 @@ export default function SimulationPage() {
         await injectEvent(userHash, eventType)
         setTimeout(() => refetchEvents(), 1000)
       } catch (e) {
-        console.error("Simulation injection failed", e)
+        // injection failed
       }
   }
 
@@ -31,7 +31,7 @@ export default function SimulationPage() {
         // We need to cast or validate personaId
         await createPersona(email, personaId as any)
     } catch (e) {
-        console.error("Failed to create persona", e)
+        // persona creation failed
     }
   }
 

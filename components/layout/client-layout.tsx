@@ -1,16 +1,31 @@
 "use client"
 
-import { Suspense, useState } from "react"
+import { Suspense, useState, useCallback } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
+import { CommandPalette } from "@/components/command-palette"
 import { Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
+
+  const handleCommandNavigate = useCallback((view: string) => {
+    // Handle direct page routes
+    const directRoutes = ['data-ingestion', 'me', 'team', 'admin', 'ask-sentinel']
+    if (directRoutes.includes(view)) {
+      router.push(`/${view}`)
+    } else if (view.startsWith('engines/') || view.startsWith('/engines/')) {
+      router.push(view.startsWith('/') ? view : `/${view}`)
+    } else {
+      // Dashboard views
+      router.push(`/dashboard?view=${view}`)
+    }
+  }, [router])
 
   // Hide sidebar on auth pages & landing page
   const isAuthPage = pathname === "/login" || pathname === "/register" || pathname === "/"
@@ -20,6 +35,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
+      <CommandPalette onNavigate={handleCommandNavigate} />
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex h-full shrink-0">
         <Suspense fallback={<div className="w-64 bg-muted animate-pulse" />}>

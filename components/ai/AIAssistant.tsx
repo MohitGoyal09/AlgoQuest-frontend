@@ -88,7 +88,7 @@ export function AIAssistant({ userHash, userName, riskLevel }: AIAssistantProps)
         content += `Found ${response.results.length} result${response.results.length > 1 ? "s" : ""}:\n\n`
         
         response.results.forEach((result, idx) => {
-          content += `### ${result.user_name || "Unknown User"}`
+          content += `### ${result.name || "Unknown User"}`
           if (result.risk_level) {
             content += ` *(${result.risk_level} risk)*`
           }
@@ -113,7 +113,7 @@ export function AIAssistant({ userHash, userName, riskLevel }: AIAssistantProps)
       updateLastMessage({ 
         content, 
         isLoading: false,
-        sources: response.results.map(r => r.user_name || "Unknown"),
+        sources: response.results.map(r => r.name || "Unknown"),
       })
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to execute query"

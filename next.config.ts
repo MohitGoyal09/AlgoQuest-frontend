@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Fix turbopack workspace root detection (parent dirs have stray package.json)
+  turbopack: {
+    root: ".",
+  },
+
   // Security: remove X-Powered-By header
   poweredByHeader: false,
 

@@ -1,7 +1,8 @@
-import { Bell, Search } from "lucide-react"
+import { Search } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { NotificationCenter } from "@/components/notification-center"
 import type { UserSummary } from "@/types"
 
 interface DashboardHeaderProps {
@@ -43,11 +44,8 @@ export function DashboardHeader({ selectedUser, activeView }: DashboardHeaderPro
             className="h-9 w-52 rounded-lg border-[var(--glass-border)] bg-[hsl(var(--muted))]/50 pl-9 text-sm placeholder:text-muted-foreground/50 focus-visible:ring-[hsl(var(--primary))]/20"
           />
         </div>
-        <Button variant="ghost" size="icon" className="relative h-9 w-9 text-muted-foreground hover:text-foreground">
-          <Bell className="h-[18px] w-[18px]" />
-          <span className="sr-only">Notifications</span>
-          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[hsl(var(--sentinel-critical))] dot-pulse ring-2 ring-[hsl(var(--card))]" />
-        </Button>
+        <ThemeToggle />
+        <NotificationCenter />
         <Badge
           variant="outline"
           className="hidden gap-1.5 border-[hsl(var(--primary))]/20 bg-[hsl(var(--primary))]/5 px-3 py-1 text-xs font-medium text-[hsl(var(--primary))] sm:flex"

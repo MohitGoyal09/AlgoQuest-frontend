@@ -6,17 +6,23 @@ import { useAuth } from '@/contexts/auth-context'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
+  allowedRoles?: string[]
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
   const router = useRouter()
+
+  const userRole = (user as any)?.user_metadata?.role || 'employee'
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login')
     }
-  }, [user, loading, router])
+    if (!loading && user && allowedRoles && !allowedRoles.includes(userRole)) {
+      router.push('/dashboard')
+    }
+  }, [user, loading, router, allowedRoles, userRole])
 
   if (loading) {
     return (
@@ -31,6 +37,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (!user) {
     return null // Will redirect
+  }
+
+  if (allowedRoles && !allowedRoles.includes(userRole)) {
+    return null // Will redirect to dashboard
   }
 
   return <>{children}</>

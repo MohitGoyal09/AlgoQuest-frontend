@@ -408,9 +408,9 @@ function CultureContent() {
                               <Badge 
                                 variant="secondary" 
                                 className={
-                                  highlight.type === "positive" ? "bg-green-100 text-green-700" :
-                                  highlight.type === "negative" ? "bg-red-100 text-red-700" :
-                                  "bg-yellow-100 text-yellow-700"
+                                  highlight.type === "positive" ? "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400" :
+                                  highlight.type === "negative" ? "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400" :
+                                  "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/15 dark:text-yellow-400"
                                 }
                               >
                                 {highlight.type}
@@ -549,7 +549,7 @@ function CultureContent() {
                               <p className="text-xs text-muted-foreground">Score</p>
                             </div>
                             <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                              metric.change >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                              metric.change >= 0 ? 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400'
                             }`}>
                               {metric.change >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                               {Math.abs(metric.change).toFixed(1)}%
@@ -622,9 +622,9 @@ function CultureContent() {
                           <Badge 
                             variant="secondary" 
                             className={
-                              event.type === "completed" ? "bg-green-100 text-green-700" :
-                              event.type === "upcoming" ? "bg-blue-100 text-blue-700" :
-                              "bg-purple-100 text-purple-700"
+                              event.type === "completed" ? "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400" :
+                              event.type === "upcoming" ? "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400" :
+                              "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-400"
                             }
                           >
                             {event.type}

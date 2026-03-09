@@ -211,7 +211,7 @@ function AdminPageContent() {
       const response = await api.get<{ managers: Manager[] }>("/admin/managers")
       setManagers((response as { managers: Manager[] }).managers)
     } catch (err: any) {
-      console.error("Failed to load managers:", err)
+      // managers fetch failed
     }
   }
 

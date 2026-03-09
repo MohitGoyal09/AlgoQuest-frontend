@@ -30,7 +30,7 @@ const ROLE_ROUTES: Record<string, string> = {
 }
 
 // Protected routes that require authentication
-const PROTECTED_ROUTES = ["/me", "/profile", "/team", "/admin", "/dashboard", "/engines"]
+const PROTECTED_ROUTES = ["/me", "/profile", "/team", "/admin", "/dashboard", "/engines", "/data-ingestion", "/audit-log", "/privacy", "/team-health"]
 
 // Routes that are role-specific (only accessible by certain roles)
 const ROLE_SPECIFIC_ROUTES: Record<string, string[]> = {
@@ -150,6 +150,11 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // Note: JWT is decoded client-side for routing hints only.
+  // Backend performs full JWT verification for all API calls via Supabase.
+  // This is acceptable because the middleware only gates UI navigation,
+  // not data access — all sensitive operations go through authenticated API endpoints.
+
   // If accessing /dashboard or /, redirect to role-specific page
   if (ROLE_BASED_PATHS.includes(pathname)) {
     const defaultRoute = ROLE_ROUTES[userRole] || "/me"
@@ -170,6 +175,10 @@ export const config = {
     "/me/:path*",
     "/team/:path*",
     "/admin/:path*",
+    "/data-ingestion/:path*",
+    "/audit-log/:path*",
+    "/privacy/:path*",
+    "/team-health/:path*",
   ],
 }
 

@@ -20,6 +20,9 @@ import {
   Plus,
   LogOut,
   User as UserIcon,
+  Database,
+  FileText,
+  Lock,
 } from "lucide-react"
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
 import { useState, useRef, useEffect } from "react"
@@ -49,16 +52,25 @@ const primaryNavItems: Record<string, Array<{ id: string; label: string; icon: a
     { id: "ask-sentinel", label: "Ask Sentinel", icon: MessageSquare, href: "/ask-sentinel" },
     { id: "wellbeing", label: "My Wellbeing", icon: Heart, href: "/employee" },
     { id: "progress", label: "Progress Report", icon: TrendingUp, href: "/employee?view=progress" },
+    { id: "data-ingestion", label: "Data Pipeline", icon: Database, href: "/data-ingestion" },
   ],
   manager: [
     { id: "ask-sentinel", label: "Ask Sentinel", icon: MessageSquare, href: "/ask-sentinel" },
     { id: "team", label: "My Team", icon: Users, href: "/team" },
     { id: "dashboard", label: "Team Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+    { id: "team-health", label: "Team Health", icon: Heart, href: "/team-health" },
+    { id: "data-ingestion", label: "Data Pipeline", icon: Database, href: "/data-ingestion" },
+    { id: "audit-log", label: "Audit Log", icon: FileText, href: "/audit-log" },
+    { id: "privacy", label: "Privacy", icon: Lock, href: "/privacy" },
     { id: "engines", label: "Engines", icon: Zap, isDropdown: true },
   ],
   admin: [
     { id: "ask-sentinel", label: "Ask Sentinel", icon: MessageSquare, href: "/ask-sentinel" },
     { id: "admin", label: "Admin Panel", icon: Settings, href: "/admin" },
+    { id: "team-health", label: "Team Health", icon: Heart, href: "/team-health" },
+    { id: "data-ingestion", label: "Data Pipeline", icon: Database, href: "/data-ingestion" },
+    { id: "audit-log", label: "Audit Log", icon: FileText, href: "/audit-log" },
+    { id: "privacy", label: "Privacy", icon: Lock, href: "/privacy" },
     { id: "engines", label: "Engines", icon: Zap, isDropdown: true },
   ],
 }
@@ -69,7 +81,23 @@ export function AppSidebar({ activeView, onViewChange, collapsed, onToggleCollap
   const searchParams = useSearchParams()
   const { user, userRole, loading } = useAuth()
   const [enginesOpen, setEnginesOpen] = useState(true)
-  
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    if (dropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [dropdownOpen])
+
   if (loading) {
     return (
       <aside className="flex h-full w-[260px] items-center justify-center bg-sidebar">
@@ -253,7 +281,7 @@ export function AppSidebar({ activeView, onViewChange, collapsed, onToggleCollap
           )}
         </div>
         {!collapsed && onToggleCollapse && (
-           <button onClick={onToggleCollapse} className="text-muted-foreground/50 hover:text-white transition-colors p-1">
+           <button onClick={onToggleCollapse} aria-label="Toggle sidebar" className="text-muted-foreground/50 hover:text-white transition-colors p-1">
               <ChevronLeft className="h-4 w-4" />
            </button>
         )}
@@ -286,13 +314,13 @@ export function AppSidebar({ activeView, onViewChange, collapsed, onToggleCollap
 
       {/* User Info Footer */}
       <div className="mt-auto border-t border-white/5 p-2">
-        <div className="relative">
+        <div className="relative" ref={dropdownRef}>
           <button
             onClick={(e) => {
               e.stopPropagation()
-              const dropdown = document.getElementById('user-dropdown')
-              dropdown?.classList.toggle('hidden')
+              setDropdownOpen(prev => !prev)
             }}
+            aria-label="User menu"
             className="flex w-full items-center gap-3 rounded-lg p-2 transition-colors hover:bg-white/5 cursor-pointer group"
           >
             <Avatar className="h-9 w-9 rounded-lg border border-white/10 group-hover:border-white/20 transition-colors">
@@ -317,9 +345,9 @@ export function AppSidebar({ activeView, onViewChange, collapsed, onToggleCollap
           
           {/* Dropdown Menu */}
           {!collapsed && (
-            <div 
-              id="user-dropdown"
-              className="hidden absolute bottom-full left-0 right-0 mb-1 bg-[#0f172a] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50"
+            <div
+              role="menu"
+              className={cn(dropdownOpen ? "" : "hidden", "absolute bottom-full left-0 right-0 mb-1 bg-[#0f172a] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50")}
             >
               <div className="py-1">
                 <SettingsModal

@@ -41,17 +41,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchUserRole = async () => {
     try {
       const response = await api.get<MeResponse>('/me')
-      console.log('[auth] /me response:', response)
-      
+
       if (response && response.user) {
         setUserRole(response.user as UserRole)
         localStorage.setItem('userRole', response.user.role)
       } else {
-        console.warn('[auth] No user data in response:', response)
         setUserRole(null)
       }
     } catch (error) {
-      console.error('[auth] Failed to fetch user role:', error)
       setUserRole(null)
     }
   }
@@ -91,8 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Fetch user role to determine redirect
     try {
       const roleResponse = await api.get<MeResponse>('/me')
-      console.log('[auth] signIn /me response:', roleResponse)
-      
+
       const userData = roleResponse?.user
       
       // Store role in localStorage for middleware to access
@@ -104,7 +100,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.push('/ask-sentinel')
     } catch (error) {
       // Fallback to ask-sentinel if role fetch fails
-      console.error('[auth] Failed to fetch role:', error)
       router.push('/ask-sentinel')
     }
   }

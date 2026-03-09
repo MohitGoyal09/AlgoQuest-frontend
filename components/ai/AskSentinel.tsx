@@ -169,13 +169,13 @@ export function AskSentinel() {
 
         {results && (
           <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-            {results.summary && (
+            {(results.summary || results.response) && (
               <div className="rounded-lg bg-purple-500/10 p-4 border border-purple-500/20">
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkles className="h-4 w-4 text-purple-500" />
                   <span className="font-medium text-foreground">AI Summary</span>
                 </div>
-                <p className="text-sm text-muted-foreground">{results.summary}</p>
+                <p className="text-sm text-muted-foreground">{results.summary || results.response}</p>
               </div>
             )}
 

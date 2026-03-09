@@ -43,8 +43,55 @@
   --color-sidebar-ring: hsl(var(--sidebar-ring));
 }
 
-/* SENTINEL ULTRA - High Contrast Premium Dark Theme */
+/* SENTINEL - Light Theme */
 :root {
+  --background: 220 20% 97%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+
+  --primary: 142 70% 40%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 220 14% 92%;
+  --secondary-foreground: 222 47% 11%;
+
+  --muted: 220 14% 92%;
+  --muted-foreground: 220 10% 46%;
+
+  --accent: 142 70% 40%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 84% 55%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 220 13% 87%;
+  --input: 220 13% 87%;
+  --ring: 142 70% 40%;
+
+  --radius: 1rem;
+
+  /* Dashboard States */
+  --sentinel-healthy: 142 70% 40%;
+  --sentinel-elevated: 38 92% 45%;
+  --sentinel-critical: 0 84% 55%;
+  --sentinel-info: 199 89% 42%;
+
+  /* Sidebar */
+  --sidebar: 220 20% 95%;
+  --sidebar-foreground: 222 47% 15%;
+  --sidebar-primary: 142 70% 40%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 220 14% 90%;
+  --sidebar-accent-foreground: 222 47% 11%;
+  --sidebar-border: 220 13% 87%;
+  --sidebar-ring: 142 70% 40%;
+}
+
+/* SENTINEL ULTRA - High Contrast Premium Dark Theme */
+.dark {
   --background: 222 47% 4%;
   --foreground: 213 31% 98%;
   --card: 222 47% 4%;
@@ -70,8 +117,6 @@
   --border: 217 32% 17%;
   --input: 217 32% 17%;
   --ring: 142 70% 50%;
-
-  --radius: 1rem;
 
   /* Dashboard States */
   --sentinel-healthy: 142 70% 50%;
@@ -140,8 +185,13 @@ body {
 }
 
 .glass-card {
-  background: rgba(8, 12, 21, 0.7) !important;
+  background: hsl(var(--card) / 0.8) !important;
   backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+.dark .glass-card {
+  background: rgba(8, 12, 21, 0.7) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 

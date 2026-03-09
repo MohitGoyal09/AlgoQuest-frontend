@@ -1,0 +1,537 @@
+"use client"
+
+import { useState, useEffect, useCallback, useRef } from "react"
+import { api } from "@/lib/api"
+import { ProtectedRoute } from "@/components/protected-route"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  Database,
+  Upload,
+  GitBranch,
+  MessageSquare,
+  ClipboardList,
+  Calendar,
+  Shield,
+  Activity,
+  ArrowRight,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  RefreshCw,
+  Download,
+  Zap,
+  Lock,
+  Server,
+  BarChart3,
+  FileText,
+  Loader2,
+} from "lucide-react"
+import { cn } from "@/lib/utils"
+
+// Types
+interface ConnectorInfo {
+  name: string
+  status: string
+  icon: string
+  events_ingested: number
+  last_sync: string | null
+  latency_ms: number | null
+  description: string
+}
+
+interface PipelineStage {
+  name: string
+  status: string
+  processed: number
+  description: string
+}
+
+interface PipelineMetrics {
+  total_events: number
+  total_users: number
+  events_per_hour: number
+  avg_latency_ms: number
+  error_rate: number
+  uptime_hours: number
+}
+
+interface RecentEvent {
+  id: string
+  timestamp: string
+  source: string
+  event_type: string
+  user_hash: string
+  status: string
+  latency_ms: number
+}
+
+interface PipelineStatus {
+  mode: string
+  connectors: ConnectorInfo[]
+  pipeline_stages: PipelineStage[]
+  metrics: PipelineMetrics
+  recent_events: RecentEvent[]
+}
+
+// Icon map
+const connectorIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  "git-branch": GitBranch,
+  "message-square": MessageSquare,
+  "clipboard-list": ClipboardList,
+  calendar: Calendar,
+  upload: Upload,
+}
+
+const statusColors: Record<string, { bg: string; text: string; dot: string }> = {
+  connected: { bg: "bg-emerald-500/10", text: "text-emerald-400", dot: "bg-emerald-400" },
+  pending: { bg: "bg-amber-500/10", text: "text-amber-400", dot: "bg-amber-400" },
+  disconnected: { bg: "bg-slate-500/10", text: "text-slate-400", dot: "bg-slate-500" },
+  error: { bg: "bg-red-500/10", text: "text-red-400", dot: "bg-red-400" },
+}
+
+function DataIngestionContent() {
+  const [status, setStatus] = useState<PipelineStatus | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
+  const [uploadResult, setUploadResult] = useState<any>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const fetchStatus = useCallback(async () => {
+    try {
+      const data = await api.get<PipelineStatus>("/ingestion/status")
+      setStatus(data)
+    } catch (err) {
+      // pipeline status fetch failed
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchStatus()
+    const interval = setInterval(fetchStatus, 10000) // refresh every 10s
+    return () => clearInterval(interval)
+  }, [fetchStatus])
+
+  const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setUploadResult(null)
+
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const result = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/ingestion/upload-csv/`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      )
+      const data = await result.json()
+      setUploadResult(data)
+      fetchStatus() // refresh pipeline status
+    } catch (err) {
+      setUploadResult({ success: false, summary: { errors: 1 }, error_details: ["Upload failed"] })
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
+
+  const handleDownloadSample = async () => {
+    try {
+      const data = await api.get<any>("/ingestion/sample-csv")
+      const cols = data.columns
+      const rows = data.sample_rows.map((row: any) =>
+        cols.map((c: string) => row[c] || "").join(",")
+      )
+      const csv = [cols.join(","), ...rows].join("\n")
+      const blob = new Blob([csv], { type: "text/csv" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "sentinel_sample_data.csv"
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      // sample download failed
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+      </div>
+    )
+  }
+
+  const metrics = status?.metrics
+  const connectors = status?.connectors || []
+  const stages = status?.pipeline_stages || []
+  const recentEvents = status?.recent_events || []
+
+  return (
+    <div className="flex flex-1 flex-col h-full bg-background">
+      <ScrollArea className="flex-1">
+        <main className="flex flex-col gap-6 p-5 lg:p-8 pb-20">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground mb-1">
+                Data Ingestion Pipeline
+              </h1>
+              <p className="text-sm text-slate-400">
+                Real-time data flow from source connectors through privacy layer to engine processing.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Badge
+                variant="outline"
+                className={cn(
+                  "px-3 py-1",
+                  status?.mode === "simulation"
+                    ? "border-amber-500/30 text-amber-400 bg-amber-500/10"
+                    : "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+                )}
+              >
+                <Activity className="h-3 w-3 mr-1.5" />
+                {status?.mode === "simulation" ? "Digital Twin Mode" : "Live Mode"}
+              </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchStatus}
+                className="gap-2 border-white/10 hover:bg-white/5"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh
+              </Button>
+            </div>
+          </div>
+
+          {/* Metrics Bar */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {[
+              { label: "Total Events", value: metrics?.total_events?.toLocaleString() || "0", icon: Database, color: "text-blue-400" },
+              { label: "Active Users", value: metrics?.total_users?.toString() || "0", icon: Shield, color: "text-emerald-400" },
+              { label: "Events/hr", value: metrics?.events_per_hour?.toString() || "0", icon: Zap, color: "text-purple-400" },
+              { label: "Avg Latency", value: `${metrics?.avg_latency_ms || 0}ms`, icon: Clock, color: "text-cyan-400" },
+              { label: "Error Rate", value: `${metrics?.error_rate || 0}%`, icon: AlertCircle, color: "text-amber-400" },
+              { label: "Uptime", value: `${metrics?.uptime_hours || 0}h`, icon: Activity, color: "text-emerald-400" },
+            ].map((m) => (
+              <div key={m.label} className="bg-[#111827]/60 border border-white/5 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <m.icon className={cn("h-4 w-4", m.color)} />
+                  <span className="text-[11px] uppercase tracking-wider text-slate-500 font-medium">{m.label}</span>
+                </div>
+                <p className="text-xl font-bold font-mono text-foreground">{m.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Visual Pipeline Flow */}
+          <Card className="bg-[#111827]/50 border-white/10">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-foreground">
+                <Server className="h-5 w-5 text-emerald-400" />
+                Pipeline Architecture
+              </CardTitle>
+              <CardDescription>
+                Data flows left-to-right: Source Connectors → Validation → Privacy Layer → Storage → Engine Analysis
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                {stages.map((stage, i) => (
+                  <div key={stage.name} className="flex items-center">
+                    <div className={cn(
+                      "min-w-[160px] rounded-lg border p-4 transition-all",
+                      stage.status === "active"
+                        ? "border-emerald-500/30 bg-emerald-500/5"
+                        : stage.status === "error"
+                          ? "border-red-500/30 bg-red-500/5"
+                          : "border-white/10 bg-white/5"
+                    )}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={cn(
+                          "h-2 w-2 rounded-full",
+                          stage.status === "active" ? "bg-emerald-400 animate-pulse" : "bg-slate-500"
+                        )} />
+                        <span className="text-xs font-semibold text-foreground">{stage.name}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 leading-relaxed mb-2">{stage.description}</p>
+                      <p className="text-xs font-mono text-emerald-400">{stage.processed.toLocaleString()} processed</p>
+                    </div>
+                    {i < stages.length - 1 && (
+                      <ArrowRight className="h-4 w-4 text-slate-600 mx-1 shrink-0" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Connectors + Upload + Live Feed */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Source Connectors */}
+            <Card className="bg-[#111827]/50 border-white/10">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-foreground text-base">
+                  <Database className="h-5 w-5 text-blue-400" />
+                  Source Connectors
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {connectors.map((c) => {
+                  const Icon = connectorIcons[c.icon] || Database
+                  const colors = statusColors[c.status] || statusColors.disconnected
+                  return (
+                    <div
+                      key={c.name}
+                      className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5 hover:border-white/10 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center", colors.bg)}>
+                          <Icon className={cn("h-4 w-4", colors.text)} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{c.name}</p>
+                          <p className="text-[10px] text-slate-500">{c.description}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-slate-400">{c.events_ingested.toLocaleString()}</span>
+                        <div className={cn("h-2 w-2 rounded-full", colors.dot)} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </CardContent>
+            </Card>
+
+            {/* CSV Upload */}
+            <Card className="bg-[#111827]/50 border-white/10">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-foreground text-base">
+                  <Upload className="h-5 w-5 text-purple-400" />
+                  Data Upload
+                </CardTitle>
+                <CardDescription>Upload CSV files to ingest behavioral data through the pipeline.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Upload area */}
+                <div
+                  className={cn(
+                    "border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all",
+                    uploading
+                      ? "border-purple-500/30 bg-purple-500/5"
+                      : "border-white/10 hover:border-emerald-500/30 hover:bg-emerald-500/5"
+                  )}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv"
+                    className="hidden"
+                    onChange={handleCSVUpload}
+                  />
+                  {uploading ? (
+                    <Loader2 className="h-8 w-8 animate-spin text-purple-400 mx-auto mb-2" />
+                  ) : (
+                    <FileText className="h-8 w-8 text-slate-500 mx-auto mb-2" />
+                  )}
+                  <p className="text-sm text-slate-300 font-medium">
+                    {uploading ? "Processing..." : "Click to upload CSV"}
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Required: timestamp, user_email, event_type, source
+                  </p>
+                </div>
+
+                {/* Download sample */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadSample}
+                  className="w-full gap-2 border-white/10 hover:bg-white/5 text-slate-300"
+                >
+                  <Download className="h-4 w-4" />
+                  Download Sample CSV
+                </Button>
+
+                {/* Upload result */}
+                {uploadResult && (
+                  <div className={cn(
+                    "rounded-lg p-4 border",
+                    uploadResult.success
+                      ? "border-emerald-500/20 bg-emerald-500/5"
+                      : "border-red-500/20 bg-red-500/5"
+                  )}>
+                    {uploadResult.success ? (
+                      <>
+                        <div className="flex items-center gap-2 mb-2">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                          <span className="text-sm font-medium text-emerald-400">Upload Successful</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="text-slate-500">Ingested:</span>
+                            <span className="text-foreground ml-1 font-mono">{uploadResult.summary?.ingested}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">Hashed:</span>
+                            <span className="text-foreground ml-1 font-mono">{uploadResult.summary?.privacy_hashed}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">Errors:</span>
+                            <span className="text-foreground ml-1 font-mono">{uploadResult.summary?.errors}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">Total:</span>
+                            <span className="text-foreground ml-1 font-mono">{uploadResult.summary?.total_rows}</span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-red-400" />
+                        <span className="text-sm text-red-400">
+                          {uploadResult.detail || uploadResult.error_details?.[0] || "Upload failed"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Privacy note */}
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
+                  <Lock className="h-4 w-4 text-emerald-400 mt-0.5 shrink-0" />
+                  <p className="text-[10px] text-emerald-400/80 leading-relaxed">
+                    All emails are HMAC-hashed before storage. Original PII is AES-256 encrypted in Vault B.
+                    Only anonymized hashes enter the analytics pipeline.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Live Ingestion Feed */}
+            <Card className="bg-[#111827]/50 border-white/10">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-foreground text-base">
+                  <Activity className="h-5 w-5 text-cyan-400" />
+                  Live Ingestion Feed
+                  <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse ml-auto" />
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[360px]">
+                  <div className="space-y-2">
+                    {recentEvents.length === 0 ? (
+                      <div className="text-center py-8 text-slate-500">
+                        <Database className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No recent events</p>
+                        <p className="text-xs mt-1">Upload a CSV to see data flow through the pipeline</p>
+                      </div>
+                    ) : (
+                      recentEvents.slice().reverse().map((event) => (
+                        <div
+                          key={event.id}
+                          className="flex items-center gap-3 p-2.5 rounded-lg bg-white/[0.02] border border-white/5 animate-in fade-in duration-300"
+                        >
+                          <div className={cn(
+                            "h-2 w-2 rounded-full shrink-0",
+                            event.status === "ingested" ? "bg-emerald-400" : event.status === "hashed" ? "bg-blue-400" : "bg-red-400"
+                          )} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-white/10 text-slate-400">
+                                {event.source}
+                              </Badge>
+                              <span className="text-xs text-foreground truncate">{event.event_type}</span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[10px] text-slate-500 font-mono">{event.user_hash}</span>
+                              <span className="text-[10px] text-slate-600">
+                                {new Date(event.timestamp).toLocaleTimeString()}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-mono text-emerald-400/70 shrink-0">
+                            {event.latency_ms}ms
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Privacy Architecture */}
+          <Card className="bg-[#111827]/50 border-white/10">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-foreground">
+                <Lock className="h-5 w-5 text-emerald-400" />
+                Privacy Architecture
+              </CardTitle>
+              <CardDescription>
+                Dual-vault system ensuring employee data is never stored in plaintext.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/10">
+                  <h4 className="text-sm font-semibold text-blue-400 mb-2">1. Identity Hashing</h4>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Emails are HMAC-SHA256 hashed with a secure salt. The hash becomes the
+                    user identifier throughout the entire analytics pipeline.
+                  </p>
+                  <code className="block mt-2 text-[10px] text-blue-400/60 font-mono bg-blue-500/5 rounded p-2">
+                    alex@co.com → a7f3b2c1...
+                  </code>
+                </div>
+                <div className="p-4 rounded-lg bg-purple-500/5 border border-purple-500/10">
+                  <h4 className="text-sm font-semibold text-purple-400 mb-2">2. Vault A: Analytics</h4>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Stores behavioral events, risk scores, and engine outputs.
+                    Contains only hashed identifiers — no PII.
+                  </p>
+                  <code className="block mt-2 text-[10px] text-purple-400/60 font-mono bg-purple-500/5 rounded p-2">
+                    {"{"} user_hash, event_type, timestamp {"}"}
+                  </code>
+                </div>
+                <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
+                  <h4 className="text-sm font-semibold text-emerald-400 mb-2">3. Vault B: Identity</h4>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Maps hashes back to encrypted emails for authorized personnel.
+                    AES-256-Fernet encryption at rest.
+                  </p>
+                  <code className="block mt-2 text-[10px] text-emerald-400/60 font-mono bg-emerald-500/5 rounded p-2">
+                    {"{"} hash → AES(email) {"}"}
+                  </code>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+      </ScrollArea>
+    </div>
+  )
+}
+
+export default function DataIngestionPage() {
+  return (
+    <ProtectedRoute>
+      <DataIngestionContent />
+    </ProtectedRoute>
+  )
+}

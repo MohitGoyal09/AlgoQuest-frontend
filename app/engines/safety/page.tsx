@@ -83,7 +83,7 @@ function SafetyContent() {
   const { data: riskData } = useRiskData(selectedUserHash)
   const { data: nudgeData } = useNudge(selectedUserHash)
   const { data: teamData } = useTeamData()
-  const { data: riskHistory } = useRiskHistory(selectedUserHash)
+  const { history: riskHistory } = useRiskHistory(selectedUserHash)
 
   const currentEmployee = useMemo(() => {
     if (!selectedBaseEmployee) return null
@@ -121,15 +121,16 @@ function SafetyContent() {
         critical_count: critical,
         avg_velocity: avgVel,
         contagion_risk: critical > 2 ? "CRITICAL" : elevated > 4 ? "ELEVATED" : "LOW",
-        graph_fragmentation: 0.3
+        graph_fragmentation: 0.3,
+        comm_decay_rate: 0.15,
       }
     }
-    
+
     const total = employees.length
     const healthy = employees.filter(e => e.risk_level === "LOW").length
     const elevated = employees.filter(e => e.risk_level === "ELEVATED").length
     const critical = employees.filter(e => e.risk_level === "CRITICAL").length
-    
+
     return {
       total_members: total,
       healthy_count: healthy,
@@ -137,7 +138,8 @@ function SafetyContent() {
       critical_count: critical,
       avg_velocity: teamData.metrics?.avg_velocity || employees.reduce((sum, e) => sum + e.velocity, 0) / (total || 1),
       contagion_risk: teamData.contagion_risk || (critical > 2 ? "CRITICAL" : elevated > 4 ? "ELEVATED" : "LOW"),
-      graph_fragmentation: teamData.graph_fragmentation || 0.3
+      graph_fragmentation: teamData.graph_fragmentation || 0.3,
+      comm_decay_rate: teamData.metrics?.comm_decay_rate || 0.15,
     }
   }, [teamData, employees])
 
@@ -462,7 +464,7 @@ function SafetyContent() {
           </div>
 
           {/* Stat Cards */}
-          {mappedTeamMetrics && <StatCards metrics={mappedTeamMetrics} />}
+          {mappedTeamMetrics && <StatCards metrics={mappedTeamMetrics as any} />}
 
           {/* Main Content Grid */}
           <div className="grid gap-6 lg:grid-cols-3">
@@ -540,7 +542,7 @@ function SafetyContent() {
               {currentEmployee ? (
                 <div className="space-y-4">
                   <RiskAssessment employee={currentEmployee} />
-                  <NudgeCard nudge={nudgeData} />
+                  <NudgeCard nudge={nudgeData ?? undefined} />
                 </div>
               ) : (
                 <Card className="border-dashed">

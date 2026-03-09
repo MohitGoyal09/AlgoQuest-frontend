@@ -4,6 +4,7 @@ import type React from 'react';
 // Risk Level Types
 // ============================================
 export type RiskLevel = 'LOW' | 'ELEVATED' | 'CRITICAL';
+export type ConnectionStatus = 'connected' | 'disconnected' | 'connecting';
 
 const RISK_LEVELS: readonly RiskLevel[] = ['LOW', 'ELEVATED', 'CRITICAL'];
 

@@ -13,9 +13,9 @@ const LOGS = [
 
 export function AuditLogFeed() {
   return (
-    <div className="bg-[#0b101b] border border-white/10 rounded-xl p-4 h-[380px] flex flex-col">
+    <div className="bg-background border border-white/10 rounded-xl p-4 h-[380px] flex flex-col">
       <div className="flex items-center justify-between mb-4">
-         <h3 className="font-semibold text-white flex items-center gap-2">
+         <h3 className="font-semibold text-foreground flex items-center gap-2">
             <Shield className="w-4 h-4 text-teal-400" />
             Live Audit Log
          </h3>
