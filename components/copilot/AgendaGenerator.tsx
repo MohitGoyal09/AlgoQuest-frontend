@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { toast } from "sonner"
 import { Sparkles, Calendar, Edit3, X, Loader2, MessageSquarePlus, AlertTriangle, Heart, Lightbulb, Clock, Save, Plus, Trash2 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -68,10 +69,9 @@ export function AgendaGenerator({
   const handleSchedule = async () => {
     try {
       await scheduleBreak(userHash)
-      alert(`1:1 meeting with ${userName} scheduled!`)
+      toast.success(`1:1 meeting with ${userName} scheduled!`)
     } catch (err) {
-      console.error("Failed to schedule:", err)
-      alert("Failed to schedule meeting")
+      toast.error("Failed to schedule meeting")
     }
   }
 
@@ -94,10 +94,10 @@ export function AgendaGenerator({
   }
 
   const handleAddPoint = () => {
-    setEditablePoints([...editablePoints, { 
-      id: editablePoints.length + 1, 
-      text: "", 
-      type: "question" 
+    setEditablePoints([...editablePoints, {
+      id: editablePoints.length === 0 ? 1 : Math.max(...editablePoints.map(p => p.id)) + 1,
+      text: "",
+      type: "question"
     }])
   }
 

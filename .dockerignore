@@ -1,0 +1,15 @@
+node_modules
+.next
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+*.md
+.vscode
+.idea
+out
+build
+coverage
+*.tsbuildinfo
+pnpm-debug.log

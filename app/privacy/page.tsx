@@ -29,11 +29,8 @@ export default function PrivacyDashboard() {
         const res = await api.get<HealthData>("/admin/health")
         setHealth(res as HealthData)
       } catch {
-        // Use fallback demo data if API unavailable
-        setHealth({
-          database: { total_users: 13, total_events: 4280, total_audit_logs: 156 },
-          users: { consent_rate: { consented: 10, total: 13, percentage: 77 } },
-        })
+        // API unavailable — show zeros; real data will load on retry
+        setHealth(null)
       } finally {
         setLoading(false)
       }

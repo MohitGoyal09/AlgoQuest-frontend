@@ -79,7 +79,8 @@ export function FeaturesBentoGrid() {
               key={index}
               className={cn(
                 "group relative overflow-hidden border-border/50 bg-card/40 backdrop-blur-sm",
-                "hover:border-border hover:bg-card/60 transition-all duration-200",
+                "transition-[transform,box-shadow,border-color,background] duration-200",
+                "hover:border-border hover:bg-card/60 feature-card-hover",
                 feature.span
               )}
             >
@@ -102,7 +103,7 @@ export function FeaturesBentoGrid() {
         {/* Benefits */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-4xl mx-auto stagger-children">
           {benefits.map((benefit, index) => (
-            <div key={index} className="flex gap-4 p-5 rounded-xl border border-border/50 bg-card/30 hover:bg-card/50 transition-colors duration-200">
+            <div key={index} className="flex gap-4 p-5 rounded-xl border border-border/50 bg-card/30 hover:bg-card/50 transition-[background,transform] duration-200 feature-card-hover">
               <div className="flex-shrink-0 p-2.5 h-fit rounded-lg bg-primary/8">
                 <benefit.icon className="h-4.5 w-4.5 text-primary" />
               </div>

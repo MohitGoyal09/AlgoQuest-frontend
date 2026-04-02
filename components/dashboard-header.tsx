@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { NotificationCenter } from "@/components/notification-center"
 import type { UserSummary } from "@/types"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 
 interface DashboardHeaderProps {
   selectedUser: UserSummary | null
@@ -17,14 +19,26 @@ const viewLabels: Record<string, string> = {
   culture: "Culture Thermometer",
   network: "Network Graph",
   simulation: "Simulation",
+  admin: "Admin Panel",
+  team: "My Team",
+  "employee-detail": "Employee Detail",
 }
 
 export function DashboardHeader({ selectedUser, activeView }: DashboardHeaderProps) {
+  const router = useRouter()
+  const [searchQuery, setSearchQuery] = useState("")
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
+    }
+  }
+
   return (
-    <header className="glass-card flex h-16 items-center justify-between rounded-none border-x-0 border-t-0 px-4 lg:px-8">
+    <header className="flex h-16 items-center justify-between bg-background/80 backdrop-blur-xl border-b border-white/5 px-4 lg:px-8">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <h1 className="text-[15px] font-semibold text-foreground">{viewLabels[activeView] || "Dashboard"}</h1>
+          <h1 className="text-[15px] font-bold text-foreground">{viewLabels[activeView] || "Dashboard"}</h1>
           {selectedUser && (
             <>
               <span className="text-muted-foreground/30">/</span>
@@ -39,18 +53,22 @@ export function DashboardHeader({ selectedUser, activeView }: DashboardHeaderPro
       <div className="flex items-center gap-3">
         <div className="relative hidden md:block">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
+          {/* Search navigates to /search?q=… on Enter (server-side search) */}
           <Input
-            placeholder="Search..."
-            className="h-9 w-52 rounded-lg border-[var(--glass-border)] bg-[hsl(var(--muted))]/50 pl-9 text-sm placeholder:text-muted-foreground/50 focus-visible:ring-[hsl(var(--primary))]/20"
+            placeholder="Search employees..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
+            className="h-9 w-52 rounded-lg border border-white/10 bg-card pl-9 text-sm placeholder:text-muted-foreground/50 focus-visible:ring-primary/20"
           />
         </div>
         <ThemeToggle />
         <NotificationCenter />
         <Badge
           variant="outline"
-          className="hidden gap-1.5 border-[hsl(var(--primary))]/20 bg-[hsl(var(--primary))]/5 px-3 py-1 text-xs font-medium text-[hsl(var(--primary))] sm:flex"
+          className="hidden gap-1.5 border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary sm:flex"
         >
-          <span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--primary))] dot-pulse" />
+          <span className="h-1.5 w-1.5 rounded-full bg-primary dot-pulse" />
           Live
         </Badge>
       </div>

@@ -80,12 +80,22 @@ function downloadFile(content: string, filename: string, mimeType: string) {
   URL.revokeObjectURL(url)
 }
 
+function escapeHTML(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
 function generatePrintableHTML(
   title: string,
   columns: ExportColumn[],
   data: Record<string, any>[],
   summary?: Record<string, string | number>[]
 ): string {
+  const safeTitle = escapeHTML(title)
   const summaryHTML = summary
     ? `<div style="display:flex;gap:24px;margin-bottom:24px;flex-wrap:wrap">
         ${summary
@@ -95,8 +105,8 @@ function generatePrintableHTML(
                 .map(
                   ([k, v]) =>
                     `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 20px">
-                      <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">${k}</div>
-                      <div style="font-size:22px;font-weight:700;color:#0f172a">${v}</div>
+                      <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">${escapeHTML(String(k))}</div>
+                      <div style="font-size:22px;font-weight:700;color:#0f172a">${escapeHTML(String(v))}</div>
                     </div>`
                 )
                 .join("")
@@ -108,7 +118,7 @@ function generatePrintableHTML(
   return `<!DOCTYPE html>
 <html>
 <head>
-  <title>${title}</title>
+  <title>${safeTitle}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 40px; color: #0f172a; max-width: 1100px; margin: 0 auto; }
     h1 { font-size: 24px; margin-bottom: 4px; }
@@ -125,11 +135,11 @@ function generatePrintableHTML(
   </style>
 </head>
 <body>
-  <h1>${title}</h1>
-  <div class="subtitle">Generated on ${new Date().toLocaleString()} by Sentinel AI</div>
+  <h1>${safeTitle}</h1>
+  <div class="subtitle">Generated on ${escapeHTML(new Date().toLocaleString())} by Sentinel AI</div>
   ${summaryHTML}
   <table>
-    <thead><tr>${columns.map((c) => `<th>${c.label}</th>`).join("")}</tr></thead>
+    <thead><tr>${columns.map((c) => `<th>${escapeHTML(c.label)}</th>`).join("")}</tr></thead>
     <tbody>
       ${data
         .map(
@@ -137,6 +147,7 @@ function generatePrintableHTML(
             `<tr>${columns
               .map((c) => {
                 const val = row[c.key] ?? ""
+                const safeVal = escapeHTML(String(val))
                 const cls =
                   c.key === "risk_level"
                     ? val === "CRITICAL"
@@ -145,7 +156,7 @@ function generatePrintableHTML(
                         ? "risk-elevated"
                         : "risk-low"
                     : ""
-                return `<td class="${cls}">${val}</td>`
+                return `<td class="${cls}">${safeVal}</td>`
               })
               .join("")}</tr>`
         )

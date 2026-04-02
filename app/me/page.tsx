@@ -215,15 +215,12 @@ function MePageContent() {
     }
   }
 
-  const mockSkillsData = {
-    technical: 85,
-    communication: 72,
-    leadership: 65,
-    collaboration: 90,
-    adaptability: 80,
-    creativity: 75,
-    updated_at: new Date().toISOString()
-  }
+  // TODO: The /me endpoint does not currently return skills data.
+  // Skills are stored in SkillProfile and exposed via GET /team/member/{hash}.
+  // Request a GET /me/skills endpoint from the backend so employees can view
+  // their own skill topology without requiring manager-level access.
+  // Until then, render a placeholder indicating data is not yet available.
+  const mockSkillsData = null
 
   // ─── Loading State ──────────────────────────────────────
   if (isDataLoading) {
@@ -436,7 +433,15 @@ function MePageContent() {
                   Skill Topology
                 </h2>
                 <div className="glass-card rounded-xl p-4">
-                  <SkillsRadar data={mockSkillsData} height={240} />
+                  {mockSkillsData ? (
+                    <SkillsRadar data={mockSkillsData} height={240} />
+                  ) : (
+                    <div className="flex items-center justify-center h-[240px] text-sm text-muted-foreground">
+                      Skills data not available yet.
+                      <br />
+                      Connect your work tools in the Marketplace to enable this view.
+                    </div>
+                  )}
                 </div>
               </section>
 

@@ -1,1068 +1,451 @@
-# 🎨 Sentinel Frontend
+# Sentinel Frontend
 
-> **Next.js Dashboard for AI-Powered Employee Insights**  
-> A modern, responsive dashboard for real-time burnout monitoring, network visualization, and team health analytics.
-
-[![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat&logo=next.js)](https://nextjs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat&logo=typescript)](https://www.typescriptlang.org)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.0-38B2AC?style=flat&logo=tailwind-css)](https://tailwindcss.com)
-[![shadcn/ui](https://img.shields.io/badge/shadcn/ui-1.0-black?style=flat)](https://ui.shadcn.com)
+Next.js 15 dashboard for the Sentinel AI-powered employee insight engine. Provides real-time risk monitoring, network visualization, AI chat, and team health analytics.
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
-- [Overview](#overview)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Development](#development)
-- [Project Structure](#project-structure)
-- [Architecture](#architecture)
-- [Pages](#pages)
-- [Components](#components)
-- [Hooks](#hooks)
-- [Styling](#styling)
-- [API Integration](#api-integration)
-- [WebSocket](#websocket)
-- [Building & Deployment](#building--deployment)
+- [Frontend Architecture](#frontend-architecture)
+- [Pages and Routing](#pages-and-routing)
+- [Key Components](#key-components)
+- [State Management](#state-management)
+- [Environment Variables](#environment-variables)
+- [Development Setup](#development-setup)
 
 ---
 
-## Overview
+## Frontend Architecture
 
-Sentinel Frontend is a sophisticated Next.js application that provides an intuitive interface for the Sentinel AI-powered employee insights platform. It visualizes complex analytics data through interactive dashboards, real-time network graphs, and actionable team health metrics.
+### Technology Choices
 
-### Key Capabilities
+| Concern | Library | Notes |
+|---|---|---|
+| Framework | Next.js 16 (App Router) | File-system routing, Server Components where appropriate |
+| Language | TypeScript 5 | Strict mode |
+| Styling | Tailwind CSS 4 | Utility-first; CSS variables for theming |
+| UI components | Radix UI + shadcn/ui | Headless primitives with accessible defaults |
+| Charts | Recharts | Risk timelines, velocity charts, forecasts |
+| Network graph | D3.js v7 | Force-directed social graph |
+| Flow canvas | React Flow (XYFlow) | Workflow builder UI |
+| Animation | Framer Motion + GSAP | Page transitions and micro-interactions |
+| Auth client | Supabase JS (`@supabase/ssr`) | JWT management and session refresh |
+| Forms | React Hook Form + Zod v4 | Validated forms throughout |
+| Table | TanStack Table v8 | Employee directory and audit log views |
+| Drag and drop | dnd-kit | Workflow canvas drag ordering |
+| AI streaming | `ai` SDK (Vercel AI SDK v6) | Token streaming from `/ai/chat/stream` |
+| Markdown | react-markdown + streamdown | AI response rendering |
+| Notifications | Sonner | Toast notifications |
 
-- 📊 **Real-Time Risk Monitoring**: Live burnout risk scores with visual indicators
-- 🕸️ **Network Visualization**: Interactive D3.js graphs showing team connections
-- 🎮 **Simulation Controls**: Create and manage digital twins for testing
-- 🌡️ **Team Health Overview**: Culture thermometer with contagion alerts
-
----
-
-## Features
-
-### 📈 Real-Time Risk Monitoring
-
-- **Live Dashboard**: WebSocket-powered real-time updates
-- **Risk Meter**: Visual gauge showing current risk levels
-- **Timeline Charts**: Historical trend analysis with Recharts
-- **Metric Cards**: Key performance indicators at a glance
-
-### 🕸️ Network Visualization
-
-- **Interactive Graphs**: D3.js-powered force-directed networks
-- **Node Details**: Click to explore individual connections
-- **Centrality Highlighting**: Identify hidden gems visually
-- **Legend & Controls**: Filter and customize the view
-
-### 🎮 Simulation Controls
-
-- **Persona Creator**: Generate digital twins with different risk profiles
-- **Event Injector**: Simulate real-world scenarios
-- **Activity Feed**: Real-time simulation event log
-- **Demo Mode**: Showcase the platform's capabilities
-
-### 👥 Team Overview
-
-- **Culture Thermometer**: Team health visualization
-- **Contagion Alerts**: Early warning for resignation risks
-- **Team Member List**: Sortable, filterable member directory
-- **Aggregated Metrics**: Team-level analytics
-
----
-
-## Tech Stack
-
-### Core Framework
-- **[Next.js 16](https://nextjs.org/)** - React framework with App Router
-- **[React 19](https://react.dev/)** - UI library with latest features
-- **[TypeScript](https://www.typescriptlang.org/)** - Type-safe development
-
-### Styling & UI
-- **[Tailwind CSS 4](https://tailwindcss.com/)** - Utility-first CSS framework
-- **[shadcn/ui](https://ui.shadcn.com/)** - Re-usable component library
-- **[Radix UI](https://www.radix-ui.com/)** - Headless UI primitives
-- **[Lucide React](https://lucide.dev/)** - Icon library
-
-### Data Visualization
-- **[D3.js](https://d3js.org/)** - Network graph visualization
-- **[Recharts](https://recharts.org/)** - React charting library
-- **[Framer Motion](https://www.framer.com/motion/)** - Animation library
-
-### State Management & Data
-- **React Hooks** - Local state management
-- **Custom Hooks** - Reusable data fetching logic
-- **WebSocket API** - Real-time communication
-
-### Development Tools
-- **[ESLint](https://eslint.org/)** - Code linting
-- **[PostCSS](https://postcss.org/)** - CSS processing
-
----
-
-## Prerequisites
-
-### Required
-
-- **Node.js 18+** - [Download](https://nodejs.org/)
-- **pnpm** - Fast, disk space efficient package manager
-- **Git** - For cloning the repository
-
-### Recommended
-
-- **VS Code** - With extensions:
-  - ESLint
-  - Tailwind CSS IntelliSense
-  - TypeScript Hero
-
-### System Requirements
-
-- **RAM**: 4GB minimum, 8GB recommended
-- **Storage**: 1GB for node_modules
-- **Browser**: Modern browsers (Chrome, Firefox, Safari, Edge)
-
----
-
-## Installation
-
-### Step 1: Clone and Navigate
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd sentinel/frontend
-```
-
-### Step 2: Install pnpm (if not installed)
-
-```bash
-# Using npm
-npm install -g pnpm
-
-# Using Homebrew (macOS)
-brew install pnpm
-
-# Using Scoop (Windows)
-scoop install pnpm
-```
-
-### Step 3: Install Dependencies
-
-```bash
-# Install all dependencies
-pnpm install
-
-# Or if you prefer npm/yarn
-npm install
-# or
-yarn install
-```
-
-### Step 4: Environment Configuration
-
-Create a `.env.local` file in the `frontend/` directory:
-
-```env
-# API Configuration
-NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1/engines
-
-# WebSocket Configuration
-NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws
-
-# Optional: Analytics
-# NEXT_PUBLIC_ANALYTICS_ID=your-analytics-id
-```
-
-### Environment Variables Reference
-
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `NEXT_PUBLIC_API_URL` | Backend API base URL | `http://localhost:8000/api/v1/engines` | ✅ |
-| `NEXT_PUBLIC_WS_URL` | WebSocket base URL | `ws://localhost:8000/ws` | ✅ |
-
----
-
-## Development
-
-### Running the Development Server
-
-```bash
-# Start development server
-pnpm dev
-
-# Or with npm/yarn
-npm run dev
-yarn dev
-```
-
-The application will be available at:
-- **Local**: http://localhost:3000
-- **Network**: http://your-ip:3000
-
-### Development Features
-
-- **Hot Module Replacement**: Instant updates on file changes
-- **Fast Refresh**: React component updates without losing state
-- **Source Maps**: Full debugging support
-- **Type Checking**: Real-time TypeScript validation
-
-### Building for Production
-
-```bash
-# Create optimized production build
-pnpm build
-
-# Start production server
-pnpm start
-```
-
-### Linting and Type Checking
-
-```bash
-# Run ESLint
-pnpm lint
-
-# Type check without emitting
-npx tsc --noEmit
-
-# Both lint and type check
-pnpm lint && npx tsc --noEmit
-```
-
----
-
-## Project Structure
+### Directory Layout
 
 ```
 frontend/
-├── app/                          # Next.js App Router
-│   ├── (dashboard)/              # Dashboard route group
-│   │   ├── dashboard/            # Personal risk dashboard
-│   │   │   └── page.tsx
-│   │   ├── network/              # Network visualization
-│   │   │   └── page.tsx
-│   │   ├── simulation/           # Simulation controls
-│   │   │   └── page.tsx
-│   │   ├── team/                 # Team overview
-│   │   │   └── page.tsx
-│   │   └── layout.tsx            # Dashboard layout
-│   ├── layout.tsx                # Root layout
-│   ├── page.tsx                  # Landing page
-│   ├── globals.css               # Global styles
-│   └── favicon.ico               # Site favicon
-├── components/                   # React components
-│   ├── dashboard/                # Dashboard components
-│   │   ├── MetricCard.tsx
-│   │   ├── RiskMeter.tsx
-│   │   ├── TimelineChart.tsx
-│   │   └── WebSocketStatus.tsx
-│   ├── layout/                   # Layout components
-│   │   ├── Header.tsx
-│   │   └── Sidebar.tsx
-│   ├── network/                  # Network visualization
-│   │   ├── Legend.tsx
-│   │   ├── NetworkGraph.tsx
-│   │   └── NodeDetails.tsx
-│   ├── simulation/               # Simulation components
-│   │   ├── ActivityFeed.tsx
-│   │   ├── EventInjector.tsx
-│   │   └── PersonaCreator.tsx
-│   ├── team/                     # Team components
-│   │   ├── ContagionAlert.tsx
-│   │   ├── CultureThermometer.tsx
-│   │   └── TeamMemberList.tsx
-│   └── ui/                       # shadcn/ui components
-│       ├── button.tsx
-│       ├── card.tsx
-│       ├── dialog.tsx
-│       └── ...
-├── hooks/                        # Custom React hooks
-│   ├── useNetworkData.ts
-│   ├── useRiskData.ts
-│   ├── useSimulation.ts
-│   ├── useTeamData.ts
-│   └── useWebSocket.ts
-├── lib/                          # Utility functions
-│   ├── api.ts                    # API client
-│   ├── colors.ts                 # Color utilities
-│   └── utils.ts                  # General utilities
-├── types/                        # TypeScript types
-│   └── index.ts
-├── public/                       # Static assets
-│   ├── file.svg
-│   ├── globe.svg
-│   └── ...
-├── .env.local                    # Local environment
-├── .gitignore                    # Git ignore rules
-├── components.json               # shadcn/ui config
-├── eslint.config.mjs             # ESLint configuration
-├── next.config.ts                # Next.js configuration
-├── package.json                  # Dependencies
-├── pnpm-lock.yaml                # Lock file
-├── pnpm-workspace.yaml           # Workspace config
-├── postcss.config.mjs            # PostCSS configuration
-├── tailwind.config.ts            # Tailwind configuration
-└── tsconfig.json                 # TypeScript configuration
+├── app/                        # Next.js App Router
+│   ├── layout.tsx              # Root layout (ThemeProvider, font loading)
+│   ├── page.tsx                # Root redirect (to /dashboard or /login)
+│   ├── globals.css             # CSS variables + Tailwind imports
+│   ├── favicon.ico
+│   ├── error.tsx               # Root error boundary
+│   ├── admin/                  # /admin — Admin panel
+│   ├── ask-sentinel/           # /ask-sentinel — AI chat interface
+│   ├── audit-log/              # /audit-log — Audit trail viewer
+│   ├── auth/                   # /auth/sso — SSO callback handler
+│   ├── dashboard/              # /dashboard — Main risk dashboard
+│   ├── data-ingestion/         # /data-ingestion — CSV / webhook import
+│   ├── demo/                   # /demo — Demo scenarios
+│   ├── employee/               # /employee/[hash] — Individual employee view
+│   ├── engines/
+│   │   ├── safety/             # /engines/safety — Safety Valve UI
+│   │   ├── talent/             # /engines/talent — Talent Scout UI
+│   │   ├── culture/            # /engines/culture — Culture Thermometer UI
+│   │   └── network/            # /engines/network — Network graph
+│   ├── login/                  # /login — Authentication page
+│   ├── me/                     # /me — Employee self-service
+│   ├── notifications/          # /notifications — Notification center
+│   ├── onboarding/             # /onboarding — New user wizard
+│   ├── privacy/                # /privacy — Privacy policy
+│   ├── profile/                # /profile — User profile settings
+│   ├── search/                 # /search — Global people search
+│   ├── simulation/             # /simulation — Digital twin controls
+│   ├── talent-scout/           # /talent-scout — Talent Scout entry
+│   ├── team/                   # /team — Team overview
+│   ├── team-health/            # /team-health — Team health heatmap
+│   └── tenants/                # /tenants — Workspace management
+├── components/                 # Reusable React components
+│   ├── ai/                     # AI-specific UI elements
+│   ├── ai-elements/            # AI response rendering primitives
+│   ├── chat/                   # Chat input and message list
+│   ├── copilot/                # Manager copilot / agenda components
+│   ├── dashboard/              # Dashboard-specific widgets
+│   ├── landing-page/           # Marketing/landing page sections
+│   ├── layout/                 # Sidebar, header, nav
+│   ├── tools/                  # External tool status and controls
+│   ├── ui/                     # shadcn/ui primitives
+│   ├── activity-feed.tsx       # Real-time activity stream
+│   ├── app-sidebar.tsx         # Main navigation sidebar
+│   ├── ask-sentinel-widget.tsx # Floating AI assistant widget
+│   ├── burnout-cost-calculator.tsx  # ROI calculator UI
+│   ├── burnout-prediction.tsx  # Burnout risk gauge
+│   ├── command-palette.tsx     # Cmd+K global command palette
+│   ├── csv-import-dialog.tsx   # CSV upload dialog
+│   ├── employee-table.tsx      # Paginated employee directory
+│   ├── executive-summary.tsx   # C-suite summary cards
+│   ├── export-report.tsx       # Report export controls
+│   ├── forecast-chart.tsx      # SIR contagion forecast chart
+│   ├── interactive-graph.tsx   # D3 network graph wrapper
+│   ├── network-graph.tsx       # Raw D3 force graph
+│   ├── notification-center.tsx # Notification dropdown
+│   ├── nudge-card.tsx          # LLM nudge display card
+│   ├── protected-route.tsx     # Auth guard wrapper
+│   ├── risk-assessment.tsx     # Risk breakdown panel
+│   ├── settings-modal.tsx      # User settings modal
+│   ├── simulation-panel.tsx    # Digital twin controls
+│   ├── skills-radar.tsx        # Skill profile radar chart
+│   ├── sparkline.tsx           # Inline trend sparkline
+│   ├── stat-cards.tsx          # KPI metric cards
+│   ├── team-distribution.tsx   # Team risk distribution chart
+│   ├── team-energy-heatmap.tsx # Calendar-style risk heatmap
+│   ├── theme-provider.tsx      # next-themes provider
+│   ├── theme-toggle.tsx        # Dark/light toggle
+│   ├── user-selector.tsx       # Employee search/select combobox
+│   ├── vault-status.tsx        # Two-Vault privacy indicator
+│   └── velocity-chart.tsx      # Risk velocity over time
+├── contexts/
+│   ├── auth-context.tsx        # AuthContext — current user, tokens
+│   └── tenant-context.tsx      # TenantContext — active workspace
+├── hooks/
+│   ├── useChatHistory.ts       # Persist chat history per user
+│   ├── useCountUp.ts           # Animated counter
+│   ├── useForecast.ts          # Fetch SIR contagion forecast
+│   ├── use-mobile.tsx          # Responsive breakpoint detection
+│   ├── useNetworkData.ts       # Fetch and manage graph edges
+│   ├── useNudge.ts             # Fetch and dismiss nudges
+│   ├── useOrchestrator.ts      # AI agent orchestration calls
+│   ├── useRecentEvents.ts      # Activity stream polling
+│   ├── useRiskData.ts          # Fetch Safety Valve risk data
+│   ├── useRiskHistory.ts       # Fetch historical risk timeline
+│   ├── useSimulation.ts        # Persona creation and event injection
+│   ├── useStaggerMount.ts      # Staggered animation helper
+│   ├── useTeamData.ts          # Team-level analytics
+│   ├── use-toast.ts            # Sonner toast helper
+│   └── useUsers.ts             # Paginated user directory
+├── lib/
+│   ├── api.ts                  # Backend API client functions
+│   └── utils.ts                # Tailwind class merging + helpers
+├── types/
+│   └── index.ts                # Shared TypeScript type definitions
+├── public/                     # Static assets
+├── middleware.ts               # Next.js edge middleware (auth guard)
+├── next.config.ts
+├── tailwind.config.ts
+├── tsconfig.json
+└── package.json
 ```
 
 ---
 
-## Architecture
+## Pages and Routing
 
-### App Router Structure
+All protected pages check the Supabase session via the edge middleware (`middleware.ts`). Unauthenticated visitors are redirected to `/login`.
 
-The application uses Next.js 14+ App Router with route groups for organization:
+### `/dashboard`
 
-```
-app/
-├── layout.tsx          # Root layout (fonts, metadata)
-├── page.tsx            # Landing/marketing page
-├── globals.css         # Global styles + Tailwind
-├── (dashboard)/        # Route group (no URL segment)
-│   ├── layout.tsx      # Dashboard shell (Sidebar + main)
-│   ├── dashboard/      # /dashboard - Personal view
-│   ├── network/        # /network - Team network
-│   ├── simulation/     # /simulation - Demo controls
-│   └── team/           # /team - Team health
-```
+Main landing page after login. Shows:
+- Role-filtered dashboard summary (total users, risk distribution, avg velocity)
+- Stat cards with animated counters
+- Risk velocity chart (30-day trend)
+- Team energy heatmap
+- Executive summary panel
+- Active nudge card (if applicable)
+- Real-time activity feed (WebSocket)
 
-### Component Organization
+### `/ask-sentinel`
 
-```
-components/
-├── dashboard/          # Page-specific components
-├── layout/             # Shared layout components
-├── network/            # Network visualization
-├── simulation/         # Simulation controls
-├── team/               # Team analytics
-└── ui/                 # Reusable UI primitives (shadcn)
-```
+Full AI chat interface. Features:
+- Role-aware system prompt (employee / manager / admin)
+- Multi-turn conversation with history
+- Streaming token-by-token responses via SSE
+- Auto-suggested follow-up questions extracted from `<suggestions>` tags
+- Chat history persistence per user hash
 
-### State Management
+### `/engines/safety`
 
-We use a combination of React hooks for state management:
+Safety Valve detailed view. Shows burnout risk score, velocity meter, circadian indicators, and historical trend chart for any user (subject to RBAC).
 
-#### Local State
+### `/engines/talent`
+
+Talent Scout view. Displays network centrality metrics (betweenness, eigenvector, unblocking count) and hidden gem status.
+
+### `/engines/culture`
+
+Culture Thermometer view. Team aggregate health, contagion risk level, and SIR forecast chart.
+
+### `/engines/network`
+
+Interactive D3 force-directed graph of the social collaboration network. Nodes are colored by risk level, sized by betweenness centrality. Click a node to see full details.
+
+### `/simulation`
+
+Demo and testing environment. Create digital twin personas (`alex_burnout`, `sarah_gem`, `jordan_steady`, `maria_contagion`), inject real-time events, and watch the risk scores update live.
+
+### `/me`
+
+Employee self-service. Employees can:
+- View their own risk data and audit trail
+- Toggle consent settings (share with manager, share anonymized)
+- Pause monitoring for a set duration
+- Download or delete their data (GDPR)
+
+### `/team` and `/team-health`
+
+Team-level views for managers and admins. Team health heatmap shows daily risk aggregates over a calendar grid.
+
+### `/admin`
+
+Admin-only panel. System health metrics, user list with role management, and organization-wide audit logs.
+
+### `/notifications`
+
+Notification center. Filterable by type (`auth`, `team`, `security`, `activity`). Marks individual or all as read.
+
+### `/data-ingestion`
+
+CSV import and webhook configuration for bulk employee data ingestion.
+
+### `/onboarding`
+
+Multi-step onboarding wizard for new users: workspace setup, team configuration, integration connections.
+
+### `/profile` and `/settings`
+
+User profile (name, avatar, preferences) and application settings (theme, notification preferences).
+
+### `/search`
+
+Global full-text search across employees, surfacing name, role, and risk level.
+
+---
+
+## Key Components
+
+### `app-sidebar.tsx`
+
+Primary navigation sidebar using Radix UI primitives. Collapses to icon-only on small screens. Navigation items are filtered by role.
+
+### `employee-table.tsx`
+
+TanStack Table v8 powered paginated employee directory. Columns: name, role, risk level (color-coded badge), velocity, last updated. Supports sorting and click-through to the employee detail page.
+
+### `team-energy-heatmap.tsx`
+
+Calendar-grid heatmap showing daily dominant risk level. Each cell is colored `LOW` (green), `ELEVATED` (amber), or `CRITICAL` (red). Fetches from `GET /api/v1/analytics/team-energy-heatmap`.
+
+### `interactive-graph.tsx` / `network-graph.tsx`
+
+D3.js force-directed graph. Nodes represent employees (sized by betweenness centrality, colored by risk level). Edges represent collaboration interactions (weighted by frequency). Hidden gems are outlined in gold.
+
+### `ask-sentinel-widget.tsx`
+
+Floating chat widget that appears on any page. Opens a slide-over panel with the full Ask Sentinel chat interface. Persists conversation history in localStorage keyed by user hash.
+
+### `nudge-card.tsx`
+
+Displays the current LLM-generated wellbeing nudge for a user. Provides action buttons (dismiss, schedule break, request support) that POST to the appropriate engine endpoint.
+
+### `simulation-panel.tsx`
+
+Controls for the simulation environment. Dropdown to select persona type, email input, "Create Persona" button, and an "Inject Event" control. Displays the activity feed below.
+
+### `burnout-cost-calculator.tsx`
+
+Interactive ROI calculator. Inputs: team size, avg salary, current risk distribution. Outputs: estimated annual burnout cost and projected savings from early intervention.
+
+### `forecast-chart.tsx`
+
+Recharts area chart of the SIR model output. Shows Susceptible, Infected (at risk), and Recovered (resolved) populations over the forecast horizon.
+
+### `protected-route.tsx`
+
+Client-side auth guard wrapper. Checks `AuthContext` for a valid session and redirects to `/login` if absent. Used inside layouts to protect route groups.
+
+### `vault-status.tsx`
+
+Visual indicator showing the Two-Vault privacy status. Confirms that PII is encrypted and that the current operation is operating on hashed data only.
+
+---
+
+## State Management
+
+The application uses React's built-in primitives throughout — no global state library is needed.
+
+### Context Providers
+
+**`AuthContext`** (`contexts/auth-context.tsx`)
+
+Wraps the Supabase JS client. Provides:
+- `session` — the current Supabase session (contains access and refresh tokens)
+- `user` — the Supabase auth user object
+- `userIdentity` — the Sentinel `UserIdentity` record (role, consents, user_hash)
+- `signIn(email, password)`, `signOut()`, `refreshSession()`
+
+**`TenantContext`** (`contexts/tenant-context.tsx`)
+
+Tracks the active workspace. Provides:
+- `activeTenant` — the current `Tenant` object (id, name, slug, plan)
+- `tenants` — list of all workspaces the user belongs to
+- `switchTenant(tenantId)` — calls `POST /auth/switch-tenant` and updates the header
+
+### Custom Data Hooks
+
+Each domain has a dedicated hook that encapsulates fetch, loading, error, and refresh state. This keeps page components free of data-fetching logic.
+
 ```typescript
-// Component-level state
-const [isOpen, setIsOpen] = useState(false);
-```
-
-#### Custom Hooks
-```typescript
-// Data fetching hooks
-const { data, loading, error } = useRiskData(userHash);
-const { networkData, refresh } = useNetworkData();
-const { status, sendMessage } = useWebSocket(userHash);
-```
-
-#### Hook Pattern
-```typescript
-// hooks/useRiskData.ts
-export function useRiskData(userHash: string | null) {
-  const [data, setData] = useState<RiskData | null>(null);
+// Pattern followed by all data hooks
+function useRiskData(userHash: string | null) {
+  const [data, setData] = useState<SafetyValveData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  const fetchData = useCallback(async () => { ... }, [userHash]);
+
   useEffect(() => {
-    if (!userHash) return;
-    
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const result = await getSafetyAnalysis(userHash);
-        setData(result);
-      } catch (err) {
-        setError(err as Error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
-  }, [userHash]);
+  }, [fetchData]);
 
-  return { data, loading, error, refetch: fetchData };
+  return { data, loading, error, refresh: fetchData };
 }
 ```
 
-### API Integration Layer
+Key hooks:
 
-All API calls are centralized in [`lib/api.ts`](lib/api.ts):
+| Hook | Data source | Description |
+|---|---|---|
+| `useRiskData` | `GET /engines/users/{hash}/safety` | Safety Valve result |
+| `useRiskHistory` | `GET /engines/users/{hash}/history` | 30-day risk timeline |
+| `useNetworkData` | `GET /engines/network/global/talent` | Social graph nodes/edges |
+| `useTeamData` | `POST /engines/teams/culture` | Culture Thermometer result |
+| `useForecast` | `POST /engines/teams/forecast` | SIR contagion forecast |
+| `useUsers` | `GET /engines/users` | Paginated user list |
+| `useNudge` | `GET /engines/users/{hash}/nudge` | Current nudge message |
+| `useRecentEvents` | `GET /engines/events` | Activity stream |
+| `useSimulation` | Multiple engine endpoints | Persona and event injection |
+| `useChatHistory` | localStorage | Per-user conversation history |
+| `useOrchestrator` | AI orchestration endpoints | Agent task execution |
 
-```typescript
-// lib/api.ts
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+### Real-Time Updates
 
-export async function getSafetyAnalysis(userHash: string): Promise<SafetyValveData> {
-  const response = await fetch(`${API_BASE_URL}/users/${userHash}/safety`);
-  return handleResponse<SafetyValveData>(response);
-}
+WebSocket connections are managed individually per component that needs live data. The connection URL format is `ws://{WS_URL}/{user_hash}`.
 
-export async function getNetworkAnalysis(userHash: string): Promise<TalentScoutData> {
-  const response = await fetch(`${API_BASE_URL}/users/${userHash}/talent`);
-  return handleResponse<TalentScoutData>(response);
-}
-```
+Incoming message types:
+- `risk_update` — new risk score; triggers a re-render of risk-displaying components
+- `manual_refresh` — full analysis payload in response to `request_update`
+- `pong` — keepalive response
 
 ---
 
-## Pages
+## Environment Variables
 
-### Dashboard (`/dashboard`)
+Create `.env.local` in the `frontend/` directory:
 
-**Purpose**: Personal risk monitoring and insights
+```env
+# Required: Backend API base URL (no trailing slash)
+NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 
-**Components**:
-- `RiskMeter` - Visual risk level indicator
-- `TimelineChart` - Historical risk trends
-- `MetricCard` - Key metrics display
-- `WebSocketStatus` - Connection status
+# Required: WebSocket base URL
+NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws
 
-**Features**:
-- Real-time risk score updates
-- 30-day historical trend
-- Individual burnout indicators
-- Context explanation requests
+# Required: Supabase credentials (must match backend SUPABASE_URL / SUPABASE_KEY)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
 
-### Network (`/network`)
-
-**Purpose**: Team network visualization and hidden gem identification
-
-**Components**:
-- `NetworkGraph` - D3.js force-directed graph
-- `NodeDetails` - Selected node information
-- `Legend` - Graph element explanations
-
-**Features**:
-- Interactive node selection
-- Centrality highlighting
-- Edge filtering by type
-- Hidden gem identification
-
-### Simulation (`/simulation`)
-
-**Purpose**: Demo and testing environment
-
-**Components**:
-- `PersonaCreator` - Create digital twins
-- `EventInjector` - Trigger specific events
-- `ActivityFeed` - Real-time event log
-
-**Features**:
-- Multiple persona types (burnout, gem, steady, contagion)
-- Real-time event injection
-- Activity history
-- Reset and cleanup
-
-### Team (`/team`)
-
-**Purpose**: Team-level health monitoring
-
-**Components**:
-- `CultureThermometer` - Team health gauge
-- `ContagionAlert` - Risk warnings
-- `TeamMemberList` - Member directory
-
-**Features**:
-- Aggregate risk metrics
-- Contagion risk detection
-- Team fragmentation analysis
-- Intervention recommendations
+| Variable | Required | Description |
+|---|---|---|
+| `NEXT_PUBLIC_API_URL` | Yes | Backend REST API base URL |
+| `NEXT_PUBLIC_WS_URL` | Yes | Backend WebSocket base URL |
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous key for client-side auth |
 
 ---
 
-## Components
+## Development Setup
 
-### Dashboard Components
+### Prerequisites
 
-#### MetricCard
+- Node.js 18 or higher
+- pnpm (recommended) — install via `npm install -g pnpm`
 
-```typescript
-interface MetricCardProps {
-  title: string;
-  value: string | number;
-  trend?: 'up' | 'down' | 'neutral';
-  trendValue?: string;
-  icon?: React.ReactNode;
-}
+### Install and run
+
+```bash
+cd frontend
+
+# Install dependencies
+pnpm install
+
+# Start development server with hot-reload
+pnpm dev
 ```
 
-Displays a single metric with optional trend indicator.
+App runs at `http://localhost:3000`.
 
-#### RiskMeter
+### Build for production
 
-```typescript
-interface RiskMeterProps {
-  level: RiskLevel;  // 'LOW' | 'ELEVATED' | 'CRITICAL'
-  velocity: number;
-  confidence: number;
-}
+```bash
+pnpm build
+pnpm start
 ```
 
-Visual gauge showing current risk level with color coding.
+### Lint and type check
 
-#### TimelineChart
+```bash
+# ESLint
+pnpm lint
 
-```typescript
-interface TimelineChartProps {
-  data: Array<{
-    date: string;
-    risk: number;
-    velocity: number;
-  }>;
-}
+# TypeScript type check
+npx tsc --noEmit
 ```
 
-Recharts-based line chart for historical trends.
+### Docker
 
-### Network Components
-
-#### NetworkGraph
-
-```typescript
-interface NetworkGraphProps {
-  data: NetworkData;
-  onNodeSelect: (node: Node) => void;
-  highlightGems?: boolean;
-}
+```bash
+# From the project root
+docker-compose up frontend
 ```
 
-D3.js-powered interactive network visualization.
+Or build the frontend image directly:
 
-#### NodeDetails
-
-```typescript
-interface NodeDetailsProps {
-  node: Node | null;
-  centralityData?: CentralityData;
-}
+```bash
+cd frontend
+docker build -t sentinel-frontend .
+docker run -p 3000:3000 \
+  -e NEXT_PUBLIC_API_URL=http://backend:8000/api/v1 \
+  -e NEXT_PUBLIC_WS_URL=ws://backend:8000/ws \
+  -e NEXT_PUBLIC_SUPABASE_URL=https://xyz.supabase.co \
+  -e NEXT_PUBLIC_SUPABASE_ANON_KEY=your-key \
+  sentinel-frontend
 ```
-
-Side panel showing detailed information about selected node.
-
-### Simulation Components
-
-#### PersonaCreator
-
-```typescript
-interface PersonaCreatorProps {
-  onCreate: (persona: PersonaType, email: string) => Promise<void>;
-}
-```
-
-Form for creating digital twin personas.
-
-#### EventInjector
-
-```typescript
-interface EventInjectorProps {
-  userHash: string;
-  onInject: (event: EventType) => Promise<void>;
-}
-```
-
-Controls for injecting simulated events.
-
----
-
-## Hooks
-
-### useWebSocket
-
-Manages WebSocket connection for real-time updates.
-
-```typescript
-function useWebSocket(userHash: string | null): {
-  connectionStatus: 'connected' | 'connecting' | 'disconnected';
-  lastMessage: WebSocketMessage | null;
-  lastPing: Date | null;
-  sendMessage: (message: object) => void;
-  requestUpdate: () => void;
-}
-```
-
-**Usage**:
-```typescript
-const { connectionStatus, lastMessage, requestUpdate } = useWebSocket(userHash);
-
-// Request manual refresh
-requestUpdate();
-```
-
-### useRiskData
-
-Fetches and manages risk analysis data.
-
-```typescript
-function useRiskData(userHash: string | null): {
-  data: SafetyValveData | null;
-  loading: boolean;
-  error: Error | null;
-  refresh: () => void;
-}
-```
-
-### useNetworkData
-
-Manages network graph data.
-
-```typescript
-function useNetworkData(): {
-  data: NetworkData | null;
-  loading: boolean;
-  error: Error | null;
-  refresh: () => void;
-}
-```
-
-### useTeamData
-
-Fetches team-level analytics.
-
-```typescript
-function useTeamData(teamHashes: string[]): {
-  data: CultureThermometerData | null;
-  loading: boolean;
-  error: Error | null;
-}
-```
-
-### useSimulation
-
-Manages simulation state and actions.
-
-```typescript
-function useSimulation(): {
-  personas: Persona[];
-  activities: Activity[];
-  createPersona: (type: PersonaType, email: string) => Promise<void>;
-  injectEvent: (userHash: string, event: EventType) => Promise<void>;
-}
-```
-
----
-
-## Styling
-
-### Tailwind Configuration
-
-The project uses Tailwind CSS 4 with custom configuration:
-
-```typescript
-// tailwind.config.ts
-import type { Config } from "tailwindcss";
-
-const config: Config = {
-  darkMode: ["class"],
-  content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
-  theme: {
-    extend: {
-      colors: {
-        // Custom colors for risk levels
-        risk: {
-          low: "#22c55e",
-          elevated: "#f59e0b",
-          critical: "#ef4444",
-          calibrating: "#6b7280",
-        },
-      },
-    },
-  },
-  plugins: [require("tailwindcss-animate")],
-};
-```
-
-### Color System
-
-| Token | Value | Usage |
-|-------|-------|-------|
-| `risk.low` | `#22c55e` | Healthy status |
-| `risk.elevated` | `#f59e0b` | Warning status |
-| `risk.critical` | `#ef4444` | Critical status |
-| `risk.calibrating` | `#6b7280` | Loading/insufficient data |
 
 ### Theming
 
-The application uses CSS variables for theming:
+The application supports light and dark mode via `next-themes`. The active theme is persisted in `localStorage`. Toggle using the `ThemeToggle` component in the sidebar.
 
-```css
-/* globals.css */
-:root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --primary: 222.2 47.4% 11.2%;
-  --primary-foreground: 210 40% 98%;
-  /* ... */
-}
+Colors are defined as CSS custom properties in `globals.css` and extended in `tailwind.config.ts`. Risk-level semantic colors:
 
-.dark {
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
-  /* ... */
-}
-```
+| Token | Light value | Usage |
+|---|---|---|
+| Risk LOW | `#22c55e` (green-500) | Healthy badges, chart fills |
+| Risk ELEVATED | `#f59e0b` (amber-400) | Warning badges |
+| Risk CRITICAL | `#ef4444` (red-500) | Alert badges and indicators |
 
-### shadcn/ui Components
+### Adding a New Page
 
-Components are styled using the shadcn/ui design system:
+1. Create a directory under `app/` with a `page.tsx` file.
+2. Wrap with `<ProtectedRoute>` if authentication is required.
+3. Add a navigation entry in `app-sidebar.tsx`.
+4. Create a domain hook in `hooks/` if the page fetches data.
 
-```bash
-# Add a new shadcn component
-npx shadcn add button
-npx shadcn add card
-npx shadcn add dialog
-```
+### Adding a New API Call
 
----
-
-## API Integration
-
-### Base Configuration
-
-```typescript
-// lib/api.ts
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1/engines';
-
-async function handleResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-  }
-  const result: APIResponse<T> = await response.json();
-  if (!result.success) {
-    throw new Error(result.error || 'API request failed');
-  }
-  return result.data as T;
-}
-```
-
-### API Functions
-
-#### Safety Valve
-
-```typescript
-// Get burnout risk analysis
-export async function getSafetyAnalysis(userHash: string): Promise<SafetyValveData> {
-  const response = await fetch(`${API_BASE_URL}/users/${userHash}/safety`);
-  return handleResponse<SafetyValveData>(response);
-}
-```
-
-#### Talent Scout
-
-```typescript
-// Get network centrality analysis
-export async function getNetworkAnalysis(userHash: string): Promise<TalentScoutData> {
-  const response = await fetch(`${API_BASE_URL}/users/${userHash}/talent`);
-  return handleResponse<TalentScoutData>(response);
-}
-```
-
-#### Culture Thermometer
-
-```typescript
-// Get team health analysis
-export async function getTeamAnalysis(teamHashes: string[]): Promise<CultureThermometerData> {
-  const response = await fetch(`${API_BASE_URL}/teams/culture`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ team_hashes: teamHashes }),
-  });
-  return handleResponse<CultureThermometerData>(response);
-}
-```
-
-#### Context Check
-
-```typescript
-// Check context explanation
-export async function getContextCheck(
-  userHash: string,
-  timestamp?: string
-): Promise<ContextCheckData> {
-  const url = new URL(`${API_BASE_URL}/users/${userHash}/context`);
-  if (timestamp) url.searchParams.set('timestamp', timestamp);
-  const response = await fetch(url);
-  return handleResponse<ContextCheckData>(response);
-}
-```
-
-#### Simulation
-
-```typescript
-// Create persona
-export async function createPersona(
-  email: string,
-  personaType: PersonaType
-): Promise<CreatePersonaResponse> {
-  const response = await fetch(`${API_BASE_URL}/personas`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, persona_type: personaType }),
-  });
-  return handleResponse<CreatePersonaResponse>(response);
-}
-
-// Inject event
-export async function injectEvent(
-  userHash: string,
-  currentRisk: RiskLevel
-): Promise<InjectEventResponse> {
-  const response = await fetch(`${API_BASE_URL}/events`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_hash: userHash, current_risk: currentRisk }),
-  });
-  return handleResponse<InjectEventResponse>(response);
-}
-```
-
----
-
-## WebSocket
-
-### Connection Setup
-
-```typescript
-// hooks/useWebSocket.ts
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/ws';
-
-export function useWebSocket(userHash: string | null) {
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
-  const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-
-  useEffect(() => {
-    if (!userHash) return;
-
-    const ws = new WebSocket(`${WS_URL}/${userHash}`);
-    wsRef.current = ws;
-
-    ws.onopen = () => setConnectionStatus('connected');
-    ws.onclose = () => setConnectionStatus('disconnected');
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      setLastMessage(message);
-    };
-
-    return () => ws.close();
-  }, [userHash]);
-
-  const sendMessage = (data: object) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(data));
-    }
-  };
-
-  const requestUpdate = () => {
-    sendMessage({ action: 'request_update' });
-  };
-
-  return { connectionStatus, lastMessage, sendMessage, requestUpdate };
-}
-```
-
-### Message Types
-
-**Client → Server:**
-```typescript
-// Ping
-{ action: 'ping' }
-
-// Request manual update
-{ action: 'request_update' }
-```
-
-**Server → Client:**
-```typescript
-// Pong response
-{ type: 'pong', timestamp: '2024-01-15T10:00:00Z' }
-
-// Risk update
-{
-  type: 'risk_update',
-  data: {
-    user_hash: '...',
-    risk_level: 'CRITICAL',
-    velocity: 3.2
-  }
-}
-
-// Manual refresh response
-{
-  type: 'manual_refresh',
-  data: { /* full analysis */ }
-}
-```
-
-### Usage Example
-
-```typescript
-function Dashboard({ userHash }: { userHash: string }) {
-  const { connectionStatus, lastMessage, requestUpdate } = useWebSocket(userHash);
-
-  useEffect(() => {
-    if (lastMessage?.type === 'risk_update') {
-      // Update UI with new risk data
-      console.log('New risk level:', lastMessage.data.risk_level);
-    }
-  }, [lastMessage]);
-
-  return (
-    <div>
-      <WebSocketStatus status={connectionStatus} />
-      <button onClick={requestUpdate}>Refresh Data</button>
-    </div>
-  );
-}
-```
-
----
-
-## Building & Deployment
-
-### Static Export
-
-For static hosting (requires API to be separate):
-
-```typescript
-// next.config.ts
-const nextConfig = {
-  output: 'export',
-  distDir: 'dist',
-  images: {
-    unoptimized: true,
-  },
-};
-
-export default nextConfig;
-```
-
-```bash
-# Build static export
-pnpm build
-
-# Output in dist/ directory
-```
-
-### Docker Deployment
-
-```dockerfile
-# Dockerfile
-FROM node:20-alpine
-
-WORKDIR /app
-
-# Install pnpm
-RUN npm install -g pnpm
-
-# Copy package files
-COPY package.json pnpm-lock.yaml ./
-
-# Install dependencies
-RUN pnpm install --frozen-lockfile
-
-# Copy source
-COPY . .
-
-# Build
-RUN pnpm build
-
-# Expose port
-EXPOSE 3000
-
-# Start
-CMD ["pnpm", "start"]
-```
-
-```yaml
-# docker-compose.yml
-version: '3.8'
-
-services:
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8000/api/v1/engines
-      - NEXT_PUBLIC_WS_URL=ws://backend:8000/ws
-    depends_on:
-      - backend
-```
-
-### Vercel Deployment
-
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Deploy
-vercel
-
-# Production deploy
-vercel --prod
-```
-
-**Vercel Configuration** (`vercel.json`):
-```json
-{
-  "buildCommand": "pnpm build",
-  "outputDirectory": ".next",
-  "framework": "nextjs",
-  "env": {
-    "NEXT_PUBLIC_API_URL": "@sentinel_api_url",
-    "NEXT_PUBLIC_WS_URL": "@sentinel_ws_url"
-  }
-}
-```
-
-### Environment-Specific Builds
-
-```bash
-# Development
-pnpm dev
-
-# Staging
-NEXT_PUBLIC_API_URL=https://staging-api.sentinel.app pnpm build
-
-# Production
-NEXT_PUBLIC_API_URL=https://api.sentinel.app pnpm build
-```
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](../LICENSE) file for details.
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please read our [Contributing Guide](../CONTRIBUTING.md) for details.
-
----
-
-## 📞 Support
-
-- **Documentation**: [Full Documentation](../docs/)
-- **Issues**: [GitHub Issues](https://github.com/your-org/sentinel/issues)
-- **Backend Docs**: [Backend README](../backend/README.md)
-
----
-
-<p align="center">
-  Built with ❤️ by the Sentinel Team
-</p>
+Add a typed function to `lib/api.ts`. All functions should use the `NEXT_PUBLIC_API_URL` base and attach the Supabase JWT from the auth context as `Authorization: Bearer <token>`.

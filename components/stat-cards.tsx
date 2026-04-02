@@ -108,9 +108,9 @@ export function StatCards({ metrics }: StatCardsProps) {
   // Guard against undefined metrics
   if (!metrics) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-24 rounded-xl bg-white/5 animate-pulse" />
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6 stagger-children">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-24 rounded-xl bg-white/5 animate-pulse animate-slide-up" />
         ))}
       </div>
     )
@@ -185,7 +185,7 @@ export function StatCards({ metrics }: StatCardsProps) {
     ]
 
   return (
-    <div ref={containerRef} className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+    <div ref={containerRef} className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6 stagger-children">
       {stats.map((stat) => (
         <MetricCard key={stat.label} {...stat} />
       ))}

@@ -8,7 +8,6 @@ const supabase = createClient()
 import { User, Session } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
-import { MeResponse } from '@/types'
 
 interface UserRole {
   user_hash: string
@@ -40,11 +39,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Fetch user role from backend
   const fetchUserRole = async () => {
     try {
-      const response = await api.get<MeResponse>('/me')
+      const raw = await api.get<any>('/auth/me')
+      const response = raw?.data ?? raw
 
-      if (response && response.user) {
-        setUserRole(response.user as UserRole)
-        localStorage.setItem('userRole', response.user.role)
+      if (response && response.role) {
+        setUserRole({
+          user_hash: response.user_hash,
+          role: response.role,
+          consent_share_with_manager: response.consent_share_with_manager ?? false,
+          consent_share_anonymized: response.consent_share_anonymized ?? true,
+        } as UserRole)
       } else {
         setUserRole(null)
       }
@@ -54,23 +58,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session) {
-        fetchUserRole()
-      }
-      setLoading(false)
-    })
-
-    // Listen for auth changes
+    // onAuthStateChange fires INITIAL_SESSION synchronously on mount,
+    // so a separate getSession() call is unnecessary and causes a double-fetch race.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session)
+      async (_event, session) => {
+        setSession(prev => {
+          // Only update if the access_token actually changed — prevents
+          // downstream re-renders (TenantContext) on identical sessions.
+          if (prev?.access_token === session?.access_token) return prev
+          return session
+        })
         setUser(session?.user ?? null)
         if (session) {
-          fetchUserRole()
+          await fetchUserRole()
         } else {
           setUserRole(null)
         }
@@ -82,32 +82,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signIn = async (email: string, password: string) => {
-    const { error, data } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
-
-    // Fetch user role to determine redirect
-    try {
-      const roleResponse = await api.get<MeResponse>('/me')
-
-      const userData = roleResponse?.user
-      
-      // Store role in localStorage for middleware to access
-      if (userData?.role) {
-        localStorage.setItem('userRole', userData.role)
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      const errorMap: Record<string, string> = {
+        'Invalid login credentials': 'Invalid email or password. Please try again.',
+        'Email not confirmed': 'Please verify your email before signing in.',
+        'Too many requests': 'Too many login attempts. Please wait a few minutes.',
       }
-      
-      // Redirect to ask-sentinel - it will show content based on role
-      router.push('/ask-sentinel')
-    } catch (error) {
-      // Fallback to ask-sentinel if role fetch fails
-      router.push('/ask-sentinel')
+      throw new Error(errorMap[error.message] || error.message)
     }
+    // onAuthStateChange listener will fire, calling fetchUserRole() and setting state
+    router.push('/dashboard')
   }
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password })
-    if (error) throw error
-    // Supabase sends confirmation email by default
+    try {
+      const raw = await api.post<any>('/auth/register', { email, password })
+      const result = raw?.data ?? raw
+
+      if (!result?.access_token) {
+        throw new Error('Registration failed. Please try again.')
+      }
+
+      // Set the Supabase session from backend tokens
+      await supabase.auth.setSession({
+        access_token: result.access_token,
+        refresh_token: result.refresh_token,
+      })
+
+      router.push('/dashboard')
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        throw error
+      }
+      throw new Error('Registration failed. Please try again.')
+    }
   }
 
   const signOut = async () => {

@@ -36,7 +36,7 @@ export default function SimulationPage() {
   }
 
   return (
-    <ProtectedRoute>
+    <ProtectedRoute allowedRoles={["admin", "manager"]}>
       <div className="flex flex-col min-h-screen bg-background p-6 lg:p-8 space-y-8">
         
         {/* Header */}

@@ -3,12 +3,10 @@
 import { useState, useMemo } from "react"
 
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ProtectedRoute } from "@/components/protected-route"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import { Progress } from "@/components/ui/progress"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { NetworkGraph } from "@/components/network-graph"
 import {
   Network,
@@ -19,9 +17,7 @@ import {
   Target,
   AlertCircle,
   TrendingUp,
-  TrendingDown,
   Circle,
-  Webhook,
   GitBranch,
   Clock,
   RefreshCw,
@@ -31,717 +27,436 @@ import {
   Crosshair,
   Unplug,
   Gauge,
-  Activity
+  Activity,
+  Play,
+  ArrowUpRight,
+  BarChart3,
 } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
-interface Connector {
-  id: string
-  name: string
-  role: string
-  connections: number
-  influence: number
-  avatar: string
-}
+import { useGlobalNetworkData } from "@/hooks/useGlobalNetworkData"
+import { NetworkNode } from "@/types"
+import { toast } from "sonner"
+import { cn, getInitials } from "@/lib/utils"
 
-interface Cluster {
-  id: string
-  name: string
-  members: number
-  density: number
+// ─── Stat Card ────────────────────────────────────────────────────────────────
+
+function StatCard({
+  label, value, sub, icon: Icon, color,
+}: {
+  label: string
+  value: string | number
+  sub: string
+  icon: React.ElementType
   color: string
+}) {
+  return (
+    <div className="bg-card border border-white/5 rounded-xl p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className={cn("h-4 w-4", color)} />
+        <span className="text-xs text-muted-foreground">{label}</span>
+      </div>
+      <p className={cn("text-2xl font-bold font-mono", color)}>{value}</p>
+      <p className="text-[10px] text-muted-foreground mt-1">{sub}</p>
+    </div>
+  )
 }
 
-interface SiloMember {
-  id: string
-  name: string
-  role: string
-  connections: number
-  risk: "high" | "medium" | "low"
-}
+// ─── Network Content ──────────────────────────────────────────────────────────
 
 function NetworkContent() {
-  const [activeTab, setActiveTab] = useState<"overview" | "connectors" | "patterns" | "silos">("overview")
+  const { data: networkData, isLoading, refetch } = useGlobalNetworkData()
 
-  const networkNodes = useMemo(() => {
-    const names = [
-      "Sarah Chen", "Mike Johnson", "Emily Davis", "Alex Kim", "Jordan Lee",
-      "Taylor Swift", "Chris Martin", "Pat Riley", "Sam Wilson", "Jamie Oliver",
-      "Riley Cooper", "Morgan Freeman", "Casey Jones", "Quinn Hughes", "Drew Barrymore",
-      "Skyler White", "Avery Brown", "Reese Witherspoon", "Charlie Puth", "Harper Lee"
-    ]
-    const roles = ["Engineer", "Designer", "Manager", "Analyst", "Lead", "Director"]
-    const riskLevels = ["LOW", "LOW", "LOW", "ELEVATED", "CRITICAL"] as const
+  const networkNodes = networkData?.nodes ?? []
+  const networkEdges = networkData?.edges ?? []
 
-    return names.map((name, idx) => ({
-      id: `node-${idx}`,
-      label: name,
-      risk_level: riskLevels[Math.floor(Math.random() * riskLevels.length)],
-      betweenness: Math.random() * 0.5,
-      eigenvector: Math.random() * 0.8,
-      unblocking_count: Math.floor(Math.random() * 10),
-      is_hidden_gem: idx < 3
-    }))
-  }, [])
-
-  const networkEdges = useMemo(() => {
-    const edges: { source: string; target: string; weight: number; edge_type: string }[] = []
-    
-    for (let i = 0; i < networkNodes.length; i++) {
-      const connections = Math.floor(Math.random() * 4) + 1
-      for (let j = 0; j < connections; j++) {
-        const targetIdx = Math.floor(Math.random() * networkNodes.length)
-        if (targetIdx !== i) {
-          edges.push({
-            source: `node-${i}`,
-            target: `node-${targetIdx}`,
-            weight: Math.random() * 3 + 1,
-            edge_type: ["collaboration", "mentorship", "reporting"][Math.floor(Math.random() * 3)]
-          })
-        }
-      }
-    }
-    return edges
-  }, [networkNodes])
-
+  // Derive connectivity metrics from real data
   const connectivityMetrics = useMemo(() => {
+    const nodeCount = networkNodes.length
+    const edgeCount = networkEdges.length
+    if (nodeCount === 0) return null
+
+    const maxEdges = nodeCount * (nodeCount - 1) / 2
+    const density = maxEdges > 0 ? edgeCount / maxEdges : 0
+
+    const degreeMap: Record<string, number> = {}
+    networkEdges.forEach(e => {
+      const src = typeof e.source === "string" ? e.source : (e.source as any)?.id ?? ""
+      const tgt = typeof e.target === "string" ? e.target : (e.target as any)?.id ?? ""
+      degreeMap[src] = (degreeMap[src] ?? 0) + 1
+      degreeMap[tgt] = (degreeMap[tgt] ?? 0) + 1
+    })
+    const avgDegree = nodeCount > 0
+      ? Object.values(degreeMap).reduce((a, b) => a + b, 0) / nodeCount
+      : 0
+    const avgBetweenness = networkNodes.reduce((a, n) => a + (n.betweenness ?? 0), 0) / nodeCount
+    const avgClustering = Math.max(0, Math.min(1, 1 - avgBetweenness))
+    const diameter = avgDegree > 0 ? Math.max(2, Math.round(Math.log(nodeCount) / Math.log(avgDegree))) : 3
+    const isolated = networkNodes.filter(n => !degreeMap[n.id]).length
+
     return {
-      density: 0.65 + Math.random() * 0.25,
-      avgClustering: 0.55 + Math.random() * 0.3,
-      diameter: Math.floor(Math.random() * 3) + 2,
-      components: Math.floor(Math.random() * 2) + 1,
-      totalEdges: networkEdges.length,
-      avgDegree: (networkEdges.length * 2 / networkNodes.length).toFixed(1)
+      density,
+      avgClustering,
+      diameter,
+      totalEdges: edgeCount,
+      avgDegree: avgDegree.toFixed(1),
+      isolated,
     }
   }, [networkNodes, networkEdges])
 
-  const keyConnectors = useMemo((): Connector[] => {
-    const connectors: Connector[] = [
-      { id: "1", name: "Sarah Chen", role: "Tech Lead", connections: 45, influence: 92, avatar: "SC" },
-      { id: "2", name: "Mike Johnson", role: "Engineering Manager", connections: 38, influence: 88, avatar: "MJ" },
-      { id: "3", name: "Emily Davis", role: "Senior Architect", connections: 42, influence: 85, avatar: "ED" },
-      { id: "4", name: "Alex Kim", role: "Product Manager", connections: 35, influence: 78, avatar: "AK" },
-      { id: "5", name: "Jordan Lee", role: "Team Lead", connections: 31, influence: 72, avatar: "JL" }
-    ]
-    return connectors
-  }, [])
+  // Key influencers: top nodes by betweenness
+  const keyInfluencers = useMemo(() => {
+    return [...networkNodes]
+      .filter(n => n.betweenness != null)
+      .sort((a, b) => (b.betweenness ?? 0) - (a.betweenness ?? 0))
+      .slice(0, 8)
+      .map(n => ({
+        id: n.id,
+        name: n.label || n.id,
+        connections: networkEdges.filter(e => {
+          const src = typeof e.source === "string" ? e.source : (e.source as any)?.id ?? ""
+          const tgt = typeof e.target === "string" ? e.target : (e.target as any)?.id ?? ""
+          return src === n.id || tgt === n.id
+        }).length,
+        centrality: Math.round((n.betweenness ?? 0) * 100),
+        influence: Math.round((n.eigenvector ?? n.betweenness ?? 0) * 100),
+        is_hidden_gem: n.is_hidden_gem ?? false,
+      }))
+  }, [networkNodes, networkEdges])
 
-  const clusters = useMemo((): Cluster[] => {
-    return [
-      { id: "1", name: "Engineering Core", members: 8, density: 0.78, color: "cyan" },
-      { id: "2", name: "Product Team", members: 5, density: 0.85, color: "blue" },
-      { id: "3", name: "Design Hub", members: 4, density: 0.72, color: "indigo" },
-      { id: "4", name: "Operations", members: 3, density: 0.65, color: "purple" }
-    ]
-  }, [])
+  // Isolation alerts: nodes with very few connections
+  const isolationAlerts = useMemo(() => {
+    const degreeMap: Record<string, number> = {}
+    networkEdges.forEach(e => {
+      const src = typeof e.source === "string" ? e.source : (e.source as any)?.id ?? ""
+      const tgt = typeof e.target === "string" ? e.target : (e.target as any)?.id ?? ""
+      degreeMap[src] = (degreeMap[src] ?? 0) + 1
+      degreeMap[tgt] = (degreeMap[tgt] ?? 0) + 1
+    })
+    return networkNodes
+      .filter(n => (degreeMap[n.id] ?? 0) <= 2)
+      .slice(0, 6)
+      .map(n => ({
+        id: n.id,
+        name: n.label || n.id,
+        connections: degreeMap[n.id] ?? 0,
+        risk: ((degreeMap[n.id] ?? 0) === 0
+          ? "critical"
+          : (degreeMap[n.id] ?? 0) <= 1
+          ? "high"
+          : "medium") as "critical" | "high" | "medium",
+      }))
+  }, [networkNodes, networkEdges])
 
-  const communicationPatterns = useMemo(() => {
-    return [
-      { type: "Cross-team Collaboration", frequency: 42, trend: 8, color: "cyan" },
-      { type: "Within Team", frequency: 35, trend: -3, color: "blue" },
-      { type: "Management Cascade", frequency: 15, trend: 2, color: "indigo" },
-      { type: "External Partners", frequency: 8, trend: 5, color: "purple" }
-    ]
-  }, [])
+  const isolatedCount = connectivityMetrics?.isolated ?? 0
+  const bridgeNodes = networkNodes.filter(n => (n.betweenness ?? 0) > 0.1).length
 
-  const siloMembers = useMemo((): SiloMember[] => {
-    return [
-      { id: "1", name: "Riley Cooper", role: "Data Analyst", connections: 3, risk: "high" },
-      { id: "2", name: "Morgan Freeman", role: "QA Lead", connections: 4, risk: "high" },
-      { id: "3", name: "Casey Jones", role: "Backend Dev", connections: 5, risk: "medium" },
-      { id: "4", name: "Quinn Hughes", role: "Support Lead", connections: 6, risk: "medium" },
-      { id: "5", name: "Drew Barrymore", role: "Content Writer", connections: 7, risk: "low" }
-    ]
-  }, [])
-
-  const getRiskColor = (risk: string) => {
-    switch (risk) {
-      case "high": return "hsl(var(--sentinel-critical))"
-      case "medium": return "hsl(var(--sentinel-elevated))"
-      default: return "hsl(var(--sentinel-healthy))"
-    }
+  const riskColorClass = (risk: string) => {
+    if (risk === "critical") return "text-destructive"
+    if (risk === "high") return "text-[hsl(var(--sentinel-elevated))]"
+    return "text-muted-foreground"
   }
 
-  const getClusterBarColor = (color: string) => {
-    switch (color) {
-      case "cyan": return "hsl(var(--sentinel-info))"
-      case "blue": return "hsl(var(--primary))"
-      case "indigo": return "hsl(var(--primary))"
-      default: return "hsl(var(--primary))"
-    }
+  const riskBgClass = (risk: string) => {
+    if (risk === "critical") return "bg-destructive/10 border border-destructive/15"
+    if (risk === "high") return "bg-[hsl(var(--sentinel-elevated))]/10 border border-[hsl(var(--sentinel-elevated))]/15"
+    return "bg-white/5 border border-white/5"
   }
 
   return (
-    <div className="flex flex-1 flex-col">
-      <ScrollArea className="flex-1">
-        <main className="flex flex-col gap-8 p-6 lg:p-10">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[hsl(var(--sentinel-info))]/15 border border-[hsl(var(--sentinel-info))]/20">
-                <Network className="h-6 w-6 text-[hsl(var(--sentinel-info))]" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold tracking-tight text-foreground">Network Engine</h2>
-                <p className="text-sm text-muted-foreground">Team connectivity & communication analysis</p>
-              </div>
+    <ScrollArea className="flex-1">
+      <main className="flex flex-col gap-5 p-4 lg:p-6">
+
+        {/* ── Page Header ─────────────────────────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-[hsl(var(--sentinel-info))]/15 border border-[hsl(var(--sentinel-info))]/20 flex items-center justify-center shrink-0">
+              <Network className="h-5 w-5 text-[hsl(var(--sentinel-info))]" />
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="gap-1 text-[10px] border-[hsl(var(--sentinel-healthy))]/30 text-[hsl(var(--sentinel-healthy))] bg-[hsl(var(--sentinel-healthy))]/10">
-                <Activity className="h-3 w-3" />
-                Live
-              </Badge>
-              <button className="flex items-center gap-2 px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-accent transition-colors">
-                <RefreshCw className="h-4 w-4" />
-                Refresh
-              </button>
+            <div>
+              <h1 className="text-2xl font-bold font-['Manrope',sans-serif] text-foreground">Network Engine</h1>
+              <p className="text-sm text-muted-foreground">Team connectivity &amp; communication analysis</p>
             </div>
           </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-muted-foreground bg-white/5 border border-white/5 rounded-full px-3 py-1">
+              Last analyzed 1 hour ago
+            </span>
+            <Badge className="gap-1 text-[10px] bg-accent/10 text-accent border border-accent/20">
+              <Activity className="h-3 w-3" />
+              Live
+            </Badge>
+            <Button
+              size="sm"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground transition-[color,background-color,border-color,transform] duration-150 active:scale-[0.97]"
+            >
+              <Play className="h-3.5 w-3.5 mr-1.5" />
+              Run Analysis
+            </Button>
+            <button
+              onClick={() => refetch()}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-white/10 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-[color,background-color,border-color,transform] duration-150 active:scale-[0.97]"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Refresh
+            </button>
+          </div>
+        </div>
 
-          {/* Hero Section */}
-          <div className="glass-card-elevated relative overflow-hidden rounded-2xl">
-            <div className="absolute inset-0 bg-[hsl(var(--sentinel-info))]/3" />
-            
-            <div className="relative grid gap-10 p-8 md:grid-cols-2 lg:gap-14">
-              {/* Network Density Gauge */}
-              <div className="flex flex-col items-center justify-center gap-5">
-                <div className="relative">
-                  <div className="absolute inset-0 rounded-full bg-[hsl(var(--sentinel-info))]/10 blur-3xl" />
-                  <div className="relative flex h-40 w-40 items-center justify-center rounded-full border border-border bg-background shadow-lg">
-                    <div className="flex flex-col items-center">
-                      <span className="text-4xl font-bold tracking-tight text-foreground font-mono tabular-nums">
-                        {(connectivityMetrics.density * 100).toFixed(0)}%
-                      </span>
-                      <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground mt-1">
-                        Network Density
-                      </span>
-                    </div>
-                  </div>
-                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-medium text-white bg-[hsl(var(--sentinel-info))]">
-                    {connectivityMetrics.density > 0.7 ? "Strong" : connectivityMetrics.density > 0.5 ? "Healthy" : "Developing"}
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Share2 className="h-4 w-4 text-[hsl(var(--sentinel-info))]" />
-                  <span className="text-sm font-medium text-[hsl(var(--sentinel-info))]">{connectivityMetrics.totalEdges} active connections</span>
-                </div>
-              </div>
+        {/* Loading */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-16">
+            <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          </div>
+        )}
 
-              {/* Quick Stats */}
-              <div className="flex flex-col justify-center gap-4">
-                {/* Avg Clustering */}
-                <div className="metric-card flex items-center justify-between p-4 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(var(--sentinel-info))]/10">
-                      <Layers className="h-4 w-4 text-[hsl(var(--sentinel-info))]" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Avg. Clustering</p>
-                      <p className="text-[11px] text-muted-foreground">Team cohesion</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xl font-bold font-mono tabular-nums text-[hsl(var(--sentinel-info))]">{(connectivityMetrics.avgClustering * 100).toFixed(0)}%</p>
-                    <p className="text-[10px] text-muted-foreground">Coefficient</p>
-                  </div>
-                </div>
-
-                {/* Network Diameter */}
-                <div className="metric-card flex items-center justify-between p-4 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(var(--primary))]/10">
-                      <Crosshair className="h-4 w-4 text-[hsl(var(--primary))]" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Network Diameter</p>
-                      <p className="text-[11px] text-muted-foreground">Max hops between</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xl font-bold font-mono tabular-nums text-[hsl(var(--primary))]">{connectivityMetrics.diameter}</p>
-                    <p className="text-[10px] text-muted-foreground">degrees</p>
-                  </div>
-                </div>
-
-                {/* Components */}
-                <div className="metric-card flex items-center justify-between p-4 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(var(--primary))]/10">
-                      <GitBranch className="h-4 w-4 text-[hsl(var(--primary))]" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Connected Groups</p>
-                      <p className="text-[11px] text-muted-foreground">Network components</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xl font-bold font-mono tabular-nums text-[hsl(var(--primary))]">{connectivityMetrics.components}</p>
-                    <p className="text-[10px] text-muted-foreground">components</p>
-                  </div>
-                </div>
-              </div>
+        {!isLoading && (
+          <>
+            {/* ── Stats Row ──────────────────────────────────────────────── */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <StatCard
+                label="Network Density"
+                value={connectivityMetrics ? `${(connectivityMetrics.density * 100).toFixed(0)}%` : "--"}
+                sub="Graph connectivity ratio"
+                icon={Gauge}
+                color="text-[hsl(var(--sentinel-info))]"
+              />
+              <StatCard
+                label="Avg Connections"
+                value={connectivityMetrics?.avgDegree ?? "--"}
+                sub="Connections per member"
+                icon={Link2}
+                color="text-primary"
+              />
+              <StatCard
+                label="Isolated Members"
+                value={isolatedCount}
+                sub="Require intervention"
+                icon={Unplug}
+                color={isolatedCount > 0 ? "text-destructive" : "text-accent"}
+              />
+              <StatCard
+                label="Bridge Nodes"
+                value={bridgeNodes}
+                sub="High centrality connectors"
+                icon={GitBranch}
+                color="text-accent"
+              />
             </div>
-          </div>
 
-          {/* Tab Navigation */}
-          <div className="flex items-center gap-1 border-b border-border">
-            {(["overview", "connectors", "patterns", "silos"] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === tab
-                    ? "border-[hsl(var(--primary))] text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {tab === "overview" && <Gauge className="h-4 w-4" />}
-                {tab === "connectors" && <Target className="h-4 w-4" />}
-                {tab === "patterns" && <MessageCircle className="h-4 w-4" />}
-                {tab === "silos" && <Unplug className="h-4 w-4" />}
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
-          </div>
+            {/* ── Main Content ──────────────────────────────────────────── */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5">
 
-          {/* Overview Tab */}
-          {activeTab === "overview" && (
-            <div className="space-y-6">
               {/* Network Graph */}
-              <div className="h-[500px] glass-card rounded-2xl overflow-hidden">
-                <NetworkGraph nodes={networkNodes} edges={networkEdges} />
-              </div>
-
-              {/* Network Metrics */}
-              <div className="grid gap-4 lg:grid-cols-4">
-                {[
-                  { label: "Total Connections", value: connectivityMetrics.totalEdges, subtitle: "edges in network", icon: Link2 },
-                  { label: "Avg. Degree", value: connectivityMetrics.avgDegree, subtitle: "connections per person", icon: Users },
-                  { label: "Clustering Coefficient", value: connectivityMetrics.avgClustering.toFixed(2), subtitle: "0-1 scale", icon: Zap },
-                  { label: "Network Diameter", value: connectivityMetrics.diameter, subtitle: "max degrees of separation", icon: Circle }
-                ].map((metric, idx) => (
-                  <div key={metric.label} className="metric-card rounded-xl p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <metric.icon className="h-4 w-4 text-[hsl(var(--primary))]" />
-                      <span className="text-xs font-medium">{metric.label}</span>
+              <div className="bg-card border border-white/5 rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between p-4 border-b border-white/5">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Network className="h-4 w-4 text-[hsl(var(--sentinel-info))]" />
+                    Network Graph
+                  </h3>
+                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-primary" />
+                      Normal
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-[hsl(var(--sentinel-gem))]" />
+                      Hidden Gem
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-destructive" />
+                      At-Risk
+                    </span>
+                  </div>
+                </div>
+                <div className="h-[500px]">
+                  {networkNodes.length > 0 ? (
+                    <NetworkGraph nodes={networkNodes} edges={networkEdges} />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full gap-3">
+                      <Network className="h-12 w-12 text-muted-foreground/20" />
+                      <p className="text-sm text-muted-foreground">No network data available yet</p>
+                      <p className="text-[11px] text-muted-foreground">Network will appear as team data grows</p>
                     </div>
-                    <p className="text-2xl font-bold font-mono tabular-nums text-[hsl(var(--primary))]">{metric.value}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">{metric.subtitle}</p>
+                  )}
+                </div>
+                {/* Graph summary bar */}
+                {connectivityMetrics && (
+                  <div className="flex items-center gap-6 px-4 py-3 border-t border-white/5 text-[11px] text-muted-foreground">
+                    <span>{networkNodes.length} nodes</span>
+                    <span className="h-3 border-l border-border" />
+                    <span>{connectivityMetrics.totalEdges} edges</span>
+                    <span className="h-3 border-l border-border" />
+                    <span>Clustering: {(connectivityMetrics.avgClustering * 100).toFixed(0)}%</span>
+                    <span className="h-3 border-l border-border" />
+                    <span>Diameter: {connectivityMetrics.diameter}</span>
                   </div>
-                ))}
+                )}
               </div>
 
-              {/* Clusters */}
-              <div className="glass-card rounded-2xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Layers className="h-5 w-5 text-[hsl(var(--sentinel-info))]" />
-                    Team Clusters
-                  </CardTitle>
-                  <CardDescription>Identified groups within the organization</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-                    {clusters.map((cluster) => (
-                      <div key={cluster.id} className="metric-card rounded-xl p-4">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-lg text-white" style={{ backgroundColor: getClusterBarColor(cluster.color) }}>
-                            <Users className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium">{cluster.name}</p>
-                            <p className="text-[10px] text-muted-foreground">{cluster.members} members</p>
-                          </div>
-                        </div>
-                        <div className="flex items-end justify-between">
-                          <div>
-                            <p className="text-xl font-bold font-mono tabular-nums text-foreground">{(cluster.density * 100).toFixed(0)}%</p>
-                            <p className="text-[10px] text-muted-foreground">Density</p>
-                          </div>
-                          <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center">
-                            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: getClusterBarColor(cluster.color) }} />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </div>
-            </div>
-          )}
+              {/* Right sidebar */}
+              <div className="space-y-5">
 
-          {/* Key Connectors Tab */}
-          {activeTab === "connectors" && (
-            <div className="space-y-6">
-              <div className="glass-card rounded-2xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Target className="h-5 w-5 text-[hsl(var(--sentinel-info))]" />
-                    Key Connectors & Influencers
-                  </CardTitle>
-                  <CardDescription>Team members who bridge groups and drive collaboration</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {keyConnectors.map((connector, idx) => (
-                      <div 
-                        key={connector.id}
-                        className="flex items-center gap-4 p-4 rounded-xl bg-muted/20 hover:bg-muted/30 transition-colors"
-                      >
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[hsl(var(--primary))] text-white font-bold text-sm font-mono tabular-nums">
-                          {idx + 1}
-                        </div>
-                        <Avatar className="h-10 w-10">
-                          <AvatarFallback className="bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))] text-xs font-semibold">
-                            {connector.avatar}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium truncate">{connector.name}</p>
-                            {connector.influence >= 85 && (
-                              <Badge variant="outline" className="text-[9px] border-[hsl(var(--sentinel-gem))]/30 text-[hsl(var(--sentinel-gem))] bg-[hsl(var(--sentinel-gem))]/10">
-                                <Zap className="h-2.5 w-2.5 mr-1" />
-                                Top Influencer
-                              </Badge>
-                            )}
+                {/* Key Influencers */}
+                <div className="bg-card border border-white/5 rounded-xl p-5">
+                  <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Target className="h-4 w-4 text-[hsl(var(--sentinel-info))]" />
+                    Key Influencers
+                  </h3>
+                  {keyInfluencers.length > 0 ? (
+                    <div className="space-y-3">
+                      {keyInfluencers.map((c, idx) => (
+                        <div key={c.id} className="flex items-center gap-3">
+                          <div className={cn(
+                            "h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0",
+                            idx === 0 ? "bg-[hsl(var(--sentinel-gem))]" : idx <= 2 ? "bg-primary" : "bg-muted-foreground/50"
+                          )}>
+                            {idx + 1}
                           </div>
-                          <p className="text-[11px] text-muted-foreground">{connector.role}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-bold font-mono tabular-nums text-[hsl(var(--primary))]">{connector.connections}</p>
-                          <p className="text-[10px] text-muted-foreground">connections</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-bold font-mono tabular-nums text-[hsl(var(--sentinel-info))]">{connector.influence}%</p>
-                          <p className="text-[10px] text-muted-foreground">influence</p>
-                        </div>
-                        <div className="w-24">
-                          <Progress value={connector.influence} className="h-1.5" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </div>
-
-              {/* Hidden Gems */}
-              <div className="glass-card rounded-2xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Zap className="h-5 w-5 text-[hsl(var(--sentinel-gem))]" />
-                    Hidden Gems
-                  </CardTitle>
-                  <CardDescription>High-potential connectors with significant network impact</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-3 md:grid-cols-3">
-                    {networkNodes.filter(n => n.is_hidden_gem).slice(0, 3).map((node) => (
-                      <div key={node.id} className="metric-card rounded-xl p-4">
-                        <div className="flex items-center gap-3 mb-3">
-                          <Avatar className="h-9 w-9">
-                            <AvatarFallback className="bg-[hsl(var(--sentinel-gem))]/15 text-[hsl(var(--sentinel-gem))] text-xs">
-                              {node.label.split(' ').map(n => n[0]).join('')}
+                          <Avatar className="h-8 w-8 shrink-0">
+                            <AvatarFallback className={cn(
+                              "text-[10px]",
+                              c.is_hidden_gem ? "bg-[hsl(var(--sentinel-gem))]/15 text-[hsl(var(--sentinel-gem))]" : "bg-primary/10 text-primary"
+                            )}>
+                              {getInitials(c.name)}
                             </AvatarFallback>
                           </Avatar>
-                          <div>
-                            <p className="text-sm font-medium">{node.label}</p>
-                            <p className="text-[10px] text-muted-foreground">Hidden Gem</p>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="p-2 rounded-lg bg-muted/40">
-                            <p className="text-[10px] text-muted-foreground">Betweenness</p>
-                            <p className="text-xs font-semibold font-mono tabular-nums text-[hsl(var(--sentinel-gem))]">{(node.betweenness || 0).toFixed(3)}</p>
-                          </div>
-                          <div className="p-2 rounded-lg bg-muted/40">
-                            <p className="text-[10px] text-muted-foreground">Unblocking</p>
-                            <p className="text-xs font-semibold font-mono tabular-nums text-[hsl(var(--primary))]">{node.unblocking_count || 0}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </div>
-            </div>
-          )}
-
-          {/* Communication Patterns Tab */}
-          {activeTab === "patterns" && (
-            <div className="space-y-6">
-              <div className="glass-card rounded-2xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <MessageCircle className="h-5 w-5 text-[hsl(var(--sentinel-info))]" />
-                    Communication Patterns
-                  </CardTitle>
-                  <CardDescription>How information flows through the organization</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-5">
-                    {communicationPatterns.map((pattern, idx) => (
-                      <div key={idx} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: getClusterBarColor(pattern.color) }} />
-                            <span className="text-sm font-medium">{pattern.type}</span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-xl font-bold font-mono tabular-nums text-foreground">{pattern.frequency}%</span>
-                            <div className={`flex items-center gap-1 text-[10px] ${pattern.trend >= 0 ? 'text-[hsl(var(--sentinel-healthy))]' : 'text-[hsl(var(--sentinel-critical))]'}`}>
-                              {pattern.trend >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                              {Math.abs(pattern.trend)}%
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1 mb-1">
+                              <p className="text-xs font-medium truncate text-foreground">{c.name}</p>
+                              {idx === 0 && (
+                                <Zap className="h-3 w-3 text-[hsl(var(--sentinel-gem))] shrink-0" />
+                              )}
+                            </div>
+                            <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-[hsl(var(--sentinel-info))] rounded-full transition-all duration-500"
+                                style={{ width: `${c.centrality}%` }}
+                              />
                             </div>
                           </div>
+                          <span className="text-[10px] font-mono text-[hsl(var(--sentinel-info))] shrink-0">{c.centrality}%</span>
                         </div>
-                        <div className="h-2 bg-muted rounded-full overflow-hidden">
-                          <div 
-                            className="h-full rounded-full transition-all duration-500"
-                            style={{ width: `${pattern.frequency}%`, backgroundColor: getClusterBarColor(pattern.color) }}
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-20 gap-2">
+                      <Target className="h-6 w-6 text-muted-foreground/20" />
+                      <p className="text-xs text-muted-foreground">No influencer data yet</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Isolation Alerts */}
+                <div className="bg-card border border-white/5 rounded-xl p-5">
+                  <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Unplug className="h-4 w-4 text-destructive" />
+                    Isolation Alerts
+                    {isolationAlerts.length > 0 && (
+                      <Badge className="text-[9px] bg-destructive/15 text-destructive border-destructive/20 ml-1">
+                        {isolationAlerts.length}
+                      </Badge>
+                    )}
+                  </h3>
+                  {isolationAlerts.length > 0 ? (
+                    <div className="space-y-2">
+                      {isolationAlerts.map((member) => (
+                        <div
+                          key={member.id}
+                          className={cn("rounded-lg p-3 flex items-center gap-3", riskBgClass(member.risk))}
+                        >
+                          <Avatar className="h-7 w-7 shrink-0">
+                            <AvatarFallback className="text-[9px] bg-muted">
+                              {getInitials(member.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-xs font-medium text-foreground truncate">{member.name}</p>
+                              {member.risk === "critical" && (
+                                <AlertCircle className="h-3 w-3 text-destructive shrink-0" />
+                              )}
+                            </div>
+                            <p className={cn("text-[10px]", riskColorClass(member.risk))}>
+                              {member.connections} connection{member.connections !== 1 ? "s" : ""}
+                              {member.risk === "critical" ? " — isolated" : " — low connectivity"}
+                            </p>
+                          </div>
+                          <button
+                            className="shrink-0 text-[10px] border border-white/10 rounded px-2 py-1 text-muted-foreground hover:text-foreground hover:border-white/20 transition-[color,background-color,border-color,transform] duration-150 active:scale-[0.97]"
+                            onClick={() => toast.info("Coming soon — Composio connection will be available shortly")}
+                          >
+                            Intervene
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-20 gap-2">
+                      <Activity className="h-6 w-6 text-accent/30" />
+                      <p className="text-xs text-accent">No isolated members detected</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Network Metrics */}
+                <div className="bg-card border border-white/5 rounded-xl p-5">
+                  <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4 text-primary" />
+                    Network Metrics
+                  </h3>
+                  <div className="space-y-3">
+                    {[
+                      {
+                        label: "Graph Density",
+                        value: connectivityMetrics ? (connectivityMetrics.density * 100).toFixed(0) : 0,
+                        display: connectivityMetrics ? `${(connectivityMetrics.density * 100).toFixed(0)}%` : "--",
+                        color: "bg-[hsl(var(--sentinel-info))]",
+                      },
+                      {
+                        label: "Avg Clustering",
+                        value: connectivityMetrics ? connectivityMetrics.avgClustering * 100 : 0,
+                        display: connectivityMetrics ? `${(connectivityMetrics.avgClustering * 100).toFixed(0)}%` : "--",
+                        color: "bg-primary",
+                      },
+                      {
+                        label: "Bridge Nodes",
+                        value: networkNodes.length > 0 ? Math.min((bridgeNodes / networkNodes.length) * 100, 100) : 0,
+                        display: `${bridgeNodes}`,
+                        color: "bg-accent",
+                      },
+                    ].map((m) => (
+                      <div key={m.label}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-muted-foreground">{m.label}</span>
+                          <span className="text-xs font-mono text-foreground">{m.display}</span>
+                        </div>
+                        <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                          <div
+                            className={cn("h-full rounded-full transition-all duration-500", m.color)}
+                            style={{ width: `${m.value}%` }}
                           />
                         </div>
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </div>
-
-              {/* Communication Flow */}
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div className="glass-card rounded-2xl">
-                  <CardHeader>
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Webhook className="h-4 w-4 text-[hsl(var(--sentinel-info))]" />
-                      Information Flow Direction
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {[
-                        { direction: "Top-Down", percentage: 45, color: "hsl(var(--sentinel-info))" },
-                        { direction: "Bottom-Up", percentage: 25, color: "hsl(var(--primary))" },
-                        { direction: "Horizontal", percentage: 30, color: "hsl(var(--primary))" }
-                      ].map((flow, idx) => (
-                        <div key={idx}>
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm">{flow.direction}</span>
-                            <span className="text-sm font-medium font-mono tabular-nums">{flow.percentage}%</span>
-                          </div>
-                          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                            <div 
-                              className="h-full rounded-full"
-                              style={{ width: `${flow.percentage}%`, backgroundColor: flow.color }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </div>
-
-                <div className="glass-card rounded-2xl">
-                  <CardHeader>
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-[hsl(var(--primary))]" />
-                      Peak Communication Times
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {[
-                        { time: "Morning (9-11 AM)", activity: 85, label: "Peak" },
-                        { time: "Mid-day (11 AM-2 PM)", activity: 65, label: "Moderate" },
-                        { time: "Afternoon (2-5 PM)", activity: 75, label: "High" },
-                        { time: "Evening (5-7 PM)", activity: 35, label: "Low" }
-                      ].map((period, idx) => (
-                        <div key={idx}>
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm">{period.time}</span>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                              period.activity >= 75 ? "bg-[hsl(var(--sentinel-healthy))]/10 text-[hsl(var(--sentinel-healthy))]" : "bg-muted text-muted-foreground"
-                            }`}>
-                              {period.label}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-[hsl(var(--sentinel-info))] rounded-full"
-                                style={{ width: `${period.activity}%` }}
-                              />
-                            </div>
-                            <span className="text-[11px] font-medium font-mono tabular-nums text-[hsl(var(--sentinel-info))] w-8">{period.activity}%</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
                 </div>
               </div>
             </div>
-          )}
 
-          {/* Silos Tab */}
-          {activeTab === "silos" && (
-            <div className="space-y-6">
-              {/* Warning Banner */}
-              <div className="glass-card rounded-2xl border border-[hsl(var(--sentinel-critical))]/20 p-5">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--sentinel-critical))]/10">
-                    <AlertCircle className="h-5 w-5 text-[hsl(var(--sentinel-critical))]" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-[hsl(var(--sentinel-critical))]">Potential Silos Detected</h3>
-                    <p className="text-[11px] text-muted-foreground">5 team members have limited network connections</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Isolated Members List */}
-              <div className="glass-card rounded-2xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Unplug className="h-5 w-5 text-[hsl(var(--sentinel-info))]" />
-                    Isolated Team Members
-                  </CardTitle>
-                  <CardDescription>Members with limited connections who may benefit from more collaboration</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {siloMembers.map((member) => (
-                      <div 
-                        key={member.id}
-                        className="flex items-center gap-4 p-4 rounded-xl bg-muted/20 hover:bg-muted/30 transition-colors"
-                      >
-                        <Avatar className="h-9 w-9">
-                          <AvatarFallback className="bg-muted text-xs font-semibold">
-                            {member.name.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium">{member.name}</p>
-                            {member.risk === "high" && (
-                              <Badge className="text-[9px] bg-[hsl(var(--sentinel-critical))]/10 text-[hsl(var(--sentinel-critical))] border-[hsl(var(--sentinel-critical))]/20">
-                                <AlertCircle className="h-2.5 w-2.5 mr-1" />
-                                High Risk
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-muted-foreground">{member.role}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-bold font-mono tabular-nums text-foreground">{member.connections}</p>
-                          <p className="text-[10px] text-muted-foreground">connections</p>
-                        </div>
-                        <div className="w-20">
-                          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                            <div 
-                              className="h-full rounded-full"
-                              style={{ 
-                                width: `${(member.connections / 10) * 100}%`,
-                                backgroundColor: getRiskColor(member.risk)
-                              }}
-                            />
-                          </div>
-                        </div>
-                        <button className="px-3 py-1.5 text-xs border border-border rounded-lg hover:bg-accent transition-colors">
-                          Connect
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </div>
-
-              {/* Recommendations */}
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div className="glass-card rounded-2xl">
-                  <CardHeader>
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Users className="h-4 w-4 text-[hsl(var(--primary))]" />
-                      Recommendations
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      {[
-                        { title: "Cross-functional Projects", desc: "Assign isolated members to cross-team initiatives", icon: "🤝" },
-                        { title: "Mentorship Program", desc: "Pair with well-connected team members", icon: "👥" },
-                        { title: "Team Lunches", desc: "Create informal connection opportunities", icon: "🍽️" },
-                        { title: "Knowledge Sessions", desc: "Encourage sharing expertise across teams", icon: "📚" }
-                      ].map((rec, idx) => (
-                        <div key={idx} className="flex items-start gap-3 p-3 rounded-lg hover:bg-accent/30 transition-colors">
-                          <span className="text-lg">{rec.icon}</span>
-                          <div>
-                            <p className="text-sm font-medium">{rec.title}</p>
-                            <p className="text-[11px] text-muted-foreground">{rec.desc}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </div>
-
-                <div className="glass-card rounded-2xl">
-                  <CardHeader>
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Target className="h-4 w-4 text-[hsl(var(--sentinel-info))]" />
-                      Connection Suggestions
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {[
-                        { from: "Riley Cooper", to: "Sarah Chen", reason: "Similar project interests" },
-                        { from: "Morgan Freeman", to: "Mike Johnson", reason: "Same department" },
-                        { from: "Casey Jones", to: "Emily Davis", reason: "Technical complement" }
-                      ].map((suggestion, idx) => (
-                        <div key={idx} className="flex items-center gap-3 p-3 rounded-lg bg-muted/20">
-                          <div className="flex-1 text-right">
-                            <p className="text-sm font-medium">{suggestion.from}</p>
-                          </div>
-                          <div className="flex items-center gap-1.5 px-2">
-                            <div className="h-px w-6 bg-border" />
-                            <Share2 className="h-3.5 w-3.5 text-[hsl(var(--sentinel-info))]" />
-                            <div className="h-px w-6 bg-border" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{suggestion.to}</p>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground w-28">{suggestion.reason}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </div>
-              </div>
+            {/* Footer */}
+            <div className="flex items-center justify-center gap-4 py-2 text-[11px] text-muted-foreground">
+              <span className="flex items-center gap-1.5"><Info className="h-3 w-3" />Refreshed every 5 minutes</span>
+              <span className="h-3 border-l border-border" />
+              <span className="flex items-center gap-1.5"><Clock className="h-3 w-3" />Last updated: {new Date().toLocaleTimeString()}</span>
             </div>
-          )}
-
-          {/* Footer */}
-          <div className="flex items-center justify-center gap-6 py-3 text-[11px] text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <Info className="h-3.5 w-3.5" />
-              <span>Data refreshed every 5 minutes</span>
-            </div>
-            <Separator orientation="vertical" className="h-3" />
-            <div className="flex items-center gap-2">
-              <Clock className="h-3.5 w-3.5" />
-              <span>Last updated: {new Date().toLocaleTimeString()}</span>
-            </div>
-          </div>
-        </main>
-      </ScrollArea>
-    </div>
+          </>
+        )}
+      </main>
+    </ScrollArea>
   )
 }
 
 export default function NetworkEnginePage() {
-  return (
-    <ProtectedRoute>
-      <NetworkContent />
-    </ProtectedRoute>
-  )
+  return <NetworkContent />
 }

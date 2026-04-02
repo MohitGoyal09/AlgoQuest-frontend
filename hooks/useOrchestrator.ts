@@ -44,21 +44,6 @@ export function useOrchestrator(options: UseOrchestratorOptions = {}): UseOrches
         capabilities: string[];
     }>>([]);
 
-    // Initialize client
-    useEffect(() => {
-        try {
-            const orchClient = getOrchestratorClient();
-            setClient(orchClient);
-
-            // Optionally fetch agents
-            if (autoRegister) {
-                fetchAgents(orchClient);
-            }
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to initialize orchestrator");
-        }
-    }, [autoRegister]);
-
     const fetchAgents = async (orchClient: OrchestratorClient) => {
         try {
             const agentList = await orchClient.getAgents();
@@ -71,6 +56,21 @@ export function useOrchestrator(options: UseOrchestratorOptions = {}): UseOrches
             console.error("Failed to fetch agents:", err);
         }
     };
+
+    // Initialize client
+    useEffect(() => {
+        try {
+            const orchClient = getOrchestratorClient();
+            setClient(orchClient);
+
+            // Optionally fetch agents
+            if (autoRegister) {
+                fetchAgents(orchClient).catch(err => console.error('Failed to fetch agents:', err));
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to initialize orchestrator");
+        }
+    }, [autoRegister]);
 
     const orchestrate = useCallback(async (
         agentIds: string[],

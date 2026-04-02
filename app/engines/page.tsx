@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { AnimatePresence, motion } from "framer-motion"
+
 import {
   LayoutDashboard,
   Users,
@@ -22,6 +22,7 @@ import { useUsers } from "@/hooks/useUsers"
 import { useNudge } from "@/hooks/useNudge"
 import { useForecast } from "@/hooks/useForecast"
 import { Employee, toRiskLevel } from "@/types"
+import { mapUsersToEmployees } from "@/lib/map-employees"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -40,23 +41,7 @@ export default function EnginesPage() {
   }, [users, selectedUserHash])
 
   // Transform User Data
-  const employees = useMemo(() => {
-    return users.map(u => ({
-      user_hash: u.user_hash,
-      name: u.name || `User ${u.user_hash.slice(0, 4)}`,
-      role: u.role || "Engineer",
-      risk_level: toRiskLevel(u.risk_level),
-      velocity: u.velocity || 0,
-      confidence: u.confidence || 0,
-      belongingness_score: Math.random() * 0.5 + 0.5, // Mock belongingness if missing
-      circadian_entropy: 0.5,
-      updated_at: u.updated_at,
-      indicators: {
-        overwork: false, isolation: false, fragmentation: false,
-        late_night_pattern: false, weekend_work: false, communication_decline: false
-      }
-    } as Employee))
-  }, [users])
+  const employees = useMemo(() => mapUsersToEmployees(users), [users])
 
   const { data: riskData } = useRiskData(selectedUserHash)
   const { data: nudgeData } = useNudge(selectedUserHash)
@@ -67,15 +52,9 @@ export default function EnginesPage() {
   const networkNodes = networkData?.nodes || []
   const networkEdges = networkData?.edges || []
 
-  // Mock Consolidated Skills (Aggregate)
-  const mockSkillsData = {
-    technical: 78, communication: 85, leadership: 72,
-    collaboration: 90, adaptability: 68, creativity: 75
-  }
-
   return (
     <div className="flex flex-col min-h-screen bg-slate-950 text-slate-200 font-sans dark">
-      
+
       {/* ─── Header ────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 border-b border-sidebar-border bg-slate-950/80 backdrop-blur-xl">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
@@ -124,24 +103,21 @@ export default function EnginesPage() {
               </TabsTrigger>
            </TabsList>
 
-           <AnimatePresence mode="wait">
-              <TabsContent value="overview" className="focus:outline-none mt-0">
-                 <ManagerOverview 
-                    employees={employees}
-                    networkNodes={networkNodes}
-                    networkEdges={networkEdges}
-                    forecastData={(forecastData as any) || []}
-                    nudgeData={nudgeData}
-                    skillsData={mockSkillsData}
-                 />
-              </TabsContent>
+           <TabsContent key="overview" value="overview" className="focus:outline-none mt-0">
+              <ManagerOverview
+                 employees={employees}
+                 networkNodes={networkNodes}
+                 networkEdges={networkEdges}
+                 forecastData={(forecastData as any) || []}
+                 nudgeData={nudgeData}
+              />
+           </TabsContent>
 
-              <TabsContent value="team" className="focus:outline-none mt-0">
-                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <TeamRoster employees={employees} />
-                 </div>
-              </TabsContent>
-           </AnimatePresence>
+           <TabsContent key="team" value="team" className="focus:outline-none mt-0">
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                 <TeamRoster employees={employees} />
+              </div>
+           </TabsContent>
         </Tabs>
 
       </main>

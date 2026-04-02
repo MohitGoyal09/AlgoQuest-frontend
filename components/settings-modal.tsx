@@ -26,10 +26,6 @@ interface ConsentSettings {
   consent_share_anonymized: boolean
 }
 
-const settingsCache: { data: { user: ConsentSettings; monitoringPaused: boolean } | null; timestamp: number } = {
-  data: null,
-  timestamp: 0,
-}
 const CACHE_TTL = 30000
 
 export function SettingsModal({ open, onOpenChange, trigger }: SettingsModalProps) {
@@ -43,6 +39,7 @@ export function SettingsModal({ open, onOpenChange, trigger }: SettingsModalProp
   const [isSaving, setIsSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const loadingRef = useRef(false)
+  const settingsCacheRef = useRef<{ data: { user: ConsentSettings; monitoringPaused: boolean } | null; timestamp: number }>({ data: null, timestamp: 0 })
 
   useEffect(() => {
     if (open && !loadingRef.current) {
@@ -54,12 +51,12 @@ export function SettingsModal({ open, onOpenChange, trigger }: SettingsModalProp
     if (!open || loadingRef.current) return
     
     const now = Date.now()
-    if (settingsCache.data && (now - settingsCache.timestamp) < CACHE_TTL) {
+    if (settingsCacheRef.current.data && (now - settingsCacheRef.current.timestamp) < CACHE_TTL) {
       setSettings({
-        consent_share_with_manager: settingsCache.data.user.consent_share_with_manager,
-        consent_share_anonymized: settingsCache.data.user.consent_share_anonymized,
+        consent_share_with_manager: settingsCacheRef.current.data.user.consent_share_with_manager,
+        consent_share_anonymized: settingsCacheRef.current.data.user.consent_share_anonymized,
       })
-      setMonitoringPaused(settingsCache.data.monitoringPaused)
+      setMonitoringPaused(settingsCacheRef.current.data.monitoringPaused)
       setIsLoading(false)
       return
     }
@@ -75,8 +72,8 @@ export function SettingsModal({ open, onOpenChange, trigger }: SettingsModalProp
         },
         monitoringPaused: response.monitoring_status.is_paused,
       }
-      settingsCache.data = data
-      settingsCache.timestamp = Date.now()
+      settingsCacheRef.current.data = data
+      settingsCacheRef.current.timestamp = Date.now()
       setSettings(data.user)
       setMonitoringPaused(data.monitoringPaused)
     } catch (error) {
@@ -163,7 +160,7 @@ export function SettingsModal({ open, onOpenChange, trigger }: SettingsModalProp
           )}
           
           {message && (
-            <div className={`p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
+            <div className={`p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-[hsl(var(--sentinel-healthy))]/10 text-[hsl(var(--sentinel-healthy))] border border-[hsl(var(--sentinel-healthy))]/20' : 'bg-destructive/10 text-destructive border border-destructive/20'}`}>
               {message.text}
             </div>
           )}

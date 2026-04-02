@@ -1,53 +1,22 @@
 'use client';
-
-import { useState, useEffect, useCallback } from 'react';
+import useSWR from 'swr';
 import { SafetyValveData, UseRiskDataReturn } from '@/types';
 import { getSafetyAnalysis } from '@/lib/api';
+import { useAuth } from '@/contexts/auth-context';
 
-/**
- * Hook for fetching and managing safety valve (burnout risk) data
- * 
- * Fetches data via REST API with polling for real-time updates
- * GET /users/{user_hash}/safety
- * 
- * Note: WebSocket was removed in favor of simple REST polling for stability
- */
 export function useRiskData(userHash: string | null): UseRiskDataReturn {
-  const [data, setData] = useState<SafetyValveData | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const { session, loading: authLoading } = useAuth();
 
-  const fetchData = useCallback(async () => {
-    if (!userHash) {
-      setData(null);
-      setError(null);
-      return;
-    }
+  const { data, error, isLoading, mutate } = useSWR(
+    !authLoading && session && userHash ? `safety:${userHash}` : null,
+    () => getSafetyAnalysis(userHash!),
+    { revalidateOnFocus: false, dedupingInterval: 10000 }
+  );
 
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const result = await getSafetyAnalysis(userHash);
-      setData(result);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch safety analysis';
-      setError(new Error(errorMessage));
-      console.error('Error fetching safety analysis:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [userHash]);
-
-  // Initial fetch when userHash changes
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  return { 
-    data, 
-    isLoading, 
-    error, 
-    refetch: fetchData,
+  return {
+    data: data ?? null,
+    isLoading: authLoading || isLoading,
+    error: error ?? null,
+    refetch: () => mutate(),
   };
 }

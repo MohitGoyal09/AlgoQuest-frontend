@@ -1,32 +1,22 @@
 'use client';
-
-import { useState, useCallback, useEffect } from 'react';
+import useSWR from 'swr';
 import { SimulationEvent } from '@/types';
 import { getRecentEvents } from '@/lib/api';
+import { useAuth } from '@/contexts/auth-context';
 
 export function useRecentEvents(limit: number = 20) {
-  const [events, setEvents] = useState<SimulationEvent[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const fetchEvents = useCallback(async () => {
-      setIsLoading(true);
-      try {
-          // getRecentEvents returns list of SimulationEvent-like objects
-          const data = await getRecentEvents(limit);
-          setEvents(data);
-      } catch (e) {
-          console.error(e);
-      } finally {
-          setIsLoading(false);
-      }
-  }, [limit]);
+  const { session, loading: authLoading } = useAuth();
 
-  useEffect(() => {
-      fetchEvents();
-      // Optional polling every 5s for realtime feel
-      const interval = setInterval(fetchEvents, 5000);
-      return () => clearInterval(interval);
-  }, [fetchEvents]);
+  const { data, error, isLoading, mutate } = useSWR(
+    !authLoading && session ? `events:recent:${limit}` : null,
+    () => getRecentEvents(limit),
+    { refreshInterval: 5000, revalidateOnFocus: false, dedupingInterval: 4000 }
+  );
 
-  return { events, isLoading, refetch: fetchEvents };
+  return {
+    events: data ?? [] as SimulationEvent[],
+    isLoading: authLoading || isLoading,
+    error: error ?? null,
+    refetch: () => mutate(),
+  };
 }

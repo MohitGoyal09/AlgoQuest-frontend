@@ -639,7 +639,7 @@ function TeamPageContent() {
 
 export default function TeamPage() {
   return (
-    <ProtectedRoute>
+    <ProtectedRoute allowedRoles={["manager", "admin"]}>
       <TeamPageContent />
     </ProtectedRoute>
   )

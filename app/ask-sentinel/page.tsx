@@ -1,21 +1,30 @@
 "use client"
 
-import { useEffect, use } from "react"
+import { use, Suspense } from "react"
 import { ChatInterface } from "@/components/chat/chat-interface"
+import { ProtectedRoute } from "@/components/protected-route"
 
 interface AskSentinelPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
-export default function AskSentinelPage({ searchParams }: AskSentinelPageProps) {
+function AskSentinelContent({ searchParams }: AskSentinelPageProps) {
   const params = use(searchParams)
   const query = typeof params.q === "string" ? params.q : undefined
 
   return (
-    <div className="flex h-[calc(100vh-theme(spacing.16))] bg-background">
-      <div className="flex-1 flex flex-col">
-        <ChatInterface initialQuery={query} />
-      </div>
+    <div className="flex h-screen bg-background">
+      <ChatInterface initialQuery={query} />
     </div>
+  )
+}
+
+export default function AskSentinelPage({ searchParams }: AskSentinelPageProps) {
+  return (
+    <ProtectedRoute>
+      <Suspense fallback={<div className="flex h-screen bg-background" />}>
+        <AskSentinelContent searchParams={searchParams} />
+      </Suspense>
+    </ProtectedRoute>
   )
 }

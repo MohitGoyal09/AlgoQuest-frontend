@@ -3,41 +3,40 @@ import type { NextRequest } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 
 /**
- * Role-based routing middleware
- * 
- * Uses @supabase/ssr to correctly read Supabase session cookies
- * (cookie name is `sb-<project-ref>-auth-token`, NOT `sb-access-token`).
- * 
- * Role → Default Page Mapping:
- * - employee → /me (employee self-service dashboard)
- * - manager → /team (manager team dashboard)  
- * - admin → /admin (admin system dashboard)
- * 
+ * Authentication middleware with SECURE role handling
+ *
+ * SECURITY MODEL:
+ * ================================================================================
+ * ⚠️  CLIENT-SIDE JWT DECODING IS NOT AUTHORIZATION ⚠️
+ *
+ * This middleware previously decoded JWTs client-side to extract roles for routing.
+ * This is INSECURE because JWTs can be forged without signature verification.
+ *
+ * FIXED APPROACH:
+ * - Middleware only validates authentication (token presence via Supabase)
+ * - ALL authenticated users can access protected routes (UI-level only)
+ * - Server components and API routes perform REAL authorization via backend
+ * - Backend validates JWT signatures using supabase.auth.get_user(token)
+ * - Role-based UI rendering happens server-side with verified tokens
+ *
+ * DEFENSE IN DEPTH:
+ * - Layer 1 (Middleware): Authentication check only - "are you logged in?"
+ * - Layer 2 (Server Components): Fetch user role from backend API with verified JWT
+ * - Layer 3 (Backend API): Full JWT signature verification + database role check
+ * - Layer 4 (Backend API): RBAC enforcement via require_role() dependency
+ *
  * Cookie Name Note:
  * Supabase Auth uses project-specific cookie names: sb-{project_ref}-auth-token
  * The cookie contains a JSON object with access_token, refresh_token, etc.
- * We also fall back to sb-access-token for compatibility.
+ * ================================================================================
  */
 
-// Paths that require role-based redirection
+// Paths that redirect to dashboard when user is authenticated
 const ROLE_BASED_PATHS = ["/"]
 
-// Role-based default routes - redirect to dashboard (which shows content based on role)
-const ROLE_ROUTES: Record<string, string> = {
-  employee: "/dashboard",
-  manager: "/dashboard",
-  admin: "/dashboard",
-}
-
-// Protected routes that require authentication
-const PROTECTED_ROUTES = ["/me", "/profile", "/team", "/admin", "/dashboard", "/engines", "/data-ingestion", "/audit-log", "/privacy", "/team-health"]
-
-// Routes that are role-specific (only accessible by certain roles)
-const ROLE_SPECIFIC_ROUTES: Record<string, string[]> = {
-  employee: ["/me", "/profile"],
-  manager: ["/me", "/profile", "/team"],
-  admin: ["/me", "/profile", "/team", "/admin"],
-}
+// Protected routes that require authentication (but not specific roles in middleware)
+// Role-based authorization is enforced server-side in components and backend APIs
+const PROTECTED_ROUTES = ["/me", "/profile", "/team", "/admin", "/dashboard", "/engines", "/data-ingestion", "/audit-log", "/privacy", "/team-health", "/tenants", "/notifications", "/search", "/ask-sentinel", "/simulation", "/talent-scout"]
 
 /**
  * Extract the access token from Supabase auth cookies
@@ -58,9 +57,8 @@ function getAccessToken(request: NextRequest): string | null {
       try {
         const base64Part = rawValue.replace("base64-", "")
         rawValue = atob(base64Part)
-      } catch (e) {
-        // If decoding fails, continue with original value
-        console.warn("Failed to decode base64 cookie prefix", e)
+      } catch {
+        // base64 decode failed, try next format
       }
     }
 
@@ -122,48 +120,28 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url))
   }
 
-  // If token exists, try to decode it to get the role
-  // Note: The role in the JWT might not match the database role
-  // So we allow access to all protected routes for authenticated users
-  // The backend will handle actual authorization
-  let userRole = "employee" // default
-  
-  if (token) {
-    try {
-      const tokenParts = token.split(".")
-      if (tokenParts.length >= 2 && tokenParts[1]) {
-        const base64Payload = tokenParts[1]
-          .replace(/-/g, "+")
-          .replace(/_/g, "/")
-        
-        const padding = base64Payload.length % 4
-        const paddedPayload = padding 
-          ? base64Payload + "=".repeat(4 - padding) 
-          : base64Payload
+  // ============================================================================
+  // SECURE APPROACH: No client-side JWT decoding for authorization
+  // ============================================================================
+  // We do NOT decode the JWT here because:
+  // 1. Client-side decoding has no signature verification
+  // 2. Attackers can forge JWTs with arbitrary roles
+  // 3. Even UI-only access to admin routes is information disclosure
+  //
+  // Instead:
+  // - All authenticated users can access the /dashboard route
+  // - Server components fetch user role from backend API (with verified JWT)
+  // - UI components render role-appropriate content based on verified role
+  // - Backend APIs enforce RBAC with require_role() dependency
+  // ============================================================================
 
-        const payload = JSON.parse(atob(paddedPayload))
-        userRole = payload.user_metadata?.role || payload.role || "employee"
-      }
-    } catch (error) {
-      console.warn("Failed to decode token for role:", error)
-      // Continue with default role - backend will authorize
-    }
-  }
-
-  // Note: JWT is decoded client-side for routing hints only.
-  // Backend performs full JWT verification for all API calls via Supabase.
-  // This is acceptable because the middleware only gates UI navigation,
-  // not data access — all sensitive operations go through authenticated API endpoints.
-
-  // If accessing /dashboard or /, redirect to role-specific page
+  // Redirect root to dashboard for all authenticated users
   if (ROLE_BASED_PATHS.includes(pathname)) {
-    const defaultRoute = ROLE_ROUTES[userRole] || "/me"
-    return NextResponse.redirect(new URL(defaultRoute, request.url))
+    return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 
   // Allow all authenticated users to access protected routes
-  // The backend will enforce authorization based on database role
-  // This fixes the issue where JWT role doesn't match database role
+  // Server-side components will fetch and verify actual roles from backend
   return NextResponse.next()
 }
 
@@ -172,13 +150,27 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/dashboard/:path*",
+    "/engines/:path*",
     "/me/:path*",
+    "/profile/:path*",
     "/team/:path*",
     "/admin/:path*",
     "/data-ingestion/:path*",
     "/audit-log/:path*",
     "/privacy/:path*",
     "/team-health/:path*",
+    "/tenants/:path*",
+    "/notifications/:path*",
+    "/search/:path*",
+    "/ask-sentinel/:path*",
+    "/simulation/:path*",
+    "/talent-scout/:path*",
+    "/workflows/:path*",
+    "/marketplace/:path*",
+    "/onboarding/:path*",
+    "/employee/:path*",
+    "/demo/:path*",
+    "/auth/sso/:path*",
   ],
 }
 

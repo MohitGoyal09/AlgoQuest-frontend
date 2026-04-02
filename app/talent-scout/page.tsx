@@ -12,12 +12,18 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Activity, Shield, Users, Network, TrendingUp, Search } from "lucide-react"
+import { Activity, Shield, Users, Network, TrendingUp, Search, Star } from "lucide-react"
 
 export default function TalentScoutPage() {
   // Use "global" or the current user's hash if we want to center on someone.
   // For talent scout, we usually want the global view or manager's view.
   const { data: networkData, isLoading } = useNetworkData("global")
+
+  const topPerformers = useMemo(() => {
+    return (networkData?.top_performers || [])
+      .slice()
+      .sort((a, b) => (b.eigenvector || 0) - (a.eigenvector || 0))
+  }, [networkData])
 
   const hiddenGems = useMemo(() => {
     return (networkData?.nodes || [])
@@ -26,7 +32,7 @@ export default function TalentScoutPage() {
   }, [networkData])
 
   return (
-    <ProtectedRoute>
+    <ProtectedRoute allowedRoles={["manager", "admin"]}>
       <div className="flex flex-col min-h-screen bg-background p-6 lg:p-8 space-y-6">
         
         {/* Header */}
@@ -117,6 +123,48 @@ export default function TalentScoutPage() {
             </Card>
           </div>
         </div>
+        {/* Top Performers Panel */}
+        {topPerformers.length > 0 && (
+          <Card className="border-primary/20 shadow-lg shadow-primary/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2 text-primary">
+                <Star className="h-4 w-4" />
+                Top Performers
+              </CardTitle>
+              <CardDescription>Ranked by eigenvector centrality — high influence in the network.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {topPerformers.map((performer, idx) => (
+                  <div
+                    key={performer.user_hash}
+                    className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/20"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg font-bold text-primary/60 w-6">#{idx + 1}</span>
+                      <div>
+                        <p className="text-sm font-semibold font-mono">{performer.user_hash.slice(0, 8)}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          Score: {(performer.eigenvector ?? 0).toFixed(3)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      {performer.is_hidden_gem && (
+                        <Badge variant="outline" className="border-amber-500/40 text-amber-500 text-[10px]">
+                          Hidden Gem
+                        </Badge>
+                      )}
+                      <span className="text-[10px] text-muted-foreground">
+                        {performer.unblocking} unblocks
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </ProtectedRoute>
   )

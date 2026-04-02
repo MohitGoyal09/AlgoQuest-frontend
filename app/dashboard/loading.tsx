@@ -11,9 +11,9 @@ export default function DashboardLoading() {
             </div>
 
             {/* Stat cards skeleton — 6 cards matching StatCards grid */}
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6 stagger-children">
                 {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="glass-card rounded-xl p-5">
+                    <div key={i} className="glass-card rounded-xl p-5 animate-slide-up">
                         <div className="mb-4 flex items-center justify-between">
                             <div className="h-3 w-16 animate-pulse rounded bg-muted" />
                             <div className="h-8 w-8 animate-pulse rounded-lg bg-muted" />

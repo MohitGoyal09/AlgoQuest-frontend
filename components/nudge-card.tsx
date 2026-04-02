@@ -1,5 +1,6 @@
 "use client"
 
+import { toast } from "sonner"
 import { Bot, Calendar, Clock, X } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -51,11 +52,11 @@ export function NudgeCard({ nudge, onDismiss }: NudgeCardProps) {
     try {
       if (action === "schedule_break" || action === "block_recovery") {
         await scheduleBreak(nudge.user_hash)
-        alert("Break scheduled for tomorrow!")
+        toast.success("Break scheduled for tomorrow!")
       } else if (action === "dismiss") {
         await handleDismiss()
       } else if (action === "request_support") {
-        alert("Support request sent. Someone will reach out soon.")
+        toast.success("Support request sent. Someone will reach out soon.")
       }
     } catch (err) {
       console.error("Failed to process action:", err)

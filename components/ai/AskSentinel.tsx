@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Search, Sparkles, Loader2, AlertCircle, X, MessageSquare, Bot, Clock, TrendingUp, Users } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Search, Sparkles, Loader2, AlertCircle, X, MessageSquare, Bot, Clock, TrendingUp, Users, History } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -17,21 +17,56 @@ const SAMPLE_QUERIES = [
   { label: "Who is isolated?", icon: Users },
 ]
 
+// Validation constants
+const MAX_QUERY_LENGTH = 500
+
 export function AskSentinel() {
   const [query, setQuery] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [results, setResults] = useState<SemanticQueryResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showHistory, setShowHistory] = useState(false)
+  const [pastQueries, setPastQueries] = useState<string[]>([])
+
+  // Load past user messages from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("sentinel_chat_messages")
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) {
+          const userMsgs = parsed
+            .filter((m: { role: string; content: string }) => m.role === "user")
+            .map((m: { role: string; content: string }) => m.content as string)
+            .reverse()
+            .slice(0, 20)
+          setPastQueries(userMsgs)
+        }
+      }
+    } catch {
+      // ignore corrupt storage
+    }
+  }, [showHistory])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!query.trim()) return
+
+    // Validate query
+    const trimmedQuery = query.trim()
+    if (!trimmedQuery) {
+      setError("Please enter a query")
+      return
+    }
+
+    if (trimmedQuery.length > MAX_QUERY_LENGTH) {
+      setError(`Query must be ${MAX_QUERY_LENGTH} characters or less`)
+      return
+    }
 
     setIsLoading(true)
     setError(null)
     try {
-      const response = await semanticQuery(query)
+      const response = await semanticQuery(trimmedQuery)
       setResults(response)
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to execute query"
@@ -102,23 +137,58 @@ export function AskSentinel() {
       
       <CardContent className="flex flex-col gap-4 p-4">
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder='Try "Who on my team is at risk?"'
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="pl-9 pr-10 bg-muted/30 border-muted focus:border-purple-500 focus:ring-purple-500/20"
-            />
-            {query && (
-              <button
-                type="button"
-                onClick={handleClear}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
+          <div className="relative flex flex-col gap-1.5">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder='Try "Who on my team is at risk?"'
+                value={query}
+                onChange={(e) => {
+                  const newValue = e.target.value
+                  // Enforce max length
+                  if (newValue.length <= MAX_QUERY_LENGTH) {
+                    setQuery(newValue)
+                    // Clear error when user starts typing
+                    if (error && error.includes("characters")) {
+                      setError(null)
+                    }
+                  }
+                }}
+                className={cn(
+                  "pl-9 pr-10 bg-muted/30 border-muted focus:border-purple-500 focus:ring-purple-500/20",
+                  query.length > MAX_QUERY_LENGTH && "border-red-500/50 focus:border-red-500"
+                )}
+                maxLength={MAX_QUERY_LENGTH}
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            {query.length > 0 && (
+              <div className="flex items-center justify-between px-1">
+                <span className={cn(
+                  "text-[10px] transition-colors",
+                  query.length > MAX_QUERY_LENGTH * 0.9
+                    ? "text-amber-500 font-medium"
+                    : query.length === MAX_QUERY_LENGTH
+                      ? "text-red-500 font-semibold"
+                      : "text-muted-foreground"
+                )}>
+                  {query.length} / {MAX_QUERY_LENGTH}
+                </span>
+                {query.length > MAX_QUERY_LENGTH * 0.9 && (
+                  <span className="text-[10px] text-amber-500">
+                    {query.length >= MAX_QUERY_LENGTH ? "Maximum length reached" : "Approaching limit"}
+                  </span>
+                )}
+              </div>
             )}
           </div>
 
@@ -143,7 +213,7 @@ export function AskSentinel() {
 
           <Button
             type="submit"
-            disabled={isLoading || !query.trim()}
+            disabled={isLoading || !query.trim() || query.length > MAX_QUERY_LENGTH}
             className="w-full gap-2 bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-500/20"
           >
             {isLoading ? (
@@ -164,6 +234,39 @@ export function AskSentinel() {
           <div className="flex items-center gap-2 rounded-lg bg-red-500/10 p-3 text-sm text-red-500 border border-red-500/20">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{error}</span>
+          </div>
+        )}
+
+        {/* History panel — shows past user messages from the chat localStorage */}
+        {showHistory && (
+          <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/30 p-3 animate-in fade-in duration-200">
+            <div className="flex items-center gap-2 mb-1">
+              <History className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recent Queries</span>
+            </div>
+            {pastQueries.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-2 text-center">No query history yet.</p>
+            ) : (
+              <ul className="flex flex-col gap-1">
+                {pastQueries.map((q, idx) => (
+                  <li key={idx}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuery(q)
+                        setResults(null)
+                        setError(null)
+                        setShowHistory(false)
+                      }}
+                      className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-accent hover:text-foreground text-muted-foreground transition-colors truncate"
+                      title={q}
+                    >
+                      {q}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
 

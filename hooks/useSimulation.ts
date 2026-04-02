@@ -56,24 +56,24 @@ export function useSimulation(): UseSimulationReturn {
   /**
    * Inject a real-time event into the simulation
    * @param userHash - Target user hash
-   * @param currentRisk - Current risk level to send to backend
+   * @param eventType - Event type / risk level to send to backend
    * @returns Event injection result
    */
   const injectEvent = useCallback(async (
     userHash: string,
-    currentRisk: string,
+    eventType: string,
   ): Promise<InjectEventResponse> => {
     setIsInjecting(true);
     setError(null);
 
     try {
-      const result = await apiInjectEvent(userHash, currentRisk);
+      const result = await apiInjectEvent(userHash, eventType);
 
       // Add to local events list for display
       const newEvent: SimulationEvent = {
         user_hash: userHash,
         timestamp: new Date().toISOString(),
-        event_type: currentRisk,
+        event_type: eventType,
         metadata: {},
       };
 

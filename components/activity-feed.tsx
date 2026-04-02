@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowDownCircle, ArrowUpCircle, GitCommit, MessageSquare, MinusCircle, Unlock } from "lucide-react"
+import { Activity, ArrowDownCircle, ArrowUpCircle, GitCommit, MessageSquare, MinusCircle, Unlock } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import type { ActivityEvent } from "@/types"
@@ -21,7 +21,7 @@ function eventIcon(eventType: string) {
     case "slack_message":
       return MessageSquare
     default:
-      return GitCommit
+      return Activity
   }
 }
 
@@ -60,6 +60,12 @@ export function ActivityFeed({ events }: ActivityFeedProps) {
       <CardContent className="p-0">
         <ScrollArea className="h-72 px-5 pb-4">
           <div ref={containerRef} className="flex flex-col">
+            {events.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                <Activity className="h-8 w-8 mb-2 opacity-40" />
+                <p className="text-sm">No recent activity</p>
+              </div>
+            )}
             {events.map((event, index) => {
               const Icon = eventIcon(event.event_type)
               const impact = impactMeta(event.risk_impact || "neutral")

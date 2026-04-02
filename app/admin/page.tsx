@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { useRouter } from "next/navigation"
 import {
   Shield,
   Activity,
@@ -14,15 +13,11 @@ import {
   ChevronLeft,
   ChevronRight,
   RefreshCw,
-  LayoutDashboard,
-  Gauge,
   Server,
-  Zap,
   Search,
   Download,
   Trash2,
   Edit,
-  MoreHorizontal,
   UserCog,
   Loader2,
   X,
@@ -31,12 +26,16 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ProtectedRoute } from "@/components/protected-route"
-import { api } from "@/lib/api"
+import { useAuth } from "@/contexts/auth-context"
+import { api, checkHealth } from "@/lib/api"
 import { cn } from "@/lib/utils"
+import { CSVImportDialog } from "@/components/csv-import-dialog"
+import { exportUsersCSV } from "@/lib/users"
 import {
   Dialog,
   DialogContent,
@@ -108,13 +107,6 @@ interface Manager {
   role: string
 }
 
-const MOCK_SERVICES = [
-  { name: "API Gateway", status: "operational" as const, latency: "24ms", uptime: "99.99%" },
-  { name: "PostgreSQL Database", status: "operational" as const, latency: "12ms", uptime: "99.95%" },
-  { name: "Redis Cache", status: "operational" as const, latency: "2ms", uptime: "100%" },
-  { name: "AI Insight Engine", status: "degraded" as const, latency: "450ms", uptime: "98.50%" },
-  { name: "Celery Workers", status: "operational" as const, latency: "N/A", uptime: "99.90%" },
-]
 
 const getRiskBadge = (level: string) => {
   switch (level) {
@@ -130,7 +122,7 @@ const formatAction = (action: string) => {
 }
 
 function AdminPageContent() {
-  const router = useRouter()
+  const { session, loading: authLoading } = useAuth()
   const [activeTab, setActiveTab] = useState("health")
   const [health, setHealth] = useState<SystemHealth | null>(null)
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
@@ -141,6 +133,7 @@ function AdminPageContent() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date())
+  const [apiStatus, setApiStatus] = useState<'checking' | 'operational' | 'down'>('checking')
 
   const [auditDays, setAuditDays] = useState("7")
   const [auditAction, setAuditAction] = useState("all")
@@ -157,8 +150,16 @@ function AdminPageContent() {
   const [selectedManager, setSelectedManager] = useState("")
 
   useEffect(() => {
+    if (authLoading || !session) return
     fetchHealthData()
-  }, [])
+  }, [authLoading, session])
+
+  useEffect(() => {
+    if (authLoading || !session) return
+    checkHealth().then(healthy => {
+      setApiStatus(healthy ? 'operational' : 'down')
+    })
+  }, [authLoading, session])
 
   const fetchHealthData = async () => {
     try {
@@ -211,7 +212,7 @@ function AdminPageContent() {
       const response = await api.get<{ managers: Manager[] }>("/admin/managers")
       setManagers((response as { managers: Manager[] }).managers)
     } catch (err: any) {
-      // managers fetch failed
+      toast.error("Failed to load managers")
     }
   }
 
@@ -280,6 +281,7 @@ function AdminPageContent() {
   }
 
   useEffect(() => {
+    if (authLoading || !session) return
     if (activeTab === "users") {
       fetchUsers()
       fetchManagers()
@@ -287,7 +289,7 @@ function AdminPageContent() {
     if (activeTab === "audit") {
       fetchAuditLogs()
     }
-  }, [activeTab, userRole, auditDays, auditAction, auditOffset])
+  }, [activeTab, userRole, auditDays, auditAction, auditOffset, authLoading, session])
 
   const filteredUsers = useMemo(() => {
     return users.filter(user => 
@@ -324,7 +326,7 @@ function AdminPageContent() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background       text-foreground font-sans selection:bg-indigo-500/30">
+    <div className="flex flex-col text-foreground font-sans selection:bg-indigo-500/30">
       {error && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-lg border border-[hsl(var(--sentinel-critical))]/20 bg-[hsl(var(--sentinel-critical))]/10 px-4 py-3 animate-in slide-in-from-top-2">
           <AlertTriangle className="h-5 w-5" style={{color: 'hsl(var(--sentinel-critical))'}} />
@@ -345,35 +347,22 @@ function AdminPageContent() {
         </div>
       )}
 
-      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
-        <div className="container mx-auto flex h-16 items-center justify-between px-6">
-          <div className="flex items-center gap-4">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#1a1a2e] border border-amber-500/30">
-              <Shield className="h-5 w-5 text-amber-500" />
+      <main className="flex-1 space-y-6">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 border border-primary/20">
+              <Shield className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h1 className="text-lg font-bold tracking-tight text-foreground">Admin Panel</h1>
-              <p className="text-[11px] text-muted-foreground font-medium">System Administration & Diagnostics</p>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">Admin Panel</h1>
+              <p className="text-sm text-muted-foreground">System Administration & Diagnostics</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => router.push("/dashboard?view=admin")}
-              className="gap-2 text-muted-foreground hover:text-foreground hover:bg-white/5"
-            >
-              <LayoutDashboard className="h-4 w-4" />
-              Command Center
-            </Button>
-            <Badge variant="outline" className="ml-2 border-amber-500/30 text-amber-500 bg-amber-500/05 font-mono">
-              ROOT_ACCESS
-            </Badge>
-          </div>
+          <Badge variant="outline" className="border-primary/20 text-primary bg-primary/5 font-mono text-xs">
+            ROOT_ACCESS
+          </Badge>
         </div>
-      </header>
 
-      <main className="container mx-auto px-6 py-8 flex-1">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <TabsList className="bg-card border border-border p-1 h-auto w-fit">
@@ -425,17 +414,20 @@ function AdminPageContent() {
                         Infrastructure Status
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="pt-4"> 
+                    <CardContent className="pt-4">
                       <div className="space-y-1">
-                        {MOCK_SERVICES.map((service, i) => (
+                        {[
+                          { name: "API Server", status: apiStatus === 'checking' ? 'checking' : apiStatus, latency: "—", uptime: "—" },
+                          { name: "Database", status: apiStatus === 'checking' ? 'checking' : apiStatus, latency: "—", uptime: "—" },
+                        ].map((service, i) => (
                           <div key={i} className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors">
                             <div className="flex items-center gap-3">
-                              <div className={cn("h-2.5 w-2.5 rounded-full ring-2 ring-offset-2 ring-offset-card", service.status === "operational" ? "bg-emerald-500 ring-emerald-500/20" : "bg-amber-500 ring-amber-500/20")} />
+                              <div className={cn("h-2.5 w-2.5 rounded-full ring-2 ring-offset-2 ring-offset-card", service.status === "operational" ? "bg-emerald-500 ring-emerald-500/20" : service.status === "checking" ? "bg-slate-400 ring-slate-400/20" : "bg-amber-500 ring-amber-500/20")} />
                                <span className="text-sm font-medium text-foreground">{service.name}</span>
                             </div>
                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                <span className="font-mono">Lat: <span className="text-foreground">{service.latency}</span></span>
-                              <Badge variant="outline" className={cn("border-0 bg-opacity-10 uppercase tracking-wider text-[10px]", service.status === "operational" ? "bg-emerald-500 text-emerald-400" : "bg-[hsl(var(--sentinel-elevated))]")} style={service.status !== "operational" ? {color: 'hsl(var(--sentinel-elevated))'} : undefined}>
+                              <Badge variant="outline" className={cn("border-0 bg-opacity-10 uppercase tracking-wider text-[10px]", service.status === "operational" ? "bg-emerald-500 text-emerald-400" : service.status === "checking" ? "bg-slate-400 text-slate-400" : "bg-[hsl(var(--sentinel-elevated))]")} style={service.status === "down" ? {color: 'hsl(var(--sentinel-elevated))'} : undefined}>
                                 {service.status}
                               </Badge>
                             </div>
@@ -493,8 +485,12 @@ function AdminPageContent() {
                   </SelectContent>
                 </Select>
                 </div>
-               <div className="text-sm text-muted-foreground/70">
-                {filteredUsers.length} users found
+               <div className="flex gap-2">
+                <CSVImportDialog onImportComplete={() => fetchUsers()} />
+                <Button variant="outline" size="sm" onClick={exportUsersCSV}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
+                </Button>
               </div>
             </div>
 
@@ -790,7 +786,7 @@ function StatBlock({ label, value, icon, color }: { label: string, value: string
 
 export default function AdminPage() {
   return (
-    <ProtectedRoute>
+    <ProtectedRoute allowedRoles={["admin"]}>
       <AdminPageContent />
     </ProtectedRoute>
   )

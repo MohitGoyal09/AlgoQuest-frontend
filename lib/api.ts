@@ -22,23 +22,34 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/a
 
 const supabase = createClient();
 
+// Module-level tenant ID — set by TenantContext, read by getAuthHeaders()
+let _currentTenantId: string | null = null;
+
+export function setCurrentTenantId(tenantId: string | null) {
+  _currentTenantId = tenantId;
+}
+
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const { data: { session }, error } = await supabase.auth.getSession();
   if (error) {
     console.warn('Auth session error:', error.message);
   }
   if (!session?.access_token) return {};
+
+  const tenantId = _currentTenantId;
+
   return {
     'Authorization': `Bearer ${session.access_token}`,
+    ...(tenantId && { 'X-Tenant-ID': tenantId }),
   };
 }
 
 export const api = {
   async get<T>(path: string, options: AxiosRequestConfig = {}): Promise<T> {
     const authHeaders = await getAuthHeaders();
-    // Don't add trailing slash if query params exist - causes redirect and CORS issues
-    const normalizedPath = path.includes('?') ? path : (path.endsWith('/') ? path : path + '/');
-    const url = normalizedPath.startsWith('http') ? normalizedPath : `${API_BASE_URL}${normalizedPath}`;
+    // Strip trailing slash — FastAPI 307-redirects them, dropping Authorization header
+    const cleanPath = path.endsWith('/') ? path.slice(0, -1) : path;
+    const url = cleanPath.startsWith('http') ? cleanPath : `${API_BASE_URL}${cleanPath}`;
 
     try {
       const response = await axios.get<T>(url, {
@@ -62,9 +73,9 @@ export const api = {
   // body is optional, defaults to {} to fix "Expected 2 arguments" errors when body is empty
   async post<T>(path: string, body: any = {}, options: AxiosRequestConfig = {}): Promise<T> {
     const authHeaders = await getAuthHeaders();
-    // Don't add trailing slash if query params exist - causes redirect and CORS issues
-    const normalizedPath = path.includes('?') ? path : (path.endsWith('/') ? path : path + '/');
-    const url = normalizedPath.startsWith('http') ? normalizedPath : `${API_BASE_URL}${normalizedPath}`;
+    // Strip trailing slash — FastAPI 307-redirects them, dropping Authorization header
+    const cleanPath = path.endsWith('/') ? path.slice(0, -1) : path;
+    const url = cleanPath.startsWith('http') ? cleanPath : `${API_BASE_URL}${cleanPath}`;
 
     try {
       const response = await axios.post<T>(url, body, {
@@ -87,9 +98,9 @@ export const api = {
 
   async put<T>(path: string, body: any = {}, options: AxiosRequestConfig = {}): Promise<T> {
     const authHeaders = await getAuthHeaders();
-    // Don't add trailing slash if query params exist - causes redirect and CORS issues
-    const normalizedPath = path.includes('?') ? path : (path.endsWith('/') ? path : path + '/');
-    const url = normalizedPath.startsWith('http') ? normalizedPath : `${API_BASE_URL}${normalizedPath}`;
+    // Strip trailing slash — FastAPI 307-redirects them, dropping Authorization header
+    const cleanPath = path.endsWith('/') ? path.slice(0, -1) : path;
+    const url = cleanPath.startsWith('http') ? cleanPath : `${API_BASE_URL}${cleanPath}`;
 
     try {
       const response = await axios.put<T>(url, body, {
@@ -112,14 +123,39 @@ export const api = {
 
   async delete<T>(path: string, options: AxiosRequestConfig = {}): Promise<T> {
     const authHeaders = await getAuthHeaders();
-    // Don't add trailing slash if query params exist - causes redirect and CORS issues
-    const normalizedPath = path.includes('?') ? path : (path.endsWith('/') ? path : path + '/');
-    const url = normalizedPath.startsWith('http') ? normalizedPath : `${API_BASE_URL}${normalizedPath}`;
+    // Strip trailing slash — FastAPI 307-redirects them, dropping Authorization header
+    const cleanPath = path.endsWith('/') ? path.slice(0, -1) : path;
+    const url = cleanPath.startsWith('http') ? cleanPath : `${API_BASE_URL}${cleanPath}`;
 
     try {
       const response = await axios.delete<T>(url, {
         ...options,
         headers: {
+          ...authHeaders,
+          ...options.headers,
+        },
+        timeout: 10000,
+      });
+      return response.data;
+    } catch (err: any) {
+      if (axios.isAxiosError(err)) {
+        throw err;
+      }
+      throw err;
+    }
+  },
+
+  async patch<T>(path: string, body: any = {}, options: AxiosRequestConfig = {}): Promise<T> {
+    const authHeaders = await getAuthHeaders();
+    // Strip trailing slash — FastAPI 307-redirects them, dropping Authorization header
+    const cleanPath = path.endsWith('/') ? path.slice(0, -1) : path;
+    const url = cleanPath.startsWith('http') ? cleanPath : `${API_BASE_URL}${cleanPath}`;
+
+    try {
+      const response = await axios.patch<T>(url, body, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
           ...authHeaders,
           ...options.headers,
         },
@@ -140,7 +176,7 @@ export const api = {
 // ============================================
 // Helper Functions (Legacy Compatibility)
 // ============================================
-async function handleResponse<T>(response: Promise<T>): Promise<any> {
+async function handleResponse<T>(response: Promise<T>): Promise<T> {
   const result = await response;
   // Check if result has the APIResponse format (success/data)
   if (result && typeof result === 'object' && 'success' in result) {
@@ -175,6 +211,14 @@ export async function getSafetyAnalysis(userHash: string): Promise<SafetyValveDa
  */
 export async function getNetworkAnalysis(userHash: string): Promise<TalentScoutData> {
   return handleResponse(api.get<TalentScoutData>(`/engines/users/${userHash}/talent`));
+}
+
+/**
+ * Get the full network graph with all nodes and edges
+ * GET /engines/network/global/talent
+ */
+export async function getGlobalNetworkData(): Promise<TalentScoutData> {
+  return handleResponse(api.get<APIResponse<TalentScoutData>>('/engines/network/global/talent'));
 }
 
 // ============================================
@@ -246,11 +290,11 @@ export async function createPersona(
  */
 export async function injectEvent(
   userHash: string,
-  currentRisk: string,
+  eventType: string,
 ): Promise<InjectEventResponse> {
-  return handleResponse(api.post<InjectEventResponse>(`/engines/events`, {
+  return handleResponse(api.post<InjectEventResponse>(`/engines/events/inject`, {
     user_hash: userHash,
-    current_risk: currentRisk,
+    current_risk: eventType,
   }));
 }
 
@@ -461,7 +505,7 @@ export async function chatWithSentinelStream(
   onError?: (error: Error) => void,
 ): Promise<void> {
   const authHeaders = await getAuthHeaders();
-  const url = `${API_BASE_URL}/ai/chat/stream/`;
+  const url = `${API_BASE_URL}/ai/chat/stream`;
 
   try {
     const response = await fetch(url, {
@@ -513,6 +557,48 @@ export async function chatWithSentinelStream(
       throw error;
     }
   }
+}
+
+// ============================================
+// Marketplace / Connections
+// ============================================
+
+export const getConnectedTools = () => api.get('/tools/connected')
+export const getAvailableTools = () => api.get('/tools/available')
+export const connectTool = (toolSlug: string) => api.post('/tools/connect', { tool_slug: toolSlug })
+export const disconnectTool = (toolSlug: string) => api.post('/tools/disconnect', { tool_slug: toolSlug })
+export const executeToolAction = (toolSlug: string, action: string, params: Record<string, unknown>) =>
+  api.post('/tools/marketplace/execute', { tool_slug: toolSlug, action, params })
+
+// ============================================
+// Workflows
+// ============================================
+
+export const getWorkflows = () => api.get('/workflows')
+export const createWorkflow = (data: { name: string; trigger: string; actions: unknown[] }) =>
+  api.post('/workflows', data)
+export const toggleWorkflow = (id: string, enabled: boolean) =>
+  api.patch(`/workflows/${id}`, { enabled })
+export const deleteWorkflow = (id: string) => api.delete(`/workflows/${id}`)
+
+// ============================================
+// AI Feedback API
+// ============================================
+
+/**
+ * Submit thumbs up/down feedback for a chat message
+ * POST /ai/feedback
+ */
+export async function sendChatFeedback(
+  conversationId: string,
+  messageIndex: number,
+  rating: "positive" | "negative",
+): Promise<void> {
+  return handleResponse(api.post<void>(`/ai/feedback`, {
+    conversation_id: conversationId,
+    message_index: messageIndex,
+    rating,
+  }));
 }
 
 // ============================================

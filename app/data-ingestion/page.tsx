@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import { useTenant } from "@/contexts/tenant-context"
 import { api } from "@/lib/api"
 import { ProtectedRoute } from "@/components/protected-route"
+import { createClient } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -76,6 +78,11 @@ interface PipelineStatus {
   recent_events: RecentEvent[]
 }
 
+// Validation constants
+const MAX_FILE_SIZE_MB = 10
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+const ALLOWED_FILE_TYPES = ['.csv']
+
 // Icon map
 const connectorIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   "git-branch": GitBranch,
@@ -93,6 +100,7 @@ const statusColors: Record<string, { bg: string; text: string; dot: string }> = 
 }
 
 function DataIngestionContent() {
+  const { currentTenant } = useTenant()
   const [status, setStatus] = useState<PipelineStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
@@ -119,17 +127,70 @@ function DataIngestionContent() {
   const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    setUploading(true)
+
     setUploadResult(null)
 
+    // Validate file type
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase()
+    if (!ALLOWED_FILE_TYPES.includes(fileExtension)) {
+      setUploadResult({
+        success: false,
+        summary: { errors: 1 },
+        error_details: [`Invalid file type. Only CSV files are allowed.`]
+      })
+      if (fileInputRef.current) fileInputRef.current.value = ""
+      return
+    }
+
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2)
+      setUploadResult({
+        success: false,
+        summary: { errors: 1 },
+        error_details: [`File size (${fileSizeMB}MB) exceeds the maximum allowed size of ${MAX_FILE_SIZE_MB}MB.`]
+      })
+      if (fileInputRef.current) fileInputRef.current.value = ""
+      return
+    }
+
+    setUploading(true)
+
     try {
+      // Get authentication session
+      const supabase = createClient()
+      const { data: { session }, error: authError } = await supabase.auth.getSession()
+
+      if (authError || !session?.access_token) {
+        setUploadResult({
+          success: false,
+          summary: { errors: 1 },
+          error_details: ["Authentication required. Please log in to upload files."]
+        })
+        setUploading(false)
+        if (fileInputRef.current) fileInputRef.current.value = ""
+        return
+      }
+
       const formData = new FormData()
       formData.append("file", file)
+
+      // Build authentication headers following the pattern from lib/api.ts
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${session.access_token}`,
+      }
+
+      // Add tenant ID if available
+      const tenantId = currentTenant?.id ?? null
+      if (tenantId) {
+        headers['X-Tenant-ID'] = tenantId
+      }
 
       const result = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/ingestion/upload-csv/`,
         {
           method: "POST",
+          headers: headers,
           body: formData,
         }
       )
@@ -354,6 +415,9 @@ function DataIngestionContent() {
                   <p className="text-[10px] text-slate-500 mt-1">
                     Required: timestamp, user_email, event_type, source
                   </p>
+                  <p className="text-[10px] text-slate-600 mt-0.5">
+                    Max file size: {MAX_FILE_SIZE_MB}MB
+                  </p>
                 </div>
 
                 {/* Download sample */}
@@ -530,7 +594,7 @@ function DataIngestionContent() {
 
 export default function DataIngestionPage() {
   return (
-    <ProtectedRoute>
+    <ProtectedRoute allowedRoles={["admin", "manager"]}>
       <DataIngestionContent />
     </ProtectedRoute>
   )

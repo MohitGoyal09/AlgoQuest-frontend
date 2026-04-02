@@ -112,16 +112,15 @@ export default function Home() {
                 Join engineering leaders using Sentinel to build healthier, more productive teams.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                <Link href="/login">
+                <Link href="/onboarding">
                   <Button size="lg" className="h-11 px-6 rounded-xl font-medium group">
-                    Start Free Trial
+                    Try Interactive Demo
                     <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-150 group-hover:translate-x-0.5" />
                   </Button>
                 </Link>
-                <Link href="/demo">
-                  <Button size="lg" variant="ghost" className="h-11 px-6 rounded-xl text-muted-foreground hover:text-foreground">
-                    <Play className="mr-2 h-4 w-4" />
-                    Watch Demo
+                <Link href="/login">
+                  <Button size="lg" variant="outline" className="h-11 px-6 rounded-xl">
+                    Start Free Trial
                   </Button>
                 </Link>
               </div>

@@ -7,7 +7,7 @@ import { StatCards } from "@/components/stat-cards"
 import { NudgeCard } from "@/components/nudge-card"
 import { VelocityChart } from "@/components/velocity-chart"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ProtectedRoute } from "@/components/protected-route"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -34,12 +34,14 @@ import {
 } from "lucide-react"
 
 import { Employee, RiskLevel, toRiskLevel } from "@/types"
+import { mapUsersToEmployees } from "@/lib/map-employees"
 
 import { useRiskData } from "@/hooks/useRiskData"
 import { useTeamData } from "@/hooks/useTeamData"
 import { useRiskHistory } from "@/hooks/useRiskHistory"
 import { useUsers } from "@/hooks/useUsers"
 import { useNudge } from "@/hooks/useNudge"
+import { getInitials } from "@/lib/utils"
 
 function SafetyContent() {
   const [selectedUserHash, setSelectedUserHash] = useState<string | null>(null)
@@ -53,28 +55,7 @@ function SafetyContent() {
     }
   }, [users, selectedUserHash])
 
-  const employees = useMemo(() => {
-    return users.map(u => ({
-      user_hash: u.user_hash,
-      name: u.name || `User ${u.user_hash.slice(0, 4)}`,
-      role: u.role || "Engineer",
-      risk_level: toRiskLevel(u.risk_level),
-      velocity: u.velocity || 0,
-      confidence: u.confidence || 0,
-      belongingness_score: u.belongingness_score || 0.5,
-      circadian_entropy: u.circadian_entropy || 0.5,
-      updated_at: u.updated_at || new Date().toISOString(),
-      persona: "Engineer",
-      indicators: {
-        overwork: u.overwork || false,
-        isolation: u.isolation || false,
-        fragmentation: u.fragmentation || false,
-        late_night_pattern: u.late_night_pattern || false,
-        weekend_work: u.weekend_work || false,
-        communication_decline: u.communication_decline || false
-      }
-    } as Employee))
-  }, [users])
+  const employees = useMemo(() => mapUsersToEmployees(users), [users])
 
   const selectedBaseEmployee = useMemo(() =>
     employees.find(e => e.user_hash === selectedUserHash) || employees[0] || null
@@ -178,32 +159,12 @@ function SafetyContent() {
     ? highRiskEmployees 
     : employees
 
-  const mockHistory = useMemo(() => {
-    const days = 30
-    const history = []
-    let velocity = 1.2 + Math.random() * 0.5
-    let belongingness = 0.6 + Math.random() * 0.2
-    
-    for (let i = days; i >= 0; i--) {
-      const date = new Date()
-      date.setDate(date.getDate() - i)
-      
-      velocity += (Math.random() - 0.5) * 0.3
-      velocity = Math.max(0.5, Math.min(3, velocity))
-      
-      belongingness += (Math.random() - 0.5) * 0.1
-      belongingness = Math.max(0.2, Math.min(0.9, belongingness))
-      
-      history.push({
-        date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        velocity: parseFloat(velocity.toFixed(2)),
-        belongingness_score: parseFloat(belongingness.toFixed(2))
-      })
-    }
-    return history
-  }, [])
-
-  const chartData = riskHistory && riskHistory.length > 0 ? riskHistory : mockHistory
+  // chartData: use real risk history from GET /engines/users/{hash}/history.
+  // If history is unavailable (no data ingested yet), show an empty state rather
+  // than randomly-generated fake data.
+  // TODO: If a "demo mode" fallback is needed, generate it deterministically from
+  //       the selected employee's user_hash so it is stable across renders.
+  const chartData = riskHistory && riskHistory.length > 0 ? riskHistory : []
 
   const handleUserSelect = (emp: Employee) => {
     setSelectedUserHash(emp.user_hash)
@@ -233,15 +194,6 @@ function SafetyContent() {
       default:
         return "bg-muted/50"
     }
-  }
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
   }
 
   return (
@@ -633,9 +585,5 @@ function SafetyContent() {
 }
 
 export default function SafetyValvePage() {
-  return (
-    <ProtectedRoute>
-      <SafetyContent />
-    </ProtectedRoute>
-  )
+  return <SafetyContent />
 }

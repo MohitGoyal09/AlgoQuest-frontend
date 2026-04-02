@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import type { ComponentProps, HTMLAttributes } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -166,20 +167,47 @@ export const SchemaDisplayPath = ({
 }: SchemaDisplayPathProps) => {
   const { path } = useContext(SchemaDisplayContext);
 
-  // Highlight path parameters
-  const highlightedPath = path.replaceAll(
-    /\{([^}]+)\}/g,
-    '<span class="text-blue-600 dark:text-blue-400">{$1}</span>'
-  );
+  // Parse path and highlight parameters as React elements (safe from XSS)
+  const highlightedPath = useMemo(() => {
+    const pathToRender = (children as string) ?? path;
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+
+    // Match path parameters like {userId}, {id}, etc.
+    const regex = /\{([^}]+)\}/g;
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(pathToRender)) !== null) {
+      // Add text before the match
+      if (match.index > lastIndex) {
+        parts.push(pathToRender.slice(lastIndex, match.index));
+      }
+
+      // Add highlighted parameter
+      parts.push(
+        <span
+          key={`param-${match.index}`}
+          className="text-blue-600 dark:text-blue-400"
+        >
+          {`{${match[1]}}`}
+        </span>
+      );
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text after last match
+    if (lastIndex < pathToRender.length) {
+      parts.push(pathToRender.slice(lastIndex));
+    }
+
+    return parts.length > 0 ? parts : pathToRender;
+  }, [children, path]);
 
   return (
-    <span
-      className={cn("font-mono text-sm", className)}
-      // biome-ignore lint/security/noDangerouslySetInnerHtml: "needed for parameter highlighting"
-      // oxlint-disable-next-line eslint-plugin-react(no-danger)
-      dangerouslySetInnerHTML={{ __html: (children as string) ?? highlightedPath }}
-      {...props}
-    />
+    <span className={cn("font-mono text-sm", className)} {...props}>
+      {highlightedPath}
+    </span>
   );
 };
 

@@ -1,19 +1,22 @@
 'use client';
-import { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import { listUsers } from '@/lib/api';
+import { useAuth } from '@/contexts/auth-context';
 import { UserSummary } from '@/types';
 
 export function useUsers() {
-  const [users, setUsers] = useState<UserSummary[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { session, loading: authLoading } = useAuth();
 
-  useEffect(() => {
-    setIsLoading(true);
-    listUsers()
-      .then(setUsers)
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
-  }, []);
+  const { data, error, isLoading, mutate } = useSWR(
+    !authLoading && session ? 'users:list' : null,
+    () => listUsers(),
+    { revalidateOnFocus: false, dedupingInterval: 15000 }
+  );
 
-  return { users, isLoading };
+  return {
+    users: data ?? [] as UserSummary[],
+    isLoading: authLoading || isLoading,
+    error: error ?? null,
+    refetch: () => mutate(),
+  };
 }

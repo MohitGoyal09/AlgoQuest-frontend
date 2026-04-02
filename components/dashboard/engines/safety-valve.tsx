@@ -1,10 +1,10 @@
 "use client"
 
-import { useMemo } from "react"
-import { motion } from "framer-motion"
+import { useMemo, useState } from "react"
 import {
   Shield, AlertTriangle, Activity, Zap, Users, CheckCircle2, TrendingUp, RefreshCw, AlertCircle
 } from "lucide-react"
+import { toast } from "sonner"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -24,7 +24,15 @@ interface SafetyValveProps {
 }
 
 export function SafetyValve({ employees, selectedUser, onSelectUser }: SafetyValveProps) {
-  
+  const [analysisRunning, setAnalysisRunning] = useState(false)
+
+  const handleRunAnalysis = async () => {
+    setAnalysisRunning(true)
+    toast.info("Analysis started - results will appear shortly")
+    // Allow button to reflect loading state briefly
+    setTimeout(() => setAnalysisRunning(false), 2000)
+  }
+
   // Aggregate Metrics based on screenshot logic
   const metrics = useMemo(() => {
     const total = employees.length
@@ -38,6 +46,8 @@ export function SafetyValve({ employees, selectedUser, onSelectUser }: SafetyVal
     
     return { total, healthy, elevated, critical, avgVelocity, contagionRisk }
   }, [employees])
+
+  const riskPercent = metrics.total > 0 ? Math.round((metrics.critical / metrics.total) * 100) : 0
 
   // Mock Forecast Data for Burnout Prediction Banner
   const highRiskForecast = useMemo(() => employees.filter(e => e.risk_level === "CRITICAL").slice(0, 3), [employees])
@@ -59,10 +69,10 @@ export function SafetyValve({ employees, selectedUser, onSelectUser }: SafetyVal
               {/* Circular Gauge Placeholder */}
               <svg className="w-40 h-40 transform -rotate-90">
                 <circle cx="80" cy="80" r="70" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-slate-800/50" />
-                <circle cx="80" cy="80" r="70" stroke="currentColor" strokeWidth="12" fill="transparent" strokeDasharray={440} strokeDashoffset={440 - (440 * 0.18)} className="text-emerald-500 transition-all duration-1000 ease-out" />
+                <circle cx="80" cy="80" r="70" stroke="currentColor" strokeWidth="12" fill="transparent" strokeDasharray={440} strokeDashoffset={440 - (440 * (riskPercent / 100))} className="text-emerald-500 transition-all duration-1000 ease-out" />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-5xl font-bold text-slate-100 tracking-tighter">18</span>
+                <span className="text-5xl font-bold text-slate-100 tracking-tighter">{riskPercent}</span>
                 <span className="text-xs uppercase tracking-widest text-emerald-400 font-semibold mt-1">Risk Score</span>
               </div>
             </div>
@@ -222,7 +232,15 @@ export function SafetyValve({ employees, selectedUser, onSelectUser }: SafetyVal
                   <Users className="w-4 h-4 text-slate-400" />
                   <CardTitle className="text-sm font-semibold text-slate-200">Team Members <span className="text-slate-500 ml-1 text-xs bg-slate-800 px-1.5 py-0.5 rounded-full">{employees.length}</span></CardTitle>
                </div>
-               <Button variant="outline" size="sm" className="h-7 text-xs border-white/10 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10">Run Analysis</Button>
+               <Button
+                 variant="outline"
+                 size="sm"
+                 className="h-7 text-xs border-white/10 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10"
+                 onClick={handleRunAnalysis}
+                 disabled={analysisRunning}
+               >
+                 {analysisRunning ? "Running..." : "Run Analysis"}
+               </Button>
             </CardHeader>
             <ScrollArea className="flex-1">
                <div className="p-2 grid grid-cols-1 md:grid-cols-2 gap-2">

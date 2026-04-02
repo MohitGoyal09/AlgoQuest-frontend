@@ -1,39 +1,21 @@
 'use client';
-
-import { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import { getRiskHistory } from '@/lib/api';
+import { useAuth } from '@/contexts/auth-context';
 
 export function useRiskHistory(userHash: string | null) {
-  const [history, setHistory] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const { session, loading: authLoading } = useAuth();
 
-  useEffect(() => {
-    if (!userHash || userHash === 'undefined') {
-        setHistory([]);
-        return;
-    }
-    
-    setIsLoading(true);
-    console.log(`[useRiskHistory] Fetching history for ${userHash}`);
-    
-    getRiskHistory(userHash)
-      .then((response: any) => {
-        // Backend returns wrapped object { user_hash, history: [...] } sometimes
-        // But getRiskHistory types it as Array. Let's handle both.
-        const data = Array.isArray(response) ? response : (response?.history || []);
-        
-        console.log(`[useRiskHistory] Fetched ${data?.length || 0} records`);
-        setHistory(data);
-        setError(null);
-      })
-      .catch((err) => {
-        console.error('[useRiskHistory] Failed to fetch:', err);
-        setError(err);
-        setHistory([]);
-      })
-      .finally(() => setIsLoading(false));
-  }, [userHash]);
+  const { data, error, isLoading } = useSWR(
+    !authLoading && session && userHash && userHash !== 'undefined'
+      ? `risk-history:${userHash}`
+      : null,
+    async () => {
+      const response = await getRiskHistory(userHash!);
+      return Array.isArray(response) ? response : (response as any)?.history || [];
+    },
+    { revalidateOnFocus: false, dedupingInterval: 10000 }
+  );
 
-  return { history, isLoading, error };
+  return { history: data ?? [], isLoading: authLoading || isLoading, error: error ?? null };
 }
