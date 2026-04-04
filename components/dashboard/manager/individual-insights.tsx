@@ -51,40 +51,40 @@ export function IndividualInsights({
       })
     }
 
-    if (employee.indicators.isolation || employee.indicators.communication_decline) {
+    if (employee.indicators.social_withdrawal) {
       results.push({
         id: 2,
         type: "pattern",
-        title: "Communication Isolation",
+        title: "Social Withdrawal",
         description: "Reduced team communication detected. Consider a check-in to re-engage.",
         severity: "medium",
         timestamp: "This week",
       })
     }
 
-    if (employee.indicators.late_night_pattern) {
+    if (employee.indicators.chaotic_hours) {
       results.push({
         id: 3,
         type: "risk",
-        title: "Late Night Activity",
-        description: "Consistently active outside of normal working hours.",
+        title: "Chaotic Schedule",
+        description: "Erratic working hours detected, indicating schedule instability.",
         severity: "medium",
         timestamp: "Ongoing",
       })
     }
 
-    if (employee.indicators.weekend_work) {
+    if (employee.indicators.sustained_intensity) {
       results.push({
         id: 4,
         type: "risk",
-        title: "Weekend Work Pattern",
-        description: "Activity detected on weekends, indicating potential overextension.",
+        title: "Sustained High Intensity",
+        description: "Consistently high work intensity, indicating potential overextension.",
         severity: "medium",
         timestamp: "Ongoing",
       })
     }
 
-    if (employee.velocity > 3 && !employee.indicators.overwork) {
+    if (employee.velocity > 3 && !employee.indicators.sustained_intensity) {
       results.push({
         id: 5,
         type: "positive",
@@ -171,8 +171,8 @@ export function IndividualInsights({
       for (let day = 0; day < 7; day++) {
         // Derive pseudo-intensity from risk score + indicators
         const isWeekend = day >= 5
-        const weekendBoost = isWeekend && employee.indicators.weekend_work ? 0.3 : 0
-        const lateBoost = employee.indicators.late_night_pattern ? 0.2 : 0
+        const weekendBoost = isWeekend && employee.indicators.chaotic_hours ? 0.3 : 0
+        const lateBoost = employee.indicators.sustained_intensity ? 0.2 : 0
         const base = Math.max(0, Math.min(1, riskScore + weekendBoost + lateBoost - week * 0.05))
         row.push(base)
       }
@@ -331,18 +331,18 @@ export function IndividualInsights({
             </div>
 
             <div className="grid grid-cols-3 gap-4 mt-6">
-              {employee.indicators.late_night_pattern && (
+              {employee.indicators.chaotic_hours && (
                 <div className="p-4 rounded-lg border" style={{ backgroundColor: 'hsl(var(--sentinel-critical) / 0.05)', borderColor: 'hsl(var(--sentinel-critical) / 0.2)' }}>
                   <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'hsl(var(--sentinel-critical))' }}>Risk Factor</p>
-                  <p className="text-sm font-medium text-foreground">Late Night Activity</p>
-                  <p className="text-xs text-muted-foreground mt-1">Active outside normal hours.</p>
+                  <p className="text-sm font-medium text-foreground">Chaotic Schedule</p>
+                  <p className="text-xs text-muted-foreground mt-1">Erratic working hours detected.</p>
                 </div>
               )}
-              {employee.indicators.weekend_work && (
+              {employee.indicators.sustained_intensity && (
                 <div className="p-4 rounded-lg border" style={{ backgroundColor: 'hsl(var(--sentinel-elevated) / 0.05)', borderColor: 'hsl(var(--sentinel-elevated) / 0.2)' }}>
                   <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'hsl(var(--sentinel-elevated))' }}>Risk Factor</p>
-                  <p className="text-sm font-medium text-foreground">Weekend Work</p>
-                  <p className="text-xs text-muted-foreground mt-1">Activity detected on weekends.</p>
+                  <p className="text-sm font-medium text-foreground">Sustained High Intensity</p>
+                  <p className="text-xs text-muted-foreground mt-1">Consistently high work intensity.</p>
                 </div>
               )}
               {employee.belongingness_score > 0.6 && (

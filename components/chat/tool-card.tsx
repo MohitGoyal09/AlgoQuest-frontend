@@ -5,86 +5,142 @@ import {
   Loader2,
   TriangleAlert,
   Wrench,
-  Clock,
   CheckCircle2,
+  Mail,
+  Calendar,
+  Search,
+  Database,
+  FileText,
+  Globe,
+  Users,
+  BarChart3,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// --- Types -----------------------------------------------------------------
 
-interface ToolMessage {
-  toolName?: string
-  toolStatus?: "starting" | "processing" | "complete" | "error"
-  toolArgs?: Record<string, unknown>
-  toolResult?: string
+export interface ToolStep {
+  toolName: string
+  toolSlug?: string
+  description?: string
+  status: "starting" | "processing" | "complete" | "error"
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+interface ToolCardProps {
+  steps: ToolStep[]
+}
+
+// --- Helpers ---------------------------------------------------------------
 
 function formatToolName(slug: string): string {
   return slug.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
+/** Return a tool-specific icon based on the tool name/slug */
+function getToolIcon(toolName: string) {
+  const name = toolName.toLowerCase()
+  if (name.includes("mail") || name.includes("email") || name.includes("gmail")) {
+    return <Mail className="h-3.5 w-3.5" />
+  }
+  if (name.includes("calendar") || name.includes("schedule")) {
+    return <Calendar className="h-3.5 w-3.5" />
+  }
+  if (name.includes("search") || name.includes("find") || name.includes("lookup")) {
+    return <Search className="h-3.5 w-3.5" />
+  }
+  if (name.includes("database") || name.includes("sql") || name.includes("query")) {
+    return <Database className="h-3.5 w-3.5" />
+  }
+  if (name.includes("file") || name.includes("document") || name.includes("doc")) {
+    return <FileText className="h-3.5 w-3.5" />
+  }
+  if (name.includes("web") || name.includes("http") || name.includes("api") || name.includes("fetch")) {
+    return <Globe className="h-3.5 w-3.5" />
+  }
+  if (name.includes("user") || name.includes("employee") || name.includes("team") || name.includes("people")) {
+    return <Users className="h-3.5 w-3.5" />
+  }
+  if (name.includes("chart") || name.includes("analytic") || name.includes("metric") || name.includes("report")) {
+    return <BarChart3 className="h-3.5 w-3.5" />
+  }
+  return <Wrench className="h-3.5 w-3.5" />
+}
 
-export function ToolCard({ message }: { message: ToolMessage }) {
-  const [expanded, setExpanded] = useState(false)
-  const status = message.toolStatus ?? "complete"
-  const isActive = status === "starting" || status === "processing"
+// --- Step Row (single step within the card) --------------------------------
+
+function StepRow({ step }: { step: ToolStep }) {
+  const [logoError, setLogoError] = useState(false)
+  const isActive = step.status === "starting" || step.status === "processing"
+  const isError = step.status === "error"
+  const isComplete = step.status === "complete"
+  const toolName = step.toolName ?? "tool"
+  const logoUrl = step.toolSlug ? `https://logos.composio.dev/api/${step.toolSlug}` : null
 
   return (
-    <div className="flex w-full flex-col gap-1 py-2 max-w-3xl mx-auto px-4 animate-in fade-in slide-in-from-bottom-1 duration-200">
-      <button
-        onClick={() => setExpanded((v) => !v)}
+    <div className="flex items-center gap-3 px-3 py-2.5 min-h-[40px]">
+      {/* Left: icon or logo */}
+      <div
         className={cn(
-          "relative overflow-hidden rounded-full border border-border p-1.5 flex items-center gap-3 w-fit max-w-xs transition-all duration-200 hover:border-border/80",
-          isActive && "border-primary/30"
+          "flex items-center justify-center h-7 w-7 rounded-md shrink-0 overflow-hidden transition-colors duration-200",
+          isActive
+            ? "bg-primary/10 text-primary"
+            : isError
+              ? "bg-red-500/10 text-red-400"
+              : "bg-muted/60 text-muted-foreground",
         )}
       >
-        {status === "starting" && (
-          <div className="absolute inset-0 overflow-hidden rounded-full pointer-events-none">
-            <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-primary/10 to-transparent" />
-          </div>
+        {isActive ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : isError ? (
+          <TriangleAlert className="h-3.5 w-3.5" />
+        ) : logoUrl && !logoError ? (
+          <img
+            src={logoUrl}
+            alt={toolName}
+            className="h-4 w-4 object-contain"
+            onError={() => setLogoError(true)}
+          />
+        ) : (
+          getToolIcon(toolName)
         )}
-        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-          {isActive ? (
-            <Loader2 className="h-4 w-4 text-primary animate-spin" />
-          ) : status === "error" ? (
-            <TriangleAlert className="h-4 w-4 text-red-500" />
-          ) : (
-            <Wrench className="h-4 w-4 text-primary" />
-          )}
-        </div>
-        <span className="text-xs font-semibold text-muted-foreground pr-1">
-          {formatToolName(message.toolName ?? "tool")}
-        </span>
-        <div className="pr-1.5 shrink-0">
-          {status === "complete" ? (
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
-          ) : status === "error" ? (
-            <TriangleAlert className="h-4 w-4 text-red-500" />
-          ) : (
-            <Clock className="h-3.5 w-3.5 text-muted-foreground/50 animate-pulse" />
-          )}
-        </div>
-      </button>
+      </div>
 
-      {expanded && (message.toolArgs || message.toolResult) && (
-        <div className="ml-6 mt-1 rounded-lg border border-border/50 bg-muted/50 p-3 text-xs font-mono text-muted-foreground overflow-x-auto animate-in fade-in slide-in-from-top-1 duration-150">
-          {message.toolArgs && (
-            <div className="mb-2">
-              <span className="font-semibold text-foreground/70">Args:</span>
-              <pre className="mt-1 whitespace-pre-wrap">{JSON.stringify(message.toolArgs, null, 2)}</pre>
-            </div>
-          )}
-          {message.toolResult && (
-            <div>
-              <span className="font-semibold text-foreground/70">Result:</span>
-              <pre className="mt-1 whitespace-pre-wrap">{message.toolResult}</pre>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Center: description */}
+      <span
+        className={cn(
+          "text-xs font-medium text-muted-foreground truncate flex-1 min-w-0",
+          isActive && "animate-pulse",
+        )}
+      >
+        {step.description || formatToolName(toolName)}
+      </span>
+
+      {/* Right: status indicator */}
+      <div className="shrink-0">
+        {isComplete ? (
+          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+        ) : isError ? (
+          <TriangleAlert className="h-4 w-4 text-red-400" />
+        ) : (
+          <Loader2 className="h-4 w-4 text-primary animate-spin" />
+        )}
+      </div>
+    </div>
+  )
+}
+
+// --- Main Component --------------------------------------------------------
+
+export function ToolCard({ steps }: ToolCardProps) {
+  if (steps.length === 0) return null
+
+  return (
+    <div className="w-full animate-in fade-in slide-in-from-bottom-1 duration-200">
+      <div className="rounded-lg border border-border/50 bg-muted/10 overflow-hidden divide-y divide-border/30">
+        {steps.map((step, idx) => (
+          <StepRow key={`${step.toolName}-${idx}`} step={step} />
+        ))}
+      </div>
     </div>
   )
 }

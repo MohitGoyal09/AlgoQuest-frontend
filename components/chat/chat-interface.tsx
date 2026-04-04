@@ -1,28 +1,29 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { WelcomeScreen } from "./welcome-screen"
-import { ToolCard } from "./tool-card"
-import { markdownComponents } from "./markdown-components"
-import ReactMarkdown from "react-markdown"
-import remarkGfm from "remark-gfm"
+import { ToolCard, type ToolStep } from "./tool-card"
+import { ConnectionLinkCard } from "./connection-link-card"
+import { MessageBubble } from "./message-bubble"
 import {
   ArrowUp,
-  Copy,
-  Check,
-  ThumbsUp,
-  ThumbsDown,
-  RotateCcw,
-  MessageSquarePlus,
+
   Square,
   Plus,
   Sparkles,
-  Pencil,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { chatWithSentinelStream, sendChatFeedback, getChatSession } from "@/lib/api"
+import {
+  chatWithSentinelStream,
+  sendChatFeedback,
+  getChatSession,
+  type ToolCallEvent,
+  type ConnectionLinkEvent,
+} from "@/lib/api"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "sonner"
+import { notifyChatSessionChanged } from "@/hooks/useChatHistory"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -32,10 +33,15 @@ interface Message {
   content: string
   timestamp: Date
   suggestions?: string[]
-  toolName?: string
-  toolStatus?: "starting" | "processing" | "complete" | "error"
-  toolArgs?: Record<string, unknown>
-  toolResult?: string
+  /** Grouped tool execution steps (rendered as a single stacked card) */
+  toolSteps?: ToolStep[]
+  connectionLink?: {
+    toolName: string
+    toolSlug: string
+    toolLogo?: string
+    connectionUrl?: string
+    message: string
+  }
 }
 
 interface ChatInterfaceProps {
@@ -64,228 +70,142 @@ function parseSuggestions(content: string): { cleanContent: string; suggestions:
   return { cleanContent, suggestions }
 }
 
-function stripPartialSuggestions(content: string): string {
-  let cleaned = content.replace(/<suggestions>[\s\S]*?<\/suggestions>/g, "")
-  cleaned = cleaned.replace(/<suggestions>[\s\S]*$/, "")
-  cleaned = cleaned.replace(/<suggest[^>]*$/, "")
-  return cleaned.trim()
+/** Detect Composio OAuth connection URLs embedded as markdown links in LLM text. */
+const COMPOSIO_URL_PATTERN = /\[([^\]]*[Cc]onnect[^\]]*)\]\((https?:\/\/[^)]*composio[^)]*)\)/g
+
+function extractConnectionUrls(text: string): { appName: string; url: string }[] {
+  const results: { appName: string; url: string }[] = []
+  for (const match of text.matchAll(COMPOSIO_URL_PATTERN)) {
+    const label = match[1]
+    const url = match[2]
+    const appName = label.replace(/[Cc]onnect\s*/g, "").trim() || "Application"
+    results.push({ appName, url })
+  }
+  return results
 }
 
-// ─── Small Sub-components ────────────────────────────────────────────────────
-
-function SentinelAvatar({ size = 28 }: { size?: number }) {
-  return (
-    <div
-      className="shrink-0 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold select-none"
-      style={{ width: size, height: size, fontSize: size * 0.4 }}
-      aria-hidden="true"
-    >
-      S
-    </div>
-  )
+function stripConnectionUrls(text: string): string {
+  return text.replace(COMPOSIO_URL_PATTERN, "").trim()
 }
+
+// ─── Typing Indicator ───────────────────────────────────────────────────────
 
 function TypingIndicator() {
   return (
-    <div className="flex items-start gap-3 py-4 max-w-3xl mx-auto w-full px-4 animate-in fade-in slide-in-from-bottom-1 duration-200">
-      <SentinelAvatar />
-      <div className="flex items-center gap-1.5 pt-1.5">
-        {[0, 150, 300].map((delay) => (
-          <span
-            key={delay}
-            className="h-2 w-2 rounded-full bg-muted-foreground/50 dot-pulse"
-            style={{ animationDelay: `${delay}ms` }}
-          />
-        ))}
+    <div className="flex items-start gap-3 animate-in fade-in slide-in-from-bottom-1 duration-200">
+      <div
+        className="shrink-0 w-7 h-7 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-[11px] font-bold select-none"
+        aria-hidden="true"
+      >
+        S
+      </div>
+      <div className="flex items-center gap-1.5 pt-2">
+        <span className="text-xs text-muted-foreground animate-pulse">Thinking...</span>
       </div>
     </div>
   )
 }
 
-// ─── Message Bubble ──────────────────────────────────────────────────────────
+// ─── Input Area ─────────────────────────────────────────────────────────────
 
-interface MessageBubbleProps {
-  message: Message
-  isLastAssistant: boolean
-  isStreaming: boolean
-  copiedId: string | null
-  messageIndex: number
-  onCopy: (content: string, id: string) => void
-  onRegenerate: () => void
-  onEdit: (messageId: string, content: string) => void
-  onFeedback: (type: "positive" | "negative") => void
-  onSuggestionClick: (text: string) => void
+interface InputAreaProps {
+  input: string
   isLoading: boolean
+  isStreaming: boolean
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>
+  onInputChange: (value: string) => void
+  onKeyDown: (e: React.KeyboardEvent) => void
+  onSend: () => void
+  onStop: () => void
 }
 
-function MessageBubble({
-  message,
-  isLastAssistant,
-  isStreaming,
-  copiedId,
-  onCopy,
-  onRegenerate,
-  onEdit,
-  onFeedback,
-  onSuggestionClick,
+function InputArea({
+  input,
   isLoading,
-}: MessageBubbleProps) {
-  const isUser = message.role === "user"
-  const showCursor = isStreaming && isLastAssistant && message.content.length > 0
-  const displayContent =
-    isStreaming && isLastAssistant ? stripPartialSuggestions(message.content) : message.content
-
-  const [isEditing, setIsEditing] = useState(false)
-  const [editValue, setEditValue] = useState(message.content)
-  const editRef = useRef<HTMLTextAreaElement>(null)
-
-  // Fix H4: reset edit state if message content changes externally (e.g. new messages arrive)
-  useEffect(() => {
-    if (isEditing) {
-      setIsEditing(false)
-      setEditValue(message.content)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [message.content])
-
-  useEffect(() => {
-    if (isEditing && editRef.current) {
-      editRef.current.focus()
-      editRef.current.selectionStart = editRef.current.value.length
-    }
-  }, [isEditing])
-
-  const handleEditSubmit = () => {
-    const trimmed = editValue.trim()
-    if (!trimmed) return
-    setIsEditing(false)
-    onEdit(message.id, trimmed)
-  }
-
-  const handleEditKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      handleEditSubmit()
-    }
-    if (e.key === "Escape") {
-      setIsEditing(false)
-      setEditValue(message.content)
-    }
-  }
-
-  if (isUser) {
-    return (
-      <div className="flex w-full justify-end py-3 max-w-3xl mx-auto px-4 animate-in fade-in slide-in-from-bottom-1 duration-200 group/msg">
-        <div className="flex items-end gap-2 max-w-[80%]">
-          {!isEditing && (
-            <button
-              title="Edit message"
-              onClick={() => {
-                setEditValue(message.content)
-                setIsEditing(true)
-              }}
-              className="opacity-0 group-hover/msg:opacity-100 h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground transition-all duration-150 shrink-0 mb-1"
-            >
-              <Pencil className="h-3 w-3" />
-            </button>
-          )}
-          {isEditing ? (
-            <div className="flex flex-col gap-2 w-full">
-              <textarea
-                ref={editRef}
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onKeyDown={handleEditKeyDown}
-                rows={3}
-                className="w-full resize-none rounded-2xl rounded-br-sm px-4 py-2.5 text-sm font-medium bg-primary text-primary-foreground placeholder:text-primary-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary-foreground/30"
-              />
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => {
-                    setIsEditing(false)
-                    setEditValue(message.content)
-                  }}
-                  className="px-3 py-1 text-xs rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleEditSubmit}
-                  disabled={!editValue.trim()}
-                  className="px-3 py-1 text-xs rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Send
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-2xl rounded-br-sm px-4 py-2.5 text-sm whitespace-pre-wrap font-medium bg-primary text-primary-foreground">
-              {message.content}
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
+  isStreaming,
+  textareaRef,
+  onInputChange,
+  onKeyDown,
+  onSend,
+  onStop,
+}: InputAreaProps) {
   return (
-    <div className="flex w-full flex-col gap-1 group py-3 max-w-3xl mx-auto px-4 animate-in fade-in slide-in-from-bottom-1 duration-200">
-      <div className="flex items-start gap-3">
-        <SentinelAvatar />
-        <div className="flex-1 min-w-0 text-sm leading-relaxed text-foreground/90 pt-0.5">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-            {displayContent}
-          </ReactMarkdown>
-          {showCursor && (
-            <span className="inline-block w-2 h-4 bg-primary/70 animate-pulse ml-0.5 align-text-bottom rounded-sm" />
-          )}
-        </div>
-      </div>
+    <div className="max-w-3xl mx-auto w-full">
+      <div className="bg-card border border-border rounded-xl overflow-hidden focus-within:border-border-active transition-colors duration-200">
+        {/* Textarea */}
+        <textarea
+          ref={textareaRef}
+          className="w-full resize-none bg-transparent border-none focus:ring-0 focus:outline-none px-4 pt-3.5 pb-1.5 text-sm placeholder:text-muted-foreground/40 text-foreground leading-relaxed min-h-[24px] max-h-[200px]"
+          placeholder="Ask about team health, burnout risks, or performance..."
+          value={input}
+          onChange={(e) => {
+            if (e.target.value.length <= MAX_INPUT_LENGTH) onInputChange(e.target.value)
+          }}
+          onKeyDown={onKeyDown}
+          rows={1}
+          maxLength={MAX_INPUT_LENGTH}
+        />
 
-      {!isStreaming && message.content.length > 0 && (
-        <>
-          <div className="flex items-center gap-1 mt-1 ml-10 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+        {/* Toolbar */}
+        <div className="flex items-center justify-between px-3 py-2">
+          {/* Left: attach + model label */}
+          <div className="flex items-center gap-2">
             <button
-              title="Copy"
-              onClick={() => onCopy(message.content, message.id)}
-              className="h-7 w-7 flex items-center justify-center rounded-lg text-muted-foreground/50 hover:text-foreground hover:bg-foreground/5 transition-all duration-150"
+              onClick={() => toast("File upload coming soon")}
+              className="h-7 w-7 rounded-full bg-muted/60 flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors duration-150 active:scale-[0.97]"
+              title="Attach file"
             >
-              {copiedId === message.id ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+              <Plus className="h-3.5 w-3.5" />
             </button>
-            {isLastAssistant && (
-              <button
-                title="Regenerate"
-                onClick={onRegenerate}
-                className="h-7 w-7 flex items-center justify-center rounded-lg text-muted-foreground/50 hover:text-foreground hover:bg-foreground/5 transition-all duration-150"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-              </button>
-            )}
-            <div className="h-4 w-px bg-border mx-1" />
-            <button title="Helpful" onClick={() => onFeedback("positive")} className="h-7 w-7 flex items-center justify-center rounded-lg text-muted-foreground/50 hover:text-foreground hover:bg-foreground/5 transition-all duration-150">
-              <ThumbsUp className="h-3.5 w-3.5" />
-            </button>
-            <button title="Not helpful" onClick={() => onFeedback("negative")} className="h-7 w-7 flex items-center justify-center rounded-lg text-muted-foreground/50 hover:text-foreground hover:bg-foreground/5 transition-all duration-150">
-              <ThumbsDown className="h-3.5 w-3.5" />
-            </button>
+            <span className="text-[11px] text-muted-foreground/60 flex items-center gap-1.5 select-none font-medium uppercase tracking-wider">
+              <Sparkles className="h-3 w-3" />
+              Gemini 2.5 Flash
+            </span>
           </div>
 
-          {message.suggestions && message.suggestions.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2 ml-10">
-              {message.suggestions.map((suggestion, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => onSuggestionClick(suggestion)}
-                  disabled={isLoading}
-                  className="border border-border hover:border-primary/40 hover:bg-primary/5 rounded-full px-3.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-          )}
-        </>
-      )}
+          {/* Right: char count + send/stop */}
+          <div className="flex items-center gap-2">
+            {input.length > 0 && (
+              <span
+                className={cn(
+                  "text-[10px] transition-colors tabular-nums",
+                  input.length > MAX_INPUT_LENGTH * 0.9
+                    ? "text-amber-500 font-medium"
+                    : input.length === MAX_INPUT_LENGTH
+                      ? "text-red-500 font-semibold"
+                      : "text-muted-foreground/30",
+                )}
+              >
+                {input.length}/{MAX_INPUT_LENGTH}
+              </span>
+            )}
+
+            {isStreaming ? (
+              <button
+                onClick={onStop}
+                className="h-7 w-7 rounded-full flex items-center justify-center transition-colors active:scale-[0.97] bg-red-500/15 text-red-400 hover:bg-red-500/25"
+                title="Stop generating"
+              >
+                <Square className="h-3 w-3" />
+              </button>
+            ) : (
+              <button
+                disabled={!input.trim() || isLoading || input.length > MAX_INPUT_LENGTH}
+                onClick={onSend}
+                className={cn(
+                  "h-7 w-7 rounded-full flex items-center justify-center transition-colors active:scale-[0.97]",
+                  input.trim() && !isLoading
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "bg-muted text-muted-foreground/40 cursor-not-allowed",
+                )}
+                title="Send message"
+              >
+                <ArrowUp className="h-3.5 w-3.5" strokeWidth={2.5} />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -298,6 +218,9 @@ export function ChatInterface({
   userName: propUserName = "User",
 }: ChatInterfaceProps) {
   const { user } = useAuth()
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || propUserName
 
   const [messages, setMessages] = useState<Message[]>([])
@@ -313,6 +236,18 @@ export function ChatInterface({
   const messagesRef = useRef(messages)
   useEffect(() => { messagesRef.current = messages }, [messages])
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Helper: update session ID in URL without full page reload (KaraX pattern)
+  const setSessionIdInUrl = useCallback((newSessionId: string) => {
+    const params = new URLSearchParams(searchParams?.toString() || '')
+    params.set('session', newSessionId)
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }, [router, pathname, searchParams])
+
+  // Helper: clear session ID from URL
+  const clearSessionIdFromUrl = useCallback(() => {
+    router.replace(pathname, { scroll: false })
+  }, [router, pathname])
 
   const handleCopy = useCallback(async (content: string, messageId: string) => {
     try {
@@ -331,7 +266,9 @@ export function ChatInterface({
     setInput("")
     setIsStreaming(false)
     setIsLoading(false)
-  }, [])
+    loadedSessionRef.current = undefined
+    clearSessionIdFromUrl()
+  }, [clearSessionIdFromUrl])
 
   const handleStop = useCallback(() => {
     abortControllerRef.current?.abort()
@@ -339,26 +276,114 @@ export function ChatInterface({
     setIsLoading(false)
   }, [])
 
-  // Load session from URL (Fix H5: use ref to avoid stale closure race)
+  // Load session from URL.
+  // Reads session ID from both the initialSessionId prop (on first mount) and
+  // from searchParams reactively (when the user clicks a sidebar link or the URL
+  // is updated via router.replace). Uses a ref to avoid re-loading the same session.
   const loadedSessionRef = useRef<string | undefined>(undefined)
-  useEffect(() => {
-    if (!initialSessionId) return
-    if (loadedSessionRef.current === initialSessionId) return
-    loadedSessionRef.current = initialSessionId
+  const urlSessionId = searchParams?.get('session') ?? undefined
+  const effectiveSessionId = urlSessionId || initialSessionId
 
-    getChatSession(initialSessionId)
+  useEffect(() => {
+    if (!effectiveSessionId) {
+      // URL has no session param — reset state if we had a session loaded
+      // (e.g. user clicked "New chat" in sidebar)
+      if (loadedSessionRef.current) {
+        loadedSessionRef.current = undefined
+        setMessages([])
+        setSessionId(undefined)
+        setIsStreaming(false)
+        setIsLoading(false)
+        abortControllerRef.current?.abort()
+      }
+      return
+    }
+    if (loadedSessionRef.current === effectiveSessionId) return
+    loadedSessionRef.current = effectiveSessionId
+
+    // Abort any in-flight stream when switching sessions
+    abortControllerRef.current?.abort()
+    setIsStreaming(false)
+    setIsLoading(false)
+
+    getChatSession(effectiveSessionId)
       .then((data) => {
-        const msgs: Message[] = data.turns.map((turn, i) => ({
-          id: `${turn.id || i}`,
-          role: turn.role as "user" | "assistant",
-          content: turn.content,
-          timestamp: turn.created_at ? new Date(turn.created_at) : new Date(),
-        }))
+        // Guard: only apply if this is still the active session (avoid race)
+        if (loadedSessionRef.current !== effectiveSessionId) return
+
+        const msgs: Message[] = []
+        // Group consecutive tool_call turns into a single tool-steps message
+        let pendingToolSteps: ToolStep[] = []
+        let toolGroupBaseId: string | null = null
+
+        const flushToolSteps = () => {
+          if (pendingToolSteps.length > 0 && toolGroupBaseId) {
+            msgs.push({
+              id: `tool-steps-hist-${toolGroupBaseId}`,
+              role: "assistant",
+              content: "",
+              timestamp: new Date(),
+              toolSteps: [...pendingToolSteps],
+            })
+            pendingToolSteps = []
+            toolGroupBaseId = null
+          }
+        }
+
+        for (const turn of data.turns) {
+          const turnType = turn.type || "message"
+          const turnId = `${turn.id || msgs.length}`
+
+          if (turnType === "tool_call") {
+            // Reconstruct a ToolStep from the persisted metadata
+            const meta = turn.metadata || {}
+            if (!toolGroupBaseId) toolGroupBaseId = turnId
+            pendingToolSteps.push({
+              toolName: (meta.tool_name as string) ?? "tool",
+              toolSlug: (meta.tool_slug as string) ?? "",
+              description: (meta.description as string) ?? undefined,
+              status: ((meta.status as string) ?? "complete") as ToolStep["status"],
+            })
+            continue
+          }
+
+          if (turnType === "connection_link") {
+            flushToolSteps()
+            const meta = turn.metadata || {}
+            msgs.push({
+              id: `conn-link-hist-${turnId}`,
+              role: "assistant",
+              content: "",
+              timestamp: turn.created_at ? new Date(turn.created_at) : new Date(),
+              connectionLink: {
+                toolName: (meta.tool_name as string) ?? "Tool",
+                toolSlug: (meta.tool_slug as string) ?? "",
+                toolLogo: (meta.tool_logo as string) ?? undefined,
+                connectionUrl: (meta.connection_url as string) ?? undefined,
+                message: (meta.message as string) ?? "Connect to continue",
+              },
+            })
+            continue
+          }
+
+          // Regular message turn -- flush any pending tool steps first
+          flushToolSteps()
+          msgs.push({
+            id: turnId,
+            role: turn.role as "user" | "assistant",
+            content: turn.content,
+            timestamp: turn.created_at ? new Date(turn.created_at) : new Date(),
+          })
+        }
+
+        // Flush any remaining tool steps at the end
+        flushToolSteps()
+
         setMessages(msgs)
-        setSessionId(initialSessionId)
+        setSessionId(effectiveSessionId)
       })
       .catch(() => { /* start fresh */ })
-  }, [initialSessionId])
+  }, [effectiveSessionId])
 
   // Auto-resize textarea
   useEffect(() => {
@@ -407,12 +432,60 @@ export function ChatInterface({
       await chatWithSentinelStream(
         { message: text, session_id: sessionId, context: { conversation_history: history } },
         (token) => {
-          setMessages((prev) => prev.map((m) => (m.id === aiMessageId ? { ...m, content: m.content + token } : m)))
+          // Detect Composio OAuth connection URLs in streamed text
+          const connUrls = extractConnectionUrls(token)
+          if (connUrls.length > 0) {
+            // Strip the markdown links from the token
+            const cleanToken = stripConnectionUrls(token)
+
+            // Insert ConnectionLinkCard messages for each detected URL
+            for (const conn of connUrls) {
+              const slug = conn.appName.toLowerCase().replace(/\s+/g, "")
+              const linkMsgId = `conn-link-${slug}-${Date.now()}`
+              setMessages((prev) => {
+                const aiIdx = prev.findIndex((m) => m.id === aiMessageId)
+                const linkMsg: Message = {
+                  id: linkMsgId,
+                  role: "assistant",
+                  content: "",
+                  timestamp: new Date(),
+                  connectionLink: {
+                    toolName: conn.appName,
+                    toolSlug: slug,
+                    toolLogo: `https://logos.composio.dev/api/${slug}`,
+                    connectionUrl: conn.url,
+                    message: `Connect ${conn.appName} to continue`,
+                  },
+                }
+                if (aiIdx === -1) return [...prev, linkMsg]
+                const updated = [...prev]
+                updated.splice(aiIdx, 0, linkMsg)
+                return updated
+              })
+            }
+
+            // Append remaining clean text (if any)
+            if (cleanToken) {
+              setMessages((prev) => prev.map((m) => (m.id === aiMessageId ? { ...m, content: m.content + cleanToken } : m)))
+            }
+          } else {
+            setMessages((prev) => prev.map((m) => (m.id === aiMessageId ? { ...m, content: m.content + token } : m)))
+          }
         },
         (metadata) => {
           if (metadata.session_id) {
+            // Only update URL on the first message (when no session exists yet).
+            // Subsequent messages already have the session ID in the URL.
+            const isNewSession = !sessionId
             setSessionId(metadata.session_id)
-            window.history.replaceState(null, '', `/ask-sentinel?session=${metadata.session_id}`)
+            if (isNewSession) {
+              setSessionIdInUrl(metadata.session_id)
+            }
+            // Notify sidebar to refresh session list (new or updated session)
+            notifyChatSessionChanged()
+            // Fire a delayed second notification to catch the auto-title update
+            // which runs after the stream completes on the backend
+            setTimeout(() => notifyChatSessionChanged(), 2000)
           }
           setMessages((prev) =>
             prev.map((m) => {
@@ -425,13 +498,105 @@ export function ChatInterface({
           setIsStreaming(false)
         },
         () => {
+          // On error/abort: keep whatever content was already streamed
+          // Only show error if NO content was streamed at all
           setMessages((prev) =>
-            prev.map((m) => (m.id === aiMessageId ? { ...m, content: "Sorry, I encountered an error. Please try again." } : m))
+            prev.map((m) => {
+              if (m.id !== aiMessageId) return m
+              if (m.content.trim()) return m // Keep existing streamed content
+              return { ...m, content: "Something went wrong. Please try again." }
+            })
           )
           setIsLoading(false)
           setIsStreaming(false)
         },
         controller.signal,
+        // Handle tool_call events — group steps into a single tool message
+        (event: ToolCallEvent) => {
+          const toolStepsMsgId = `tool-steps-${aiMessageId}`
+
+          setMessages((prev) => {
+            // Find the existing grouped tool message for this request
+            const existingIdx = prev.findIndex((m) => m.id === toolStepsMsgId)
+
+            const newStep: ToolStep = {
+              toolName: event.tool_name,
+              toolSlug: event.tool_slug,
+              description: event.description,
+              status: event.status === "processing" ? "starting" : event.status,
+            }
+
+            if (existingIdx !== -1) {
+              // We already have a tool steps message — update or append
+              const existing = prev[existingIdx]
+              const steps = [...(existing.toolSteps ?? [])]
+
+              if (event.status === "complete" || event.status === "error") {
+                // Find the in-progress step for this tool and update its status
+                const stepIdx = steps.findIndex(
+                  (s) =>
+                    s.toolName === event.tool_name &&
+                    (s.status === "starting" || s.status === "processing"),
+                )
+                if (stepIdx !== -1) {
+                  steps[stepIdx] = {
+                    ...steps[stepIdx],
+                    status: event.status,
+                    description: event.description ?? steps[stepIdx].description,
+                  }
+                } else {
+                  // No matching in-progress step — append as completed
+                  steps.push(newStep)
+                }
+              } else {
+                // Starting/processing — append a new step
+                steps.push(newStep)
+              }
+
+              return prev.map((m) =>
+                m.id === toolStepsMsgId ? { ...m, toolSteps: steps } : m,
+              )
+            }
+
+            // No existing tool steps message — create one before the AI response
+            const aiIdx = prev.findIndex((m) => m.id === aiMessageId)
+            const toolMsg: Message = {
+              id: toolStepsMsgId,
+              role: "assistant",
+              content: "",
+              timestamp: new Date(),
+              toolSteps: [newStep],
+            }
+            if (aiIdx === -1) return [...prev, toolMsg]
+            const updated = [...prev]
+            updated.splice(aiIdx, 0, toolMsg)
+            return updated
+          })
+        },
+        // Handle connection_link events — insert inline OAuth card
+        (event: ConnectionLinkEvent) => {
+          const linkMsgId = `conn-link-${event.tool_slug}-${Date.now()}`
+          setMessages((prev) => {
+            const aiIdx = prev.findIndex((m) => m.id === aiMessageId)
+            const linkMsg: Message = {
+              id: linkMsgId,
+              role: "assistant",
+              content: "",
+              timestamp: new Date(),
+              connectionLink: {
+                toolName: event.tool_name,
+                toolSlug: event.tool_slug,
+                toolLogo: event.tool_logo,
+                connectionUrl: event.connection_url,
+                message: event.message,
+              },
+            }
+            if (aiIdx === -1) return [...prev, linkMsg]
+            const updated = [...prev]
+            updated.splice(aiIdx, 0, linkMsg)
+            return updated
+          })
+        },
       )
     } catch {
       setIsLoading(false)
@@ -468,90 +633,24 @@ export function ChatInterface({
 
   const lastAssistantId = [...messages].reverse().find((m) => m.role === "assistant")?.id
 
-  // ── Shared input area ────────────────────────────────────────────────────
+  // ── Shared input area (used in both welcome and chat views) ──────────────
   const inputArea = (
-    <div className="max-w-3xl mx-auto w-full px-4">
-      <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden focus-within:border-primary/40 transition-all duration-200">
-        {/* Textarea */}
-        <textarea
-          ref={textareaRef}
-          className="w-full resize-none bg-transparent border-none focus:ring-0 focus:outline-none p-4 pb-2 text-sm placeholder:text-muted-foreground/50 text-foreground leading-relaxed min-h-[24px] max-h-[200px]"
-          placeholder="Ask about team health, burnout risks, or performance..."
-          value={input}
-          onChange={(e) => { if (e.target.value.length <= MAX_INPUT_LENGTH) setInput(e.target.value) }}
-          onKeyDown={handleKeyDown}
-          rows={1}
-          maxLength={MAX_INPUT_LENGTH}
-        />
-
-        {/* Toolbar bar inside the card */}
-        <div className="flex items-center justify-between px-3 py-2">
-          {/* LEFT side */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => toast("File upload coming soon")}
-              className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-muted/80 transition-colors cursor-pointer active:scale-[0.97]"
-              title="Attach file"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-            <span className="text-xs text-muted-foreground flex items-center gap-1.5 select-none">
-              <Sparkles className="h-3 w-3" />
-              Gemini 2.5 Flash
-            </span>
-          </div>
-
-          {/* RIGHT side */}
-          <div className="flex items-center gap-2">
-            {input.length > 0 && (
-              <span className={cn(
-                "text-[10px] transition-colors tabular-nums",
-                input.length > MAX_INPUT_LENGTH * 0.9 ? "text-amber-500 font-medium"
-                  : input.length === MAX_INPUT_LENGTH ? "text-red-500 font-semibold"
-                  : "text-muted-foreground/40"
-              )}>
-                {input.length}/{MAX_INPUT_LENGTH}
-              </span>
-            )}
-            {isStreaming ? (
-              <button
-                onClick={handleStop}
-                className="h-8 w-8 rounded-full flex items-center justify-center transition-colors cursor-pointer active:scale-[0.97] bg-red-500/20 text-red-400 hover:bg-red-500/30"
-                title="Stop generating"
-              >
-                <Square className="h-3.5 w-3.5" />
-              </button>
-            ) : (
-              <button
-                disabled={!input.trim() || isLoading || input.length > MAX_INPUT_LENGTH}
-                onClick={() => handleSendMessage(input)}
-                className={cn(
-                  "h-8 w-8 rounded-full flex items-center justify-center transition-colors cursor-pointer active:scale-[0.97]",
-                  input.trim() && !isLoading
-                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                    : "bg-muted text-muted-foreground cursor-not-allowed"
-                )}
-                title="Send message"
-              >
-                <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+    <InputArea
+      input={input}
+      isLoading={isLoading}
+      isStreaming={isStreaming}
+      textareaRef={textareaRef}
+      onInputChange={setInput}
+      onKeyDown={handleKeyDown}
+      onSend={() => handleSendMessage(input)}
+      onStop={handleStop}
+    />
   )
 
   // ── Welcome screen ──────────────────────────────────────────────────────
   if (messages.length === 0 && !isLoading) {
     return (
-      <div className="flex h-full w-full flex-col bg-background relative overflow-y-auto">
-        <div className="absolute top-4 right-4 z-10">
-          <button onClick={handleNewChat} className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors cursor-pointer active:scale-[0.97]">
-            <MessageSquarePlus className="h-3.5 w-3.5" />
-            New Chat
-          </button>
-        </div>
+      <div className="flex h-full w-full flex-col bg-background overflow-y-auto">
         <div className="flex-1 flex flex-col items-center justify-center py-12 px-4">
           <WelcomeScreen
             userName={userName}
@@ -565,19 +664,22 @@ export function ChatInterface({
 
   // ── Chat view ───────────────────────────────────────────────────────────
   return (
-    <div className="flex h-full w-full flex-col bg-background overflow-hidden relative">
-      <div className="absolute top-4 right-4 z-10">
-        <button onClick={handleNewChat} className="flex items-center gap-1.5 rounded-lg border border-border bg-background/80 backdrop-blur-sm px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all duration-150">
-          <MessageSquarePlus className="h-3.5 w-3.5" />
-          New Chat
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto pt-4 pb-4">
-        <div className="flex flex-col">
+    <div className="flex h-full w-full flex-col bg-background overflow-hidden">
+      {/* Messages — scrollable, takes all remaining space */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="max-w-3xl mx-auto w-full px-4 py-6 space-y-6">
           {messages.map((message, idx) =>
-            message.toolName ? (
-              <ToolCard key={message.id} message={message} />
+            message.connectionLink ? (
+              <ConnectionLinkCard
+                key={message.id}
+                toolName={message.connectionLink.toolName}
+                toolSlug={message.connectionLink.toolSlug}
+                toolLogo={message.connectionLink.toolLogo}
+                connectionUrl={message.connectionLink.connectionUrl}
+                message={message.connectionLink.message}
+              />
+            ) : message.toolSteps && message.toolSteps.length > 0 ? (
+              <ToolCard key={message.id} steps={message.toolSteps} />
             ) : (
               <MessageBubble
                 key={message.id}
@@ -585,22 +687,28 @@ export function ChatInterface({
                 isLastAssistant={message.id === lastAssistantId}
                 isStreaming={isStreaming}
                 copiedId={copiedId}
-                messageIndex={idx}
                 onCopy={handleCopy}
                 onEdit={handleEdit}
                 onRegenerate={() => handleRegenerate(idx)}
-                onFeedback={(type) => { if (sessionId) sendChatFeedback(sessionId, idx, type).catch(() => {}) }}
+                onFeedback={(type) => {
+                  if (sessionId) sendChatFeedback(sessionId, idx, type).catch(() => {})
+                }}
                 onSuggestionClick={handleSendMessage}
                 isLoading={isLoading}
               />
-            )
+            ),
           )}
-          {isLoading && (!isStreaming || messages[messages.length - 1]?.content === "") && <TypingIndicator />}
+
+          {isLoading && (!isStreaming || messages[messages.length - 1]?.content === "") && (
+            <TypingIndicator />
+          )}
+
           <div ref={scrollRef} />
         </div>
       </div>
 
-      <div className="shrink-0 bg-background/90 backdrop-blur-xl border-t border-border/50 px-4 py-4">
+      {/* Input footer — pinned at bottom, never moves */}
+      <div className="shrink-0 bg-background px-4 py-3">
         {inputArea}
       </div>
     </div>

@@ -107,8 +107,8 @@ export interface TeamMetrics {
   elevated_count: number;
   critical_count: number;
   avg_velocity: number;
-  graph_fragmentation: number;
-  comm_decay_rate: number;
+  graph_fragmentation: number | null;
+  comm_decay_rate: number | null;
   contagion_risk: RiskLevel;
 }
 
@@ -202,12 +202,10 @@ export interface UserSummary {
   updated_at?: string;
   belongingness_score?: number;
   circadian_entropy?: number;
-  overwork?: boolean;
-  isolation?: boolean;
-  fragmentation?: boolean;
-  late_night_pattern?: boolean;
-  weekend_work?: boolean;
-  communication_decline?: boolean;
+  chaotic_hours?: boolean;
+  social_withdrawal?: boolean;
+  sustained_intensity?: boolean;
+  has_explained_context?: boolean;
 }
 
 export interface CreatePersonaResponse {
@@ -399,12 +397,10 @@ export interface UseTeamDataReturn {
 }
 
 export interface RiskIndicators {
-  overwork: boolean;
-  isolation: boolean;
-  fragmentation: boolean;
-  late_night_pattern: boolean;
-  weekend_work: boolean;
-  communication_decline: boolean;
+  chaotic_hours: boolean;
+  social_withdrawal: boolean;
+  sustained_intensity: boolean;
+  has_explained_context: boolean;
 }
 
 export interface Employee {

@@ -392,11 +392,11 @@ function CultureContent() {
                   ))}
                   {users.length === 0 && <p className="text-xs text-muted-foreground">No user data available</p>}
                 </div>
-                {sortedUsers.filter((u) => u.isolation || u.risk_level === "ELEVATED").length > 0 && (
+                {sortedUsers.filter((u) => u.social_withdrawal || u.risk_level === "ELEVATED").length > 0 && (
                   <div className="mt-4">
                     <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">At-Risk Members</p>
                     <div className="space-y-1.5">
-                      {sortedUsers.filter((u) => u.isolation || u.risk_level === "ELEVATED").slice(0, 5).map((u) => (
+                      {sortedUsers.filter((u) => u.social_withdrawal || u.risk_level === "ELEVATED").slice(0, 5).map((u) => (
                         <div key={u.user_hash} className="flex items-center gap-2">
                           <span className={cn("h-2 w-2 rounded-full shrink-0", riskDot(u.risk_level))} />
                           <span className="text-xs text-foreground truncate">{u.name ?? u.user_hash}</span>

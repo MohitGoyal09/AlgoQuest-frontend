@@ -1,6 +1,8 @@
 'use client'
 
 import Link from 'next/link'
+import { useCallback, useState } from 'react'
+import { SettingsModal } from '@/components/settings-modal'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   Activity,
@@ -14,6 +16,7 @@ import {
   MoreHorizontal,
   Pencil,
   PenSquare,
+  Search,
   Settings,
   Shield,
   Star,
@@ -34,8 +37,27 @@ import { useChatHistory } from '@/hooks/useChatHistory'
 import { renameChatSession, deleteChatSession, toggleFavoriteSession } from '@/lib/api'
 import { getInitials } from '@/lib/utils'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 
 import {
   DropdownMenu,
@@ -111,14 +133,28 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const email = user?.email ?? ''
   const initials = getInitials(email.split('@')[0]?.replace(/[._-]/g, ' ') || '?')
 
-  // Fix H1: Use window.prompt/confirm as simple fallback (dialog upgrade deferred)
-  // Fix H3: Trim whitespace before sending
-  // Fix H4: refetch in catch blocks for consistency
-  const handleRename = async (sessionId: string, currentTitle: string) => {
-    const rawTitle = window.prompt('Rename session:', currentTitle)
-    if (rawTitle === null) return // cancelled
-    const trimmed = rawTitle.trim()
-    if (!trimmed || trimmed === currentTitle) return
+  const openCommandPalette = useCallback(() => {
+    document.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'k', code: 'KeyK', ctrlKey: true, metaKey: true, bubbles: true,
+    }))
+  }, [])
+
+  // ---- Settings modal state ----
+  const [settingsOpen, setSettingsOpen] = useState(false)
+
+  // ---- Dialog state for rename / delete ----
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [renameTarget, setRenameTarget] = useState<{ id: string; title: string } | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+
+  const openRenameDialog = useCallback((sessionId: string, currentTitle: string) => {
+    setRenameTarget({ id: sessionId, title: currentTitle })
+    setRenameValue(currentTitle)
+  }, [])
+
+  const handleRename = async (sessionId: string, newTitle: string) => {
+    const trimmed = newTitle.trim()
+    if (!trimmed || trimmed === renameTarget?.title) return
     try {
       await renameChatSession(sessionId, trimmed)
       refetchHistory()
@@ -130,11 +166,14 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   }
 
   const handleDelete = async (sessionId: string) => {
-    if (!window.confirm('Delete this conversation?')) return
     try {
       await deleteChatSession(sessionId)
       refetchHistory()
       toast.success('Session deleted')
+      // If the deleted session is currently active, navigate away
+      if (pathname.includes(sessionId)) {
+        router.push('/ask-sentinel')
+      }
     } catch {
       refetchHistory()
       toast.error('Failed to delete')
@@ -166,14 +205,15 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                     <Shield className="size-4" />
                   </div>
                   <div className="flex flex-col gap-0.5 leading-none">
-                    <span className="font-semibold">Sentinel</span>
-                    <span className="text-xs text-muted-foreground">Employee Insights</span>
+                    <span className="font-semibold">{currentTenant?.name ?? 'Sentinel'}</span>
+                    <span className="text-xs text-muted-foreground">{currentTenant ? capitalize(currentTenant.plan ?? 'free') : 'Employee Insights'}</span>
                   </div>
                   <span className="ml-auto flex items-center">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   </span>
                 </Link>
               </SidebarMenuButton>
+              {/* Collapse toggle — visible when expanded */}
               <button
                 onClick={toggleSidebar}
                 className="h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors group-data-[collapsible=icon]:hidden shrink-0"
@@ -182,6 +222,44 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 <ChevronLeft className="h-4 w-4" />
               </button>
             </div>
+            {/* Expand toggle — visible only when collapsed (icon mode) */}
+            <button
+              onClick={toggleSidebar}
+              className="hidden group-data-[collapsible=icon]:flex h-8 w-8 mx-auto rounded-md items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              title="Expand sidebar"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </SidebarMenuItem>
+          {/* Search + New Chat row — KaraX pattern: search left, new chat icon right */}
+          <SidebarMenuItem className="group-data-[collapsible=icon]:hidden">
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={openCommandPalette}
+                className="flex flex-1 items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-sm text-muted-foreground hover:border-primary/30 hover:text-foreground transition-colors"
+              >
+                <Search className="h-3.5 w-3.5 shrink-0" />
+                <span className="flex-1 text-left text-xs">Search chats...</span>
+                <kbd className="hidden sm:inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                  Ctrl K
+                </kbd>
+              </button>
+              <Link
+                href="/ask-sentinel"
+                className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+                title="New Chat"
+              >
+                <PenSquare className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </SidebarMenuItem>
+          {/* New Chat — icon only, visible when collapsed */}
+          <SidebarMenuItem className="hidden group-data-[collapsible=icon]:block">
+            <SidebarMenuButton asChild tooltip="New Chat" size="sm">
+              <Link href="/ask-sentinel">
+                <PenSquare className="h-4 w-4" />
+              </Link>
+            </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
@@ -253,14 +331,14 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                                   </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" side="right">
-                                  <DropdownMenuItem onClick={() => handleRename(session.id, session.title)}>
+                                  <DropdownMenuItem onClick={() => openRenameDialog(session.id, session.title)}>
                                     <Pencil className="h-3 w-3 mr-2" /> Rename
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleToggleFavorite(session.id)}>
                                     <Star className="h-3 w-3 mr-2" /> {session.is_favorite ? 'Unfavorite' : 'Favorite'}
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => handleDelete(session.id)} className="text-red-400">
+                                  <DropdownMenuItem onClick={() => setDeleteTarget(session.id)} className="text-red-400">
                                     <Trash2 className="h-3 w-3 mr-2" /> Delete
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
@@ -383,62 +461,20 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 </Collapsible>
               )}
 
-              {/* Admin — admin only, collapsible */}
+              {/* Admin — admin only, single link */}
               {isAdmin && (
-                <Collapsible
-                  asChild
-                  defaultOpen={pathname.startsWith('/admin') || isActive(pathname, '/audit-log')}
-                  className="group/admin"
-                >
-                  <SidebarMenuItem>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton
-                        isActive={
-                          pathname.startsWith('/admin') || isActive(pathname, '/audit-log')
-                        }
-                        tooltip="Admin"
-                      >
-                        <UserCog />
-                        <span>Admin</span>
-                        <ChevronRight className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/admin:rotate-90" />
-                      </SidebarMenuButton>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <SidebarMenuSub>
-                        <SidebarMenuSubItem>
-                          <SidebarMenuSubButton
-                            asChild
-                            isActive={isActive(pathname, '/admin/users')}
-                          >
-                            <Link href="/admin/users">
-                              <span>Users</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                        <SidebarMenuSubItem>
-                          <SidebarMenuSubButton
-                            asChild
-                            isActive={isActive(pathname, '/admin/teams')}
-                          >
-                            <Link href="/admin/teams">
-                              <span>Teams</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                        <SidebarMenuSubItem>
-                          <SidebarMenuSubButton
-                            asChild
-                            isActive={isActive(pathname, '/audit-log')}
-                          >
-                            <Link href="/audit-log">
-                              <span>Audit Logs</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  </SidebarMenuItem>
-                </Collapsible>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith('/admin')}
+                    tooltip="Admin"
+                  >
+                    <Link href="/admin">
+                      <UserCog />
+                      <span>Admin</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               )}
 
             </SidebarMenu>
@@ -574,7 +610,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                       <User className="mr-2 size-4" />
                       Account
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push('/settings')}>
+                    <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
                       <Settings className="mr-2 size-4" />
                       Settings
                     </DropdownMenuItem>
@@ -602,6 +638,74 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       </SidebarFooter>
 
       <SidebarRail />
+
+      {/* ----------------------------------------------------------------- */}
+      {/* Delete confirmation dialog                                         */}
+      {/* ----------------------------------------------------------------- */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this chat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the conversation.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteTarget) {
+                  handleDelete(deleteTarget)
+                }
+                setDeleteTarget(null)
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* Rename dialog                                                      */}
+      {/* ----------------------------------------------------------------- */}
+      <Dialog open={!!renameTarget} onOpenChange={(open) => { if (!open) setRenameTarget(null) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rename chat</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && renameTarget) {
+                handleRename(renameTarget.id, renameValue)
+                setRenameTarget(null)
+              }
+            }}
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameTarget(null)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (renameTarget) {
+                  handleRename(renameTarget.id, renameValue)
+                }
+                setRenameTarget(null)
+              }}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* Settings modal                                                     */}
+      {/* ----------------------------------------------------------------- */}
+      <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
     </Sidebar>
   )
 }

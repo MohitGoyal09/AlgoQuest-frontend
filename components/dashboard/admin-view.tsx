@@ -101,9 +101,9 @@ export function AdminView({ employees }: AdminViewProps) {
   }, [employees])
 
   const quickActions = [
-    { title: "User Management", desc: "Manage employee accounts", href: "/admin/users", icon: UsersIcon },
-    { title: "Team Management", desc: "Configure team structure", href: "/admin/teams", icon: Settings },
-    { title: "Audit Log", desc: "Review system activity", href: "/audit-log", icon: ClipboardList },
+    { title: "User Management", desc: "Manage employee accounts", href: "/admin", icon: UsersIcon },
+    { title: "Team Management", desc: "Configure team structure", href: "/admin", icon: Settings },
+    { title: "Audit Log", desc: "Review system activity", href: "/admin", icon: ClipboardList },
     { title: "Pipeline Health", desc: "Monitor data ingestion", href: "/data-ingestion", icon: Database },
   ]
 
@@ -194,7 +194,7 @@ export function AdminView({ employees }: AdminViewProps) {
             </div>
             {employees.length > 5 && (
               <button
-                onClick={() => router.push("/admin/users")}
+                onClick={() => router.push("/admin")}
                 className="text-xs text-muted-foreground hover:text-emerald-400 transition-colors duration-150 mt-3 cursor-pointer"
               >
                 +{employees.length - 5} more — view all
@@ -244,7 +244,7 @@ export function AdminView({ employees }: AdminViewProps) {
               <span className="col-span-2">Status</span>
             </div>
             {teams.map((team) => (
-              <div key={team.name} className="grid grid-cols-12 gap-2 items-center py-2.5 border-b border-border/50 hover:bg-muted/50 transition-colors duration-150 cursor-pointer" onClick={() => router.push("/admin/teams")}>
+              <div key={team.name} className="grid grid-cols-12 gap-2 items-center py-2.5 border-b border-border/50 hover:bg-muted/50 transition-colors duration-150 cursor-pointer" onClick={() => router.push("/admin")}>
                 <span className="col-span-4 text-sm text-foreground">{team.name}</span>
                 <span className="col-span-3 text-sm text-muted-foreground tabular-nums">{team.count}</span>
                 <div className="col-span-3"><RiskBadge level={team.avgRisk} /></div>

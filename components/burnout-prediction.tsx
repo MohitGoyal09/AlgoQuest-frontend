@@ -117,12 +117,10 @@ export function BurnoutPrediction({ riskData, history }: BurnoutPredictionProps)
   const factors = useMemo(() => {
     if (!riskData?.indicators) return []
     const factorMap: Record<string, { label: string; weight: number }> = {
-      overwork: { label: "After-hours activity", weight: 35 },
-      isolation: { label: "Reduced collaboration", weight: 25 },
-      late_night_pattern: { label: "Late-night commits", weight: 20 },
-      communication_decline: { label: "Communication decline", weight: 15 },
-      fragmentation: { label: "Context switching", weight: 10 },
-      weekend_work: { label: "Weekend work", weight: 15 },
+      chaotic_hours: { label: "Chaotic Schedule", weight: 35 },
+      social_withdrawal: { label: "Social Withdrawal", weight: 30 },
+      sustained_intensity: { label: "Sustained High Intensity", weight: 25 },
+      has_explained_context: { label: "Context Available", weight: 5 },
     }
 
     return Object.entries(riskData.indicators)

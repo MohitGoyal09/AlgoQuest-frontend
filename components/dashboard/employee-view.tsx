@@ -40,7 +40,7 @@ export function EmployeeView({ employee, events }: EmployeeViewProps) {
   const entropy = employee.circadian_entropy ?? 0
   const socialConnection = Math.round(belong * 100)
   const networkInfluence = Math.round((1 - entropy) * 80 + 10)
-  const unblockingImpact = employee.indicators.fragmentation ? 35 : 72
+  const unblockingImpact = employee.indicators.chaotic_hours ? 35 : 72
 
   const riskColor = employee.risk_level === "CRITICAL"
     ? "text-red-400"
@@ -61,8 +61,8 @@ export function EmployeeView({ employee, events }: EmployeeViewProps) {
     { label: "Code Velocity", value: Math.min(100, Math.round(vel * 20)) },
     { label: "Collaboration", value: socialConnection },
     { label: "Focus Time", value: Math.round((1 - entropy) * 100) },
-    { label: "Communication", value: employee.indicators.communication_decline ? 30 : 75 },
-    { label: "Work Balance", value: employee.indicators.overwork ? 25 : 80 },
+    { label: "Communication", value: employee.indicators.social_withdrawal ? 30 : 75 },
+    { label: "Work Balance", value: employee.indicators.sustained_intensity ? 25 : 80 },
   ]
 
   return (
@@ -141,7 +141,7 @@ export function EmployeeView({ employee, events }: EmployeeViewProps) {
                 <p className="text-[11px] text-muted-foreground mt-1">Sentinel AI analysis</p>
               </div>
             </div>
-            {employee.indicators.overwork && (
+            {employee.indicators.sustained_intensity && (
               <div className="flex items-start gap-2.5">
                 <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-400" />
                 <div>

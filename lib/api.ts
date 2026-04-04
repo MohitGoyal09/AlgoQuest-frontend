@@ -467,6 +467,23 @@ export async function chatWithSentinel(request: ChatRequest): Promise<ChatRespon
  * Stream a chat response from the AI endpoint via SSE
  * POST /ai/chat/stream
  */
+export interface ToolCallEvent {
+  tool_name: string;
+  tool_slug: string;
+  status: "starting" | "processing" | "complete" | "error";
+  description?: string;
+  args?: Record<string, unknown>;
+  result?: string;
+}
+
+export interface ConnectionLinkEvent {
+  tool_name: string;
+  tool_slug: string;
+  tool_logo?: string;
+  connection_url?: string;
+  message: string;
+}
+
 export async function chatWithSentinelStream(
   request: ChatRequest,
   onToken: (token: string) => void,
@@ -479,6 +496,8 @@ export async function chatWithSentinelStream(
   }) => void,
   onError?: (error: Error) => void,
   signal?: AbortSignal,
+  onToolCall?: (event: ToolCallEvent) => void,
+  onConnectionLink?: (event: ConnectionLinkEvent) => void,
 ): Promise<void> {
   const authHeaders = getAuthHeaders();
   const url = `${API_BASE_URL}/ai/chat/stream`;
@@ -518,6 +537,31 @@ export async function chatWithSentinelStream(
             const data = JSON.parse(line.slice(6));
             if (data.type === "token") {
               onToken(data.content);
+            } else if (data.type === "refusal") {
+              onToken(data.content);
+            } else if (data.type === "workflow") {
+              onToken(data.description);
+            } else if (data.type === "tool_request") {
+              onToken(data.description);
+            } else if (data.type === "tool_call") {
+              onToolCall?.({
+                tool_name: data.tool_name ?? data.name ?? "tool",
+                tool_slug: data.tool_slug ?? data.slug ?? "",
+                status: data.status ?? "starting",
+                description: data.description,
+                args: data.args,
+                result: data.result,
+              });
+            } else if (data.type === "connection_link") {
+              onConnectionLink?.({
+                tool_name: data.tool_name ?? data.name ?? "Tool",
+                tool_slug: data.tool_slug ?? data.slug ?? "",
+                tool_logo: data.tool_logo,
+                connection_url: data.connection_url,
+                message: data.message ?? `Connect ${data.tool_name ?? "this tool"} to continue`,
+              });
+            } else if (data.type === "classification") {
+              // Internal routing info — ignore silently
             } else if (data.type === "done") {
               onDone(data);
             }
@@ -542,10 +586,94 @@ export async function chatWithSentinelStream(
 
 export const getConnectedTools = () => api.get('/tools/connected')
 export const getAvailableTools = () => api.get('/tools/available')
+
+export async function listToolkits(params?: { search?: string; limit?: number; cursor?: string }) {
+  const query = new URLSearchParams()
+  if (params?.search) query.set("search", params.search)
+  if (params?.limit) query.set("limit", String(params.limit))
+  if (params?.cursor) query.set("cursor", params.cursor)
+  const qs = query.toString()
+  return api.get(`/tools/toolkits${qs ? `?${qs}` : ""}`) as Promise<{
+    items: Array<{ slug: string; name: string; description: string; logo: string; category: string; no_auth?: boolean }>
+    total: number
+    next_cursor: string | null
+  }>
+}
 export const connectTool = (toolSlug: string) => api.post('/tools/connect', { tool_slug: toolSlug })
-export const disconnectTool = (toolSlug: string) => api.post('/tools/disconnect', { tool_slug: toolSlug })
 export const executeToolAction = (toolSlug: string, action: string, params: Record<string, unknown>) =>
   api.post('/tools/marketplace/execute', { tool_slug: toolSlug, action, params })
+
+// ============================================
+// Connection Management (Composio OAuth)
+// ============================================
+
+/**
+ * Initiate an OAuth connection for a toolkit via Composio.
+ * Returns a redirect_url for OAuth toolkits, or success for no-auth toolkits.
+ *
+ * NOTE: Connection endpoints return flat objects with `success` field (not wrapped
+ * in `{data: ...}`), so we bypass `handleResponse` which would strip the response.
+ * POST /connections/initiate
+ */
+export async function initiateConnection(
+  toolkitName: string,
+  successUrl?: string,
+): Promise<{ success: boolean; redirect_url?: string; connection_id?: string; toolkit_name: string; status?: string }> {
+  const result = await api.post('/connections/initiate', {
+    toolkit_name: toolkitName,
+    success_url: successUrl,
+  })
+  if (result && typeof result === 'object' && 'success' in result && !(result as Record<string, unknown>).success) {
+    throw new Error((result as Record<string, unknown>).error as string || 'Connection initiation failed')
+  }
+  return result as { success: boolean; redirect_url?: string; connection_id?: string; toolkit_name: string; status?: string }
+}
+
+/**
+ * Get the list of currently connected toolkits (live from Composio).
+ * GET /connections/connected
+ */
+export async function getConnectedToolsLive(): Promise<{ tools: string[]; total: number; composio_enabled: boolean }> {
+  return api.get('/connections/connected') as Promise<{ tools: string[]; total: number; composio_enabled: boolean }>
+}
+
+/**
+ * Get the status of a specific toolkit connection.
+ * GET /connections/toolkit-status?toolkit_name=...
+ */
+export async function getToolkitStatus(
+  toolkitName: string,
+): Promise<{ is_connected: boolean; toolkit_name: string; composio_enabled: boolean }> {
+  return api.get(
+    `/connections/toolkit-status?toolkit_name=${encodeURIComponent(toolkitName)}`,
+  ) as Promise<{ is_connected: boolean; toolkit_name: string; composio_enabled: boolean }>
+}
+
+/**
+ * Invalidate the backend MCP Tool Router cache for the current user.
+ * Call after connecting/disconnecting a tool so the next chat message
+ * picks up the updated tool set.
+ * POST /connections/invalidate-cache
+ */
+export async function invalidateToolCache(): Promise<{ success: boolean; invalidated: boolean }> {
+  return api.post('/connections/invalidate-cache') as Promise<{ success: boolean; invalidated: boolean }>
+}
+
+/**
+ * Disconnect a toolkit via Composio.
+ * POST /connections/disconnect
+ */
+export async function disconnectTool(
+  toolkitName: string,
+): Promise<{ success: boolean; toolkit_name: string; message: string }> {
+  const result = await api.post('/connections/disconnect', {
+    toolkit_name: toolkitName,
+  })
+  if (result && typeof result === 'object' && 'success' in result && !(result as Record<string, unknown>).success) {
+    throw new Error((result as Record<string, unknown>).error as string || 'Disconnection failed')
+  }
+  return result as { success: boolean; toolkit_name: string; message: string }
+}
 
 // ============================================
 // Workflows
@@ -586,6 +714,7 @@ export interface ConversationTurn {
   id: string;
   role: "user" | "assistant";
   content: string;
+  type?: "message" | "tool_call" | "connection_link" | string;
   created_at: string | null;
   metadata: Record<string, unknown> | null;
 }

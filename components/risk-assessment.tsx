@@ -49,12 +49,10 @@ export function RiskAssessment({ employee }: RiskAssessmentProps) {
         : "bg-[hsl(var(--sentinel-healthy))]/8 text-[hsl(var(--sentinel-healthy))] border-[hsl(var(--sentinel-healthy))]/15"
 
   const indicators = [
-    { key: "overwork", label: "Overwork", active: employee.indicators?.overwork || false },
-    { key: "isolation", label: "Isolation", active: employee.indicators?.isolation || false },
-    { key: "late_night", label: "After-Hours", active: employee.indicators?.late_night_pattern || false },
-    { key: "weekend", label: "Weekend Work", active: employee.indicators?.weekend_work || false },
-    { key: "comm_decline", label: "Comm. Decline", active: employee.indicators?.communication_decline || false },
-    { key: "fragmentation", label: "Fragmentation", active: employee.indicators?.fragmentation || false },
+    { key: "chaotic_hours", label: "Chaotic Schedule", active: employee.indicators?.chaotic_hours || false },
+    { key: "social_withdrawal", label: "Social Withdrawal", active: employee.indicators?.social_withdrawal || false },
+    { key: "sustained_intensity", label: "Sustained High Intensity", active: employee.indicators?.sustained_intensity || false },
+    { key: "has_explained_context", label: "Context Available", active: employee.indicators?.has_explained_context || false },
   ]
 
   const activeCount = indicators.filter((i) => i.active).length

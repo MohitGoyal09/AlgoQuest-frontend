@@ -1,317 +1,410 @@
-'use client'
+"use client"
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from "react"
+import { useTheme } from "next-themes"
+import { Moon, Sun, Monitor } from "lucide-react"
+import { toast } from "sonner"
+
+import { useAuth } from "@/contexts/auth-context"
+import { api } from "@/lib/api"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import { Switch } from '@/components/ui/switch'
-import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
-import { Pause, Play, Trash2, Share2, Shield, Eye, EyeOff, Loader2 } from 'lucide-react'
-import { api } from '@/lib/api'
+} from "@/components/ui/dialog"
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface SettingsModalProps {
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-  trigger?: React.ReactNode
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
-interface ConsentSettings {
-  consent_share_with_manager: boolean
-  consent_share_anonymized: boolean
+interface NotificationSettings {
+  emailDigest: boolean
+  riskAlerts: boolean
+  teamUpdates: boolean
 }
 
-const CACHE_TTL = 30000
+interface PrivacySettings {
+  shareWithManager: boolean
+  pauseMonitoring: boolean
+}
 
-export function SettingsModal({ open, onOpenChange, trigger }: SettingsModalProps) {
-  const [settings, setSettings] = useState<ConsentSettings>({
-    consent_share_with_manager: false,
-    consent_share_anonymized: false,
+interface TeamSettings {
+  anonymizeDefault: boolean
+}
+
+// ---------------------------------------------------------------------------
+// LocalStorage helpers
+// ---------------------------------------------------------------------------
+
+const STORAGE_PREFIX = "sentinel-settings-"
+
+function readBoolean(key: string, defaultValue: boolean): boolean {
+  if (typeof window === "undefined") return defaultValue
+  const stored = localStorage.getItem(STORAGE_PREFIX + key)
+  if (stored === null) return defaultValue
+  return stored === "true"
+}
+
+function writeBoolean(key: string, value: boolean): void {
+  localStorage.setItem(STORAGE_PREFIX + key, String(value))
+}
+
+// ---------------------------------------------------------------------------
+// Role badge color helper
+// ---------------------------------------------------------------------------
+
+function getRoleBadgeClass(role: string): string {
+  switch (role) {
+    case "admin":
+      return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+    case "manager":
+      return "bg-amber-500/10 text-amber-500 border-amber-500/20"
+    default:
+      return ""
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
+  const { user, userRole } = useAuth()
+  const { theme, setTheme } = useTheme()
+
+  const role = userRole?.role ?? "employee"
+  const email = user?.email ?? ""
+  const isAdmin = role === "admin"
+  const isManager = role === "manager"
+  const isManagerOrAdmin = isManager || isAdmin
+  const isEmployee = role === "employee"
+
+  const [mounted, setMounted] = useState(false)
+
+  // Notification state (localStorage)
+  const [notifications, setNotifications] = useState<NotificationSettings>({
+    emailDigest: true,
+    riskAlerts: true,
+    teamUpdates: false,
   })
-  const [monitoringPaused, setMonitoringPaused] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
-  const loadingRef = useRef(false)
-  const settingsCacheRef = useRef<{ data: { user: ConsentSettings; monitoringPaused: boolean } | null; timestamp: number }>({ data: null, timestamp: 0 })
 
+  // Privacy state (API-backed, employee only)
+  const [privacy, setPrivacy] = useState<PrivacySettings>({
+    shareWithManager: userRole?.consent_share_with_manager ?? false,
+    pauseMonitoring: false,
+  })
+  const [privacyLoading, setPrivacyLoading] = useState(false)
+
+  // Team defaults state (localStorage, manager/admin only)
+  const [teamSettings, setTeamSettings] = useState<TeamSettings>({
+    anonymizeDefault: true,
+  })
+
+  // SSR-safe init
   useEffect(() => {
-    if (open && !loadingRef.current) {
-      loadSettings()
-    }
-  }, [open])
+    setNotifications({
+      emailDigest: readBoolean("notifications-email-digest", true),
+      riskAlerts: readBoolean("notifications-risk-alerts", true),
+      teamUpdates: readBoolean("notifications-team-updates", false),
+    })
+    setTeamSettings({
+      anonymizeDefault: readBoolean("anonymize-default", true),
+    })
+    setMounted(true)
+  }, [])
 
-  const loadSettings = async () => {
-    if (!open || loadingRef.current) return
-    
-    const now = Date.now()
-    if (settingsCacheRef.current.data && (now - settingsCacheRef.current.timestamp) < CACHE_TTL) {
-      setSettings({
-        consent_share_with_manager: settingsCacheRef.current.data.user.consent_share_with_manager,
-        consent_share_anonymized: settingsCacheRef.current.data.user.consent_share_anonymized,
-      })
-      setMonitoringPaused(settingsCacheRef.current.data.monitoringPaused)
-      setIsLoading(false)
-      return
+  // Sync privacy state from auth context when modal opens
+  useEffect(() => {
+    if (open && userRole) {
+      setPrivacy((prev) => ({
+        ...prev,
+        shareWithManager: userRole.consent_share_with_manager ?? false,
+      }))
     }
-    
-    loadingRef.current = true
-    setIsLoading(true)
+  }, [open, userRole])
+
+  // ---- Notification handlers (localStorage) ----
+
+  function updateNotification(key: keyof NotificationSettings, value: boolean) {
+    const storageKeyMap: Record<keyof NotificationSettings, string> = {
+      emailDigest: "notifications-email-digest",
+      riskAlerts: "notifications-risk-alerts",
+      teamUpdates: "notifications-team-updates",
+    }
+    writeBoolean(storageKeyMap[key], value)
+    setNotifications((prev) => ({ ...prev, [key]: value }))
+  }
+
+  // ---- Privacy handlers (API-backed) ----
+
+  async function handleConsentChange(value: boolean) {
+    setPrivacyLoading(true)
     try {
-      const response = await api.get<{ user: ConsentSettings; monitoring_status: { is_paused: boolean } }>('/me/')
-      const data = {
-        user: {
-          consent_share_with_manager: response.user.consent_share_with_manager,
-          consent_share_anonymized: response.user.consent_share_anonymized,
-        },
-        monitoringPaused: response.monitoring_status.is_paused,
-      }
-      settingsCacheRef.current.data = data
-      settingsCacheRef.current.timestamp = Date.now()
-      setSettings(data.user)
-      setMonitoringPaused(data.monitoringPaused)
-    } catch (error) {
-      console.error('Failed to load settings:', error)
+      await api.put("/me/consent", {
+        consent_share_with_manager: value,
+      })
+      setPrivacy((prev) => ({ ...prev, shareWithManager: value }))
+      toast.success(
+        value
+          ? "Data sharing with manager enabled"
+          : "Data sharing with manager disabled"
+      )
+    } catch {
+      toast.error("Failed to update consent setting")
     } finally {
-      setIsLoading(false)
-      loadingRef.current = false
+      setPrivacyLoading(false)
     }
   }
 
-  const updateSetting = async (key: keyof ConsentSettings, value: boolean) => {
-    setIsSaving(true)
-    setMessage(null)
+  async function handlePauseMonitoring(value: boolean) {
+    setPrivacyLoading(true)
     try {
-      const newSettings = { ...settings, [key]: value }
-      await api.post('/me/consent/', {
-        consent_share_with_manager: newSettings.consent_share_with_manager,
-        consent_share_anonymized: newSettings.consent_share_anonymized,
-      })
-      setSettings(newSettings)
-      setMessage({ type: 'success', text: 'Settings saved successfully' })
-    } catch (error) {
-      console.error('Failed to save settings:', error)
-      setMessage({ type: 'error', text: 'Failed to save settings' })
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const handlePauseResume = async () => {
-    setIsSaving(true)
-    setMessage(null)
-    try {
-      if (monitoringPaused) {
-        await api.post('/me/resume-monitoring/', {})
-        setMonitoringPaused(false)
-        setMessage({ type: 'success', text: 'Monitoring resumed' })
+      if (value) {
+        await api.post("/me/pause-monitoring", { hours: 24 })
+        toast.success("Monitoring paused for 24 hours")
       } else {
-        await api.post('/me/pause-monitoring/', { hours: 24 })
-        setMonitoringPaused(true)
-        setMessage({ type: 'success', text: 'Monitoring paused for 24 hours' })
+        await api.post("/me/resume-monitoring")
+        toast.success("Monitoring resumed")
       }
-    } catch (error) {
-      console.error('Failed to toggle monitoring:', error)
-      setMessage({ type: 'error', text: 'Failed to toggle monitoring' })
+      setPrivacy((prev) => ({ ...prev, pauseMonitoring: value }))
+    } catch {
+      toast.error("Failed to update monitoring status")
     } finally {
-      setIsSaving(false)
+      setPrivacyLoading(false)
     }
   }
 
-  const handleDeleteData = async () => {
-    setIsSaving(true)
-    try {
-      await api.delete('/me/data/?confirm=true')
-      setShowDeleteConfirm(false)
-      setMessage({ type: 'success', text: 'All data deleted' })
-    } catch (error) {
-      console.error('Failed to delete data:', error)
-      setMessage({ type: 'error', text: 'Failed to delete data' })
-    } finally {
-      setIsSaving(false)
+  // ---- Team defaults handler (localStorage) ----
+
+  function updateTeamSetting(key: keyof TeamSettings, value: boolean) {
+    const storageKeyMap: Record<keyof TeamSettings, string> = {
+      anonymizeDefault: "anonymize-default",
     }
+    writeBoolean(storageKeyMap[key], value)
+    setTeamSettings((prev) => ({ ...prev, [key]: value }))
   }
+
+  // ---- Theme buttons ----
+
+  const themeOptions = [
+    { value: "light", label: "Light", icon: Sun },
+    { value: "dark", label: "Dark", icon: Moon },
+    { value: "system", label: "System", icon: Monitor },
+  ] as const
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Privacy Settings
+      <DialogContent className="max-w-md gap-0 p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-4">
+          <DialogTitle className="text-base font-semibold">
+            Settings
           </DialogTitle>
-          <DialogDescription>
-            Manage your privacy preferences and data settings
+          <DialogDescription className="sr-only">
+            Configure your preferences and account settings
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {isLoading && (
-            <div className="absolute top-20 left-1/2 -translate-x-1/2">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        <div className="max-h-[60vh] overflow-y-auto px-6 pb-6 space-y-6">
+          {/* ----------------------------------------------------------- */}
+          {/* Appearance                                                    */}
+          {/* ----------------------------------------------------------- */}
+          <section>
+            <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3">
+              Appearance
+            </h3>
+            <div className="flex gap-2">
+              {mounted &&
+                themeOptions.map(({ value, label, icon: Icon }) => (
+                  <Button
+                    key={value}
+                    variant={theme === value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setTheme(value)}
+                    className="flex-1 gap-1.5 text-xs"
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {label}
+                  </Button>
+                ))}
             </div>
-          )}
-          
-          {message && (
-            <div className={`p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-[hsl(var(--sentinel-healthy))]/10 text-[hsl(var(--sentinel-healthy))] border border-[hsl(var(--sentinel-healthy))]/20' : 'bg-destructive/10 text-destructive border border-destructive/20'}`}>
-              {message.text}
-            </div>
-          )}
+          </section>
 
-            <section>
-              <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                <Eye className="h-4 w-4" />
-                Consent Preferences
-              </h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <label className="text-sm font-medium leading-none">
-                      Share with Manager
-                    </label>
-                    <p className="text-xs text-muted-foreground">
-                      Allow your manager to see your individual insights
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings.consent_share_with_manager}
-                    onCheckedChange={(checked) => updateSetting('consent_share_with_manager', checked)}
-                    disabled={isSaving}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <label className="text-sm font-medium leading-none">
-                      Anonymous Data
-                    </label>
-                    <p className="text-xs text-muted-foreground">
-                      Include anonymized data in team aggregates
-                    </p>
-                  </div>
-                  <Switch
-                    checked={settings.consent_share_anonymized}
-                    onCheckedChange={(checked) => updateSetting('consent_share_anonymized', checked)}
-                    disabled={isSaving}
-                  />
-                </div>
-              </div>
-            </section>
-
-            <Separator />
-
-            <section>
-              <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                {monitoringPaused ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-                Monitoring Control
-              </h3>
-              <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
-                <div className="space-y-0.5">
-                  <label className="text-sm font-medium leading-none">
-                    Pause Monitoring
-                  </label>
-                  <p className="text-xs text-muted-foreground">
-                    {monitoringPaused
-                      ? 'Monitoring is currently paused'
-                      : 'Temporarily pause all activity tracking'}
-                  </p>
-                </div>
-                <Button
-                  variant={monitoringPaused ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={handlePauseResume}
-                  disabled={isSaving}
-                  className="gap-2"
+          {/* ----------------------------------------------------------- */}
+          {/* Notifications                                                */}
+          {/* ----------------------------------------------------------- */}
+          <section>
+            <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3">
+              Notifications
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label
+                  htmlFor="settings-email-digest"
+                  className="text-sm text-foreground"
                 >
-                  {isSaving ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : monitoringPaused ? (
-                    <>
-                      <Play className="h-3 w-3" />
-                      Resume
-                    </>
-                  ) : (
-                    <>
-                      <Pause className="h-3 w-3" />
-                      Pause
-                    </>
-                  )}
-                </Button>
+                  Email digest
+                </Label>
+                {mounted && (
+                  <Switch
+                    id="settings-email-digest"
+                    checked={notifications.emailDigest}
+                    onCheckedChange={(v) =>
+                      updateNotification("emailDigest", v)
+                    }
+                  />
+                )}
+              </div>
+
+              {isManagerOrAdmin && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <Label
+                      htmlFor="settings-risk-alerts"
+                      className="text-sm text-foreground"
+                    >
+                      Risk alerts
+                    </Label>
+                    {mounted && (
+                      <Switch
+                        id="settings-risk-alerts"
+                        checked={notifications.riskAlerts}
+                        onCheckedChange={(v) =>
+                          updateNotification("riskAlerts", v)
+                        }
+                      />
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label
+                      htmlFor="settings-team-updates"
+                      className="text-sm text-foreground"
+                    >
+                      Team updates
+                    </Label>
+                    {mounted && (
+                      <Switch
+                        id="settings-team-updates"
+                        checked={notifications.teamUpdates}
+                        onCheckedChange={(v) =>
+                          updateNotification("teamUpdates", v)
+                        }
+                      />
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
+
+          {/* ----------------------------------------------------------- */}
+          {/* Privacy (employee only)                                       */}
+          {/* ----------------------------------------------------------- */}
+          {isEmployee && (
+            <section>
+              <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3">
+                Privacy
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label
+                    htmlFor="settings-share-manager"
+                    className="text-sm text-foreground"
+                  >
+                    Share data with manager
+                  </Label>
+                  <Switch
+                    id="settings-share-manager"
+                    checked={privacy.shareWithManager}
+                    onCheckedChange={handleConsentChange}
+                    disabled={privacyLoading}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <Label
+                    htmlFor="settings-pause-monitoring"
+                    className="text-sm text-foreground"
+                  >
+                    Pause monitoring
+                  </Label>
+                  <Switch
+                    id="settings-pause-monitoring"
+                    checked={privacy.pauseMonitoring}
+                    onCheckedChange={handlePauseMonitoring}
+                    disabled={privacyLoading}
+                  />
+                </div>
               </div>
             </section>
+          )}
 
-            <Separator />
-
+          {/* ----------------------------------------------------------- */}
+          {/* Team Defaults (manager only — admins see real names)          */}
+          {/* ----------------------------------------------------------- */}
+          {isManager && !isAdmin && (
             <section>
-              <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                <Share2 className="h-4 w-4" />
-                Data Management
+              <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3">
+                Team Defaults
               </h3>
-              <div className="p-4 rounded-lg border border-destructive/20 bg-destructive/5">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <label className="text-sm font-medium leading-none">
-                      Delete All Data
-                    </label>
-                    <p className="text-xs text-muted-foreground">
-                      Permanently remove all your stored data
-                    </p>
-                  </div>
-                  {!showDeleteConfirm ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowDeleteConfirm(true)}
-                      className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
-                    >
-                      Delete Data
-                    </Button>
-                  ) : (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowDeleteConfirm(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={handleDeleteData}
-                        disabled={isSaving}
-                      >
-                        {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Confirm'}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-                {showDeleteConfirm && (
-                  <p className="text-xs text-destructive mt-2">
-                    Click confirm to permanently delete all your data. This action cannot be undone.
-                  </p>
+              <div className="flex items-center justify-between">
+                <Label
+                  htmlFor="settings-anonymize"
+                  className="text-sm text-foreground"
+                >
+                  Default anonymization
+                </Label>
+                {mounted && (
+                  <Switch
+                    id="settings-anonymize"
+                    checked={teamSettings.anonymizeDefault}
+                    onCheckedChange={(v) =>
+                      updateTeamSetting("anonymizeDefault", v)
+                    }
+                  />
                 )}
               </div>
             </section>
-          </div>
+          )}
 
-        <div className="flex justify-end pt-2">
-          <Button onClick={() => onOpenChange?.(false)}>Done</Button>
+          {/* ----------------------------------------------------------- */}
+          {/* Account Info (read-only)                                      */}
+          {/* ----------------------------------------------------------- */}
+          <section>
+            <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3">
+              Account
+            </h3>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Email</span>
+                <span className="text-sm text-foreground font-mono truncate max-w-[200px]">
+                  {email || "\u2014"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Role</span>
+                <Badge
+                  variant="outline"
+                  className={`capitalize text-xs ${getRoleBadgeClass(role)}`}
+                >
+                  {role}
+                </Badge>
+              </div>
+            </div>
+          </section>
         </div>
       </DialogContent>
     </Dialog>
   )
 }
-
-export default SettingsModal

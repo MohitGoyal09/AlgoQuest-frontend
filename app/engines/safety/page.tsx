@@ -34,7 +34,7 @@ import {
   MessageSquare
 } from "lucide-react"
 
-import { Employee, RiskLevel, toRiskLevel } from "@/types"
+import { Employee, RiskLevel, TeamMetrics, toRiskLevel } from "@/types"
 import { mapUsersToEmployees } from "@/lib/map-employees"
 
 import { useRiskData } from "@/hooks/useRiskData"
@@ -43,6 +43,177 @@ import { useRiskHistory } from "@/hooks/useRiskHistory"
 import { useUsers } from "@/hooks/useUsers"
 import { useNudge } from "@/hooks/useNudge"
 import { getInitials } from "@/lib/utils"
+
+// ---------------------------------------------------------------------------
+// Extracted sub-components
+// ---------------------------------------------------------------------------
+
+interface HeroSectionProps {
+  teamRiskScore: number
+  riskDistribution: {
+    critical: number
+    criticalPct: number
+    elevated: number
+    elevatedPct: number
+    healthy: number
+    healthyPct: number
+  }
+}
+
+function HeroSection({ teamRiskScore, riskDistribution }: HeroSectionProps) {
+  return (
+    <div className="bg-card border border-border rounded-lg relative overflow-hidden">
+      <div className="absolute inset-0 bg-[hsl(var(--sentinel-critical))]/3" />
+
+      <div className="relative grid gap-10 p-8 md:grid-cols-2 lg:gap-14">
+        {/* Score Display */}
+        <div className="flex flex-col items-center justify-center gap-5">
+          <div className="relative">
+            <div className="relative flex h-40 w-40 items-center justify-center rounded-full border border-border bg-background">
+              <div className="flex flex-col items-center">
+                <span className="text-4xl font-bold tracking-tight text-foreground font-mono tabular-nums">
+                  {teamRiskScore}
+                </span>
+                <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground mt-1">
+                  Risk Score
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {teamRiskScore >= 60 ? (
+              <>
+                <AlertCircle className="h-4 w-4 text-[hsl(var(--sentinel-critical))]" />
+                <span className="text-sm font-medium text-[hsl(var(--sentinel-critical))]">High team risk — Immediate action needed</span>
+              </>
+            ) : teamRiskScore >= 30 ? (
+              <>
+                <AlertTriangle className="h-4 w-4 text-[hsl(var(--sentinel-elevated))]" />
+                <span className="text-sm font-medium text-[hsl(var(--sentinel-elevated))]">Elevated risk — Monitor closely</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-4 w-4 text-[hsl(var(--sentinel-healthy))]" />
+                <span className="text-sm font-medium text-[hsl(var(--sentinel-healthy))]">Team health is good</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Risk Distribution */}
+        <div className="flex flex-col justify-center gap-4">
+          {/* Critical */}
+          <div className="bg-muted/20 rounded-lg flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(var(--sentinel-critical))]/10">
+                <AlertTriangle className="h-4 w-4 text-[hsl(var(--sentinel-critical))]" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-[hsl(var(--sentinel-critical))]">Critical</p>
+                <p className="text-[11px] text-muted-foreground">Immediate attention required</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xl font-bold font-mono tabular-nums text-[hsl(var(--sentinel-critical))]">{riskDistribution.critical}</p>
+              <p className="text-[10px] text-muted-foreground">{riskDistribution.criticalPct}%</p>
+            </div>
+          </div>
+
+          {/* Elevated */}
+          <div className="bg-muted/20 rounded-lg flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(var(--sentinel-elevated))]/10">
+                <TrendingUp className="h-4 w-4 text-[hsl(var(--sentinel-elevated))]" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-[hsl(var(--sentinel-elevated))]">Elevated</p>
+                <p className="text-[11px] text-muted-foreground">Monitoring closely</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xl font-bold font-mono tabular-nums text-[hsl(var(--sentinel-elevated))]">{riskDistribution.elevated}</p>
+              <p className="text-[10px] text-muted-foreground">{riskDistribution.elevatedPct}%</p>
+            </div>
+          </div>
+
+          {/* Healthy */}
+          <div className="bg-muted/20 rounded-lg flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(var(--sentinel-healthy))]/10">
+                <Heart className="h-4 w-4 text-[hsl(var(--sentinel-healthy))]" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-[hsl(var(--sentinel-healthy))]">Healthy</p>
+                <p className="text-[11px] text-muted-foreground">Within normal range</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xl font-bold font-mono tabular-nums text-[hsl(var(--sentinel-healthy))]">{riskDistribution.healthy}</p>
+              <p className="text-[10px] text-muted-foreground">{riskDistribution.healthyPct}%</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+
+interface PreventionTipsSectionProps {
+  employees: Employee[]
+}
+
+function PreventionTipsSection({ employees }: PreventionTipsSectionProps) {
+  const preventionTips = useMemo(() => {
+    const tips: { icon: typeof Zap; text: string }[] = []
+    const criticalCount = employees.filter(e => e.risk_level === "CRITICAL").length
+    const elevatedCount = employees.filter(e => e.risk_level === "ELEVATED").length
+    const highVelocity = employees.filter(e => e.velocity > 2.0).length
+
+    if (criticalCount > 0) {
+      tips.push({ icon: Zap, text: `${criticalCount} employee(s) at critical risk — schedule immediate 1:1 check-ins` })
+    }
+    if (highVelocity > 0) {
+      tips.push({ icon: Clock, text: `${highVelocity} employee(s) showing high velocity — review workload distribution` })
+    }
+    if (elevatedCount > 0) {
+      tips.push({ icon: MessageSquare, text: `${elevatedCount} employee(s) at elevated risk — consider preventive interventions` })
+    }
+    if (tips.length === 0) {
+      tips.push({ icon: Heart, text: "Team health looks good — maintain current support practices" })
+    }
+    return tips.slice(0, 3)
+  }, [employees])
+
+  return (
+    <div className="bg-muted/20 rounded-lg p-4">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-medium text-[hsl(var(--sentinel-healthy))]">Prevention Actions</span>
+        <CheckCircle2 className="h-4 w-4 text-[hsl(var(--sentinel-healthy))]" />
+      </div>
+      <p className="text-[11px] text-muted-foreground mb-3">
+        Recommended interventions based on current patterns
+      </p>
+      <div className="space-y-2 text-[11px]">
+        {preventionTips.map((tip, idx) => {
+          const TipIcon = tip.icon
+          return (
+            <div key={idx} className="flex items-start gap-2">
+              <TipIcon className="h-3 w-3 text-[hsl(var(--sentinel-healthy))] mt-0.5 shrink-0" />
+              <span className="text-muted-foreground">{tip.text}</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Main content
+// ---------------------------------------------------------------------------
 
 function SafetyContent() {
   const [selectedUserHash, setSelectedUserHash] = useState<string | null>(null)
@@ -78,33 +249,31 @@ function SafetyContent() {
       belongingness_score: riskData.belongingness_score,
       circadian_entropy: riskData.circadian_entropy,
       indicators: {
-        overwork: riskData.indicators?.overwork || false,
-        isolation: riskData.indicators?.isolation || false,
-        fragmentation: riskData.indicators?.fragmentation || false,
-        late_night_pattern: riskData.indicators?.late_night_pattern || false,
-        weekend_work: riskData.indicators?.weekend_work || false,
-        communication_decline: riskData.indicators?.communication_decline || false,
+        chaotic_hours: riskData.indicators?.chaotic_hours || false,
+        social_withdrawal: riskData.indicators?.social_withdrawal || false,
+        sustained_intensity: riskData.indicators?.sustained_intensity || false,
+        has_explained_context: riskData.indicators?.has_explained_context || false,
       }
     } as Employee
   }, [selectedBaseEmployee, riskData])
 
-  const mappedTeamMetrics = useMemo(() => {
+  const mappedTeamMetrics: TeamMetrics = useMemo(() => {
     if (!teamData) {
       const total = employees.length
       const healthy = employees.filter(e => e.risk_level === "LOW").length
       const elevated = employees.filter(e => e.risk_level === "ELEVATED").length
       const critical = employees.filter(e => e.risk_level === "CRITICAL").length
       const avgVel = employees.reduce((sum, e) => sum + e.velocity, 0) / (total || 1)
-      
+
       return {
         total_members: total,
         healthy_count: healthy,
         elevated_count: elevated,
         critical_count: critical,
         avg_velocity: avgVel,
-        contagion_risk: critical > 2 ? "CRITICAL" : elevated > 4 ? "ELEVATED" : "LOW",
-        graph_fragmentation: 0.3,
-        comm_decay_rate: 0.15,
+        contagion_risk: critical > 2 ? "CRITICAL" as const : elevated > 4 ? "ELEVATED" as const : "LOW" as const,
+        graph_fragmentation: null,
+        comm_decay_rate: null,
       }
     }
 
@@ -119,9 +288,9 @@ function SafetyContent() {
       elevated_count: elevated,
       critical_count: critical,
       avg_velocity: teamData.metrics?.avg_velocity || employees.reduce((sum, e) => sum + e.velocity, 0) / (total || 1),
-      contagion_risk: teamData.contagion_risk || (critical > 2 ? "CRITICAL" : elevated > 4 ? "ELEVATED" : "LOW"),
-      graph_fragmentation: teamData.graph_fragmentation || 0.3,
-      comm_decay_rate: teamData.metrics?.comm_decay_rate || 0.15,
+      contagion_risk: teamData.contagion_risk || (critical > 2 ? "CRITICAL" as const : elevated > 4 ? "ELEVATED" as const : "LOW" as const),
+      graph_fragmentation: teamData.graph_fragmentation ?? null,
+      comm_decay_rate: teamData.metrics?.comm_decay_rate ?? null,
     }
   }, [teamData, employees])
 
@@ -156,15 +325,10 @@ function SafetyContent() {
       })
   }, [employees])
 
-  const filteredEmployees = showAlertsOnly 
-    ? highRiskEmployees 
+  const filteredEmployees = showAlertsOnly
+    ? highRiskEmployees
     : employees
 
-  // chartData: use real risk history from GET /engines/users/{hash}/history.
-  // If history is unavailable (no data ingested yet), show an empty state rather
-  // than randomly-generated fake data.
-  // TODO: If a "demo mode" fallback is needed, generate it deterministically from
-  //       the selected employee's user_hash so it is stable across renders.
   const chartData = riskHistory && riskHistory.length > 0 ? riskHistory : []
 
   const handleUserSelect = (emp: Employee) => {
@@ -204,7 +368,7 @@ function SafetyContent() {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[hsl(var(--sentinel-critical))]/15 border border-[hsl(var(--sentinel-critical))]/20">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[hsl(var(--sentinel-critical))]/15 border border-[hsl(var(--sentinel-critical))]/20">
                 <Shield className="h-6 w-6 text-[hsl(var(--sentinel-critical))]" />
               </div>
               <div>
@@ -219,104 +383,10 @@ function SafetyContent() {
           </div>
 
           {/* Hero Section */}
-          <div className="glass-card-elevated relative overflow-hidden rounded-2xl">
-            <div className="absolute inset-0 bg-[hsl(var(--sentinel-critical))]/3" />
-            
-            <div className="relative grid gap-10 p-8 md:grid-cols-2 lg:gap-14">
-              {/* Score Display */}
-              <div className="flex flex-col items-center justify-center gap-5">
-                <div className="relative">
-                  <div className="absolute inset-0 rounded-full bg-[hsl(var(--sentinel-critical))]/10 blur-3xl" />
-                  <div className="relative flex h-40 w-40 items-center justify-center rounded-full border border-border bg-background shadow-lg">
-                    <div className="flex flex-col items-center">
-                      <span className="text-4xl font-bold tracking-tight text-foreground font-mono tabular-nums">
-                        {teamRiskScore}
-                      </span>
-                      <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground mt-1">
-                        Risk Score
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  {teamRiskScore >= 60 ? (
-                    <>
-                      <AlertCircle className="h-4 w-4 text-[hsl(var(--sentinel-critical))]" />
-                      <span className="text-sm font-medium text-[hsl(var(--sentinel-critical))]">High team risk — Immediate action needed</span>
-                    </>
-                  ) : teamRiskScore >= 30 ? (
-                    <>
-                      <AlertTriangle className="h-4 w-4 text-[hsl(var(--sentinel-elevated))]" />
-                      <span className="text-sm font-medium text-[hsl(var(--sentinel-elevated))]">Elevated risk — Monitor closely</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 text-[hsl(var(--sentinel-healthy))]" />
-                      <span className="text-sm font-medium text-[hsl(var(--sentinel-healthy))]">Team health is good</span>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Risk Distribution */}
-              <div className="flex flex-col justify-center gap-4">
-                {/* Critical */}
-                <div className="metric-card flex items-center justify-between p-4 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(var(--sentinel-critical))]/10">
-                      <AlertTriangle className="h-4 w-4 text-[hsl(var(--sentinel-critical))]" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-[hsl(var(--sentinel-critical))]">Critical</p>
-                      <p className="text-[11px] text-muted-foreground">Immediate attention required</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xl font-bold font-mono tabular-nums text-[hsl(var(--sentinel-critical))]">{riskDistribution.critical}</p>
-                    <p className="text-[10px] text-muted-foreground">{riskDistribution.criticalPct}%</p>
-                  </div>
-                </div>
-
-                {/* Elevated */}
-                <div className="metric-card flex items-center justify-between p-4 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(var(--sentinel-elevated))]/10">
-                      <TrendingUp className="h-4 w-4 text-[hsl(var(--sentinel-elevated))]" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-[hsl(var(--sentinel-elevated))]">Elevated</p>
-                      <p className="text-[11px] text-muted-foreground">Monitoring closely</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xl font-bold font-mono tabular-nums text-[hsl(var(--sentinel-elevated))]">{riskDistribution.elevated}</p>
-                    <p className="text-[10px] text-muted-foreground">{riskDistribution.elevatedPct}%</p>
-                  </div>
-                </div>
-
-                {/* Healthy */}
-                <div className="metric-card flex items-center justify-between p-4 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(var(--sentinel-healthy))]/10">
-                      <Heart className="h-4 w-4 text-[hsl(var(--sentinel-healthy))]" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-[hsl(var(--sentinel-healthy))]">Healthy</p>
-                      <p className="text-[11px] text-muted-foreground">Within normal range</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xl font-bold font-mono tabular-nums text-[hsl(var(--sentinel-healthy))]">{riskDistribution.healthy}</p>
-                    <p className="text-[10px] text-muted-foreground">{riskDistribution.healthyPct}%</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <HeroSection teamRiskScore={teamRiskScore} riskDistribution={riskDistribution} />
 
           {/* Burnout Prediction */}
-          <div className="glass-card rounded-2xl p-6 border border-[hsl(var(--sentinel-critical))]/15">
+          <div className="bg-card border border-border rounded-lg p-6 border-[hsl(var(--sentinel-critical))]/15">
             <div className="flex items-center gap-3 mb-5">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(var(--sentinel-critical))]/10">
                 <AlertTriangle className="h-4 w-4 text-[hsl(var(--sentinel-critical))]" />
@@ -326,12 +396,12 @@ function SafetyContent() {
                 <p className="text-xs text-muted-foreground">AI-powered risk forecasting based on behavioral patterns</p>
               </div>
             </div>
-            
+
             <div className="grid gap-4 md:grid-cols-3">
               {/* High Risk */}
-              <div className="metric-card rounded-xl p-4">
+              <div className="bg-muted/20 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-[hsl(var(--sentinel-critical))]">High Risk (2 Weeks)</span>
+                  <span className="text-xs font-medium text-[hsl(var(--sentinel-critical))]">High Risk</span>
                   <Badge className="text-[10px] bg-[hsl(var(--sentinel-critical))]/15 text-[hsl(var(--sentinel-critical))] border-[hsl(var(--sentinel-critical))]/20">
                     {employees.filter(e => e.risk_level === "CRITICAL").length}
                   </Badge>
@@ -352,10 +422,10 @@ function SafetyContent() {
                 </div>
               </div>
 
-              {/* At Risk */}
-              <div className="metric-card rounded-xl p-4">
+              {/* Elevated Risk */}
+              <div className="bg-muted/20 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-[hsl(var(--sentinel-elevated))]">At Risk (4 Weeks)</span>
+                  <span className="text-xs font-medium text-[hsl(var(--sentinel-elevated))]">Elevated Risk</span>
                   <Badge className="text-[10px] bg-[hsl(var(--sentinel-elevated))]/15 text-[hsl(var(--sentinel-elevated))] border-[hsl(var(--sentinel-elevated))]/20">
                     {employees.filter(e => e.risk_level === "ELEVATED").length}
                   </Badge>
@@ -371,40 +441,18 @@ function SafetyContent() {
                     </div>
                   ))}
                   {employees.filter(e => e.risk_level === "ELEVATED").length === 0 && (
-                    <p className="text-[11px] text-muted-foreground">No at-risk predictions</p>
+                    <p className="text-[11px] text-muted-foreground">No elevated-risk predictions</p>
                   )}
                 </div>
               </div>
 
               {/* Prevention Tips */}
-              <div className="metric-card rounded-xl p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-[hsl(var(--sentinel-healthy))]">Prevention Actions</span>
-                  <CheckCircle2 className="h-4 w-4 text-[hsl(var(--sentinel-healthy))]" />
-                </div>
-                <p className="text-[11px] text-muted-foreground mb-3">
-                  Recommended interventions based on current patterns
-                </p>
-                <div className="space-y-2 text-[11px]">
-                  <div className="flex items-start gap-2">
-                    <Zap className="h-3 w-3 text-[hsl(var(--sentinel-healthy))] mt-0.5 shrink-0" />
-                    <span className="text-muted-foreground">Schedule mandatory breaks for high-velocity employees</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <MessageSquare className="h-3 w-3 text-[hsl(var(--sentinel-healthy))] mt-0.5 shrink-0" />
-                    <span className="text-muted-foreground">Initiate 1:1 check-ins with at-risk team members</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Heart className="h-3 w-3 text-[hsl(var(--sentinel-healthy))] mt-0.5 shrink-0" />
-                    <span className="text-muted-foreground">Review workload distribution across the team</span>
-                  </div>
-                </div>
-              </div>
+              <PreventionTipsSection employees={employees} />
             </div>
           </div>
 
           {/* Stat Cards */}
-          {mappedTeamMetrics && <StatCards metrics={mappedTeamMetrics as any} />}
+          {mappedTeamMetrics && <StatCards metrics={mappedTeamMetrics} />}
 
           {/* Main Content Grid */}
           <div className="grid gap-6 lg:grid-cols-3">
@@ -434,9 +482,9 @@ function SafetyContent() {
                   <button
                     key={emp.user_hash}
                     onClick={() => handleUserSelect(emp)}
-                    className={`relative flex items-center gap-3 rounded-xl border p-3.5 text-left transition-all hover:shadow-sm ${
+                    className={`relative flex items-center gap-3 rounded-lg border p-3.5 text-left transition-all ${
                       selectedUserHash === emp.user_hash
-                        ? `${getRiskBg(emp.risk_level)} border-current shadow-sm`
+                        ? `${getRiskBg(emp.risk_level)} border-current`
                         : 'border-border bg-card hover:bg-accent/50'
                     }`}
                   >
@@ -483,7 +531,7 @@ function SafetyContent() {
                   <NudgeCard nudge={nudgeData ?? undefined} />
                 </div>
               ) : (
-                <div className="glass-card rounded-xl flex flex-col items-center justify-center py-16">
+                <div className="bg-card border border-border rounded-lg flex flex-col items-center justify-center py-16">
                   <Users className="h-10 w-10 text-muted-foreground/20 mb-3" />
                   <p className="text-sm text-muted-foreground">Select an employee to view details</p>
                 </div>
@@ -507,17 +555,17 @@ function SafetyContent() {
                   <button
                     key={emp.user_hash}
                     onClick={() => handleUserSelect(emp)}
-                    className={`glass-card rounded-xl p-4 text-left transition-all hover:shadow-sm cursor-pointer ${
+                    className={`bg-card border rounded-lg p-4 text-left transition-all cursor-pointer ${
                       emp.risk_level === "CRITICAL"
-                        ? "border border-[hsl(var(--sentinel-critical))]/25"
-                        : "border border-[hsl(var(--sentinel-elevated))]/25"
+                        ? "border-[hsl(var(--sentinel-critical))]/25"
+                        : "border-[hsl(var(--sentinel-elevated))]/25"
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <Avatar className="h-9 w-9">
                         <AvatarFallback className={
-                          emp.risk_level === "CRITICAL" 
-                            ? "bg-[hsl(var(--sentinel-critical))]/15 text-[hsl(var(--sentinel-critical))]" 
+                          emp.risk_level === "CRITICAL"
+                            ? "bg-[hsl(var(--sentinel-critical))]/15 text-[hsl(var(--sentinel-critical))]"
                             : "bg-[hsl(var(--sentinel-elevated))]/15 text-[hsl(var(--sentinel-elevated))]"
                         }>
                           {getInitials(emp.name)}
@@ -562,7 +610,7 @@ function SafetyContent() {
               </div>
             </div>
 
-            <div className="glass-card rounded-2xl p-6">
+            <div className="bg-card border border-border rounded-lg p-6">
               <VelocityChart history={chartData} title="" />
             </div>
           </div>

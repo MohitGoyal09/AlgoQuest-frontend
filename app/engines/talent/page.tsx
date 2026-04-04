@@ -75,7 +75,7 @@ function NetworkGraph({ members, edges }: { members: TalentMember[]; edges: Netw
 
   const idx = useMemo(() => new Map(members.map((m, i) => [m.user_hash, i])), [members])
   const maxE = Math.max(0.01, ...members.map((m) => m.eigenvector))
-  const gems = useMemo(() => new Set(members.filter((m) => m.betweenness > 0.3 && m.eigenvector > 0.3 && isNonMgmt(m.role)).map((m) => m.user_hash)), [members])
+  const gems = useMemo(() => new Set(members.filter((m) => m.betweenness > 0.3 && m.unblocking > 5 && m.eigenvector < 0.3 && isNonMgmt(m.role)).map((m) => m.user_hash)), [members])
   const avg = members.length > 0 ? (edges.length * 2 / members.length).toFixed(1) : "0"
 
   return (
@@ -131,7 +131,7 @@ function TalentContent() {
   const edges: NetworkEdge[] = net?.edges ?? []
   const mxUnblock = useMemo(() => Math.max(1, ...members.map((m) => m.unblocking)), [members])
 
-  const hiddenGems = useMemo(() => members.filter((m) => m.betweenness > 0.3 && m.eigenvector > 0.3 && isNonMgmt(m.role)).sort((a, b) => b.networkScore - a.networkScore).slice(0, 5), [members])
+  const hiddenGems = useMemo(() => members.filter((m) => m.betweenness > 0.3 && m.unblocking > 5 && m.eigenvector < 0.3 && isNonMgmt(m.role)).sort((a, b) => b.networkScore - a.networkScore).slice(0, 5), [members])
   const topConn = useMemo(() => members.filter((m) => m.betweenness > 0.5), [members])
   const flightRisks = useMemo(() => members.filter((m) => (m.risk_level === "ELEVATED" || m.risk_level === "CRITICAL") && (m.betweenness + m.eigenvector) / 2 > 0.3).slice(0, 5), [members])
   const avgNet = useMemo(() => members.length === 0 ? 0 : Math.round(members.reduce((s, m) => s + (m.betweenness + m.eigenvector) / 2, 0) / members.length * 100), [members])
@@ -140,7 +140,7 @@ function TalentContent() {
 
   const insights = useMemo(() => {
     const out: { text: string; type: "gem" | "risk" | "skill" }[] = []
-    if (hiddenGems[0]) out.push({ text: `${hiddenGems[0].name} has high network centrality (betweenness: ${(hiddenGems[0].betweenness * 100).toFixed(0)}%) but no management title -- consider recognition.`, type: "gem" })
+    if (hiddenGems[0]) out.push({ text: `${hiddenGems[0].name} is structurally critical (betweenness: ${(hiddenGems[0].betweenness * 100).toFixed(0)}%, unblocks ${hiddenGems[0].unblocking} people) but under-recognized -- consider recognition.`, type: "gem" })
     if (retRisks[0]) out.push({ text: `${retRisks[0].name} is at ${retRisks[0].risk_level} risk and unblocks ${retRisks[0].unblocking} people -- losing them would impact throughput.`, type: "risk" })
     const gapPct = members.length > 0 ? Math.round(members.filter((m) => m.skills.leadership < 40).length / members.length * 100) : 0
     if (gapPct > 30) out.push({ text: `${gapPct}% of members score below proficiency in Leadership -- consider development programs.`, type: "skill" })
@@ -177,7 +177,7 @@ function TalentContent() {
 
         {/* Row 2 -- KPI */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="HIDDEN GEMS" value={hiddenGems.length} description="High centrality, non-management" valueClassName="text-emerald-400" />
+          <StatCard label="HIDDEN GEMS" value={hiddenGems.length} description="Structurally critical but under-recognized" valueClassName="text-emerald-400" />
           <StatCard label="TOP CONNECTORS" value={topConn.length} description="Betweenness > 50%" valueClassName="text-emerald-400" />
           <StatCard label="FLIGHT RISK" value={flightRisks.length} description="Elevated+ risk, high impact" valueClassName={flightRisks.length > 0 ? "text-red-400" : "text-amber-400"} />
           <StatCard label="AVG NETWORK SCORE" value={`${avgNet}%`} description="Mean centrality across team" />
@@ -210,7 +210,7 @@ function TalentContent() {
               </div>
             ) : (
               <div className="py-6 text-center">
-                <p className="text-sm text-muted-foreground">No employees currently meet all hidden gem criteria (betweenness &gt; 30%, eigenvector &gt; 30%, non-management).</p>
+                <p className="text-sm text-muted-foreground">No employees currently meet all hidden gem criteria (betweenness &gt; 30%, unblocking &gt; 5, eigenvector &lt; 30%, non-management).</p>
                 <p className="text-xs text-muted-foreground mt-2">This can mean your team is well-recognized, or more data is needed.</p>
               </div>
             )}

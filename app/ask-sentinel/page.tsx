@@ -14,7 +14,7 @@ function AskSentinelContent({ searchParams }: AskSentinelPageProps) {
   const session = typeof params.session === "string" ? params.session : undefined
 
   return (
-    <div className="flex flex-1 h-full bg-background">
+    <div className="flex flex-1 min-h-0 h-full bg-background">
       <ChatInterface initialQuery={query} initialSessionId={session} />
     </div>
   )

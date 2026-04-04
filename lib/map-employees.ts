@@ -19,12 +19,10 @@ export function mapUserToEmployee(u: UserSummary): Employee {
     updated_at: u.updated_at || new Date().toISOString(),
     persona: "Engineer",
     indicators: {
-      overwork: u.overwork ?? false,
-      isolation: u.isolation ?? false,
-      fragmentation: u.fragmentation ?? false,
-      late_night_pattern: u.late_night_pattern ?? false,
-      weekend_work: u.weekend_work ?? false,
-      communication_decline: u.communication_decline ?? false,
+      chaotic_hours: u.chaotic_hours ?? false,
+      social_withdrawal: u.social_withdrawal ?? false,
+      sustained_intensity: u.sustained_intensity ?? false,
+      has_explained_context: u.has_explained_context ?? false,
     },
   }
 }

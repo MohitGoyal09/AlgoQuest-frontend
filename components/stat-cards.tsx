@@ -174,7 +174,7 @@ export function StatCards({ metrics }: StatCardsProps) {
         label: "Contagion Risk",
         value: metrics.contagion_risk || "LOW",
         icon: Shield,
-        subtitle: `Frag: ${((metrics.graph_fragmentation || 0) * 100).toFixed(0)}%`,
+        subtitle: metrics.graph_fragmentation != null ? `Frag: ${(metrics.graph_fragmentation * 100).toFixed(0)}%` : "No data",
         riskLevel:
           metrics.contagion_risk === "CRITICAL"
             ? "critical"
