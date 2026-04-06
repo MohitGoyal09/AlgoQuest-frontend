@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useTheme } from "next-themes"
-import { Moon, Sun, Monitor } from "lucide-react"
+import { Moon, Sun, Monitor, Palette, Bell, Lock, Users2, Info } from "lucide-react"
 import { toast } from "sonner"
 
 import { useAuth } from "@/contexts/auth-context"
@@ -205,7 +205,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md gap-0 p-0 overflow-hidden">
+      <DialogContent className="max-w-lg gap-0 p-0 overflow-hidden">
         <DialogHeader className="px-6 pt-6 pb-4">
           <DialogTitle className="text-base font-semibold">
             Settings
@@ -215,12 +215,13 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[60vh] overflow-y-auto px-6 pb-6 space-y-6">
+        <div className="max-h-[70vh] overflow-y-auto px-6 pb-6 space-y-8">
           {/* ----------------------------------------------------------- */}
           {/* Appearance                                                    */}
           {/* ----------------------------------------------------------- */}
-          <section>
-            <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3">
+          <section className="border-b border-border pb-6">
+            <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3 flex items-center gap-2">
+              <Palette className="h-3.5 w-3.5" />
               Appearance
             </h3>
             <div className="flex gap-2">
@@ -243,18 +244,22 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           {/* ----------------------------------------------------------- */}
           {/* Notifications                                                */}
           {/* ----------------------------------------------------------- */}
-          <section>
-            <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3">
+          <section className="border-b border-border pb-6">
+            <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3 flex items-center gap-2">
+              <Bell className="h-3.5 w-3.5" />
               Notifications
             </h3>
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label
-                  htmlFor="settings-email-digest"
-                  className="text-sm text-foreground"
-                >
-                  Email digest
-                </Label>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <Label
+                    htmlFor="settings-email-digest"
+                    className="text-sm text-foreground"
+                  >
+                    Email digest
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Receive weekly summary of team health metrics</p>
+                </div>
                 {mounted && (
                   <Switch
                     id="settings-email-digest"
@@ -262,19 +267,23 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     onCheckedChange={(v) =>
                       updateNotification("emailDigest", v)
                     }
+                    className="mt-0.5"
                   />
                 )}
               </div>
 
               {isManagerOrAdmin && (
                 <>
-                  <div className="flex items-center justify-between">
-                    <Label
-                      htmlFor="settings-risk-alerts"
-                      className="text-sm text-foreground"
-                    >
-                      Risk alerts
-                    </Label>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <Label
+                        htmlFor="settings-risk-alerts"
+                        className="text-sm text-foreground"
+                      >
+                        Risk alerts
+                      </Label>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Get notified when team members reach elevated or critical risk</p>
+                    </div>
                     {mounted && (
                       <Switch
                         id="settings-risk-alerts"
@@ -282,17 +291,21 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                         onCheckedChange={(v) =>
                           updateNotification("riskAlerts", v)
                         }
+                        className="mt-0.5"
                       />
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <Label
-                      htmlFor="settings-team-updates"
-                      className="text-sm text-foreground"
-                    >
-                      Team updates
-                    </Label>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <Label
+                        htmlFor="settings-team-updates"
+                        className="text-sm text-foreground"
+                      >
+                        Team updates
+                      </Label>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Updates on team composition and role changes</p>
+                    </div>
                     {mounted && (
                       <Switch
                         id="settings-team-updates"
@@ -300,6 +313,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                         onCheckedChange={(v) =>
                           updateNotification("teamUpdates", v)
                         }
+                        className="mt-0.5"
                       />
                     )}
                   </div>
@@ -312,38 +326,47 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           {/* Privacy (employee only)                                       */}
           {/* ----------------------------------------------------------- */}
           {isEmployee && (
-            <section>
-              <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3">
+            <section className="border-b border-border pb-6">
+              <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3 flex items-center gap-2">
+                <Lock className="h-3.5 w-3.5" />
                 Privacy
               </h3>
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label
-                    htmlFor="settings-share-manager"
-                    className="text-sm text-foreground"
-                  >
-                    Share data with manager
-                  </Label>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <Label
+                      htmlFor="settings-share-manager"
+                      className="text-sm text-foreground"
+                    >
+                      Share data with manager
+                    </Label>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Allow your manager to see your wellness metrics. Your data is always anonymized by default.</p>
+                  </div>
                   <Switch
                     id="settings-share-manager"
                     checked={privacy.shareWithManager}
                     onCheckedChange={handleConsentChange}
                     disabled={privacyLoading}
+                    className="mt-0.5"
                   />
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <Label
-                    htmlFor="settings-pause-monitoring"
-                    className="text-sm text-foreground"
-                  >
-                    Pause monitoring
-                  </Label>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <Label
+                      htmlFor="settings-pause-monitoring"
+                      className="text-sm text-foreground"
+                    >
+                      Pause monitoring
+                    </Label>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Temporarily stop data collection for 24 hours</p>
+                  </div>
                   <Switch
                     id="settings-pause-monitoring"
                     checked={privacy.pauseMonitoring}
                     onCheckedChange={handlePauseMonitoring}
                     disabled={privacyLoading}
+                    className="mt-0.5"
                   />
                 </div>
               </div>
@@ -354,17 +377,21 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           {/* Team Defaults (manager only — admins see real names)          */}
           {/* ----------------------------------------------------------- */}
           {isManager && !isAdmin && (
-            <section>
-              <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3">
+            <section className="border-b border-border pb-6">
+              <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3 flex items-center gap-2">
+                <Users2 className="h-3.5 w-3.5" />
                 Team Defaults
               </h3>
-              <div className="flex items-center justify-between">
-                <Label
-                  htmlFor="settings-anonymize"
-                  className="text-sm text-foreground"
-                >
-                  Default anonymization
-                </Label>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <Label
+                    htmlFor="settings-anonymize"
+                    className="text-sm text-foreground"
+                  >
+                    Default anonymization
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Show anonymized employee names by default in engine views</p>
+                </div>
                 {mounted && (
                   <Switch
                     id="settings-anonymize"
@@ -372,6 +399,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     onCheckedChange={(v) =>
                       updateTeamSetting("anonymizeDefault", v)
                     }
+                    className="mt-0.5"
                   />
                 )}
               </div>
@@ -382,7 +410,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           {/* Account Info (read-only)                                      */}
           {/* ----------------------------------------------------------- */}
           <section>
-            <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3">
+            <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3 flex items-center gap-2">
+              <Info className="h-3.5 w-3.5" />
               Account
             </h3>
             <div className="space-y-2">
@@ -400,6 +429,18 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 >
                   {role}
                 </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Version</span>
+                <span className="text-sm text-foreground font-mono">1.0.0-beta</span>
+              </div>
+              <div className="flex items-center justify-between pt-2">
+                <a href="/privacy" className="text-xs text-primary hover:text-primary/80 transition-colors cursor-pointer">
+                  Privacy Policy
+                </a>
+                <a href="https://github.com/algoquest" className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer" target="_blank" rel="noopener noreferrer">
+                  GitHub
+                </a>
               </div>
             </div>
           </section>

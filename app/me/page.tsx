@@ -83,6 +83,15 @@ interface AuditEntry {
 interface MeData {
   user: UserProfile
   risk: RiskData | null
+  skills: {
+    technical: number
+    communication: number
+    leadership: number
+    collaboration: number
+    adaptability: number
+    creativity: number
+    updated_at?: string
+  } | null
   audit_trail: AuditEntry[]
   monitoring_status: MonitoringStatus
 }
@@ -215,12 +224,7 @@ function MePageContent() {
     }
   }
 
-  // TODO: The /me endpoint does not currently return skills data.
-  // Skills are stored in SkillProfile and exposed via GET /team/member/{hash}.
-  // Request a GET /me/skills endpoint from the backend so employees can view
-  // their own skill topology without requiring manager-level access.
-  // Until then, render a placeholder indicating data is not yet available.
-  const mockSkillsData = null
+  const skillsData = data?.skills ?? null
 
   // ─── Loading State ──────────────────────────────────────
   if (isDataLoading) {
@@ -433,13 +437,13 @@ function MePageContent() {
                   Skill Topology
                 </h2>
                 <div className="glass-card rounded-xl p-4">
-                  {mockSkillsData ? (
-                    <SkillsRadar data={mockSkillsData} height={240} />
+                  {skillsData ? (
+                    <SkillsRadar data={skillsData} height={240} />
                   ) : (
-                    <div className="flex items-center justify-center h-[240px] text-sm text-muted-foreground">
+                    <div className="flex items-center justify-center h-[240px] text-sm text-muted-foreground text-center px-4">
                       Skills data not available yet.
                       <br />
-                      Connect your work tools in the Marketplace to enable this view.
+                      Connect your work tools in the Marketplace.
                     </div>
                   )}
                 </div>

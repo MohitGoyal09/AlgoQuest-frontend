@@ -42,7 +42,8 @@ import { useTeamData } from "@/hooks/useTeamData"
 import { useRiskHistory } from "@/hooks/useRiskHistory"
 import { useUsers } from "@/hooks/useUsers"
 import { useNudge } from "@/hooks/useNudge"
-import { getInitials } from "@/lib/utils"
+import { useBenchmarks } from "@/hooks/useBenchmarks"
+import { cn, getInitials } from "@/lib/utils"
 
 // ---------------------------------------------------------------------------
 // Extracted sub-components
@@ -167,19 +168,20 @@ interface PreventionTipsSectionProps {
 
 function PreventionTipsSection({ employees }: PreventionTipsSectionProps) {
   const preventionTips = useMemo(() => {
-    const tips: { icon: typeof Zap; text: string }[] = []
+    const tips: { icon: typeof Zap; text: string; action?: string }[] = []
     const criticalCount = employees.filter(e => e.risk_level === "CRITICAL").length
     const elevatedCount = employees.filter(e => e.risk_level === "ELEVATED").length
     const highVelocity = employees.filter(e => e.velocity > 2.0).length
+    const criticalNames = employees.filter(e => e.risk_level === "CRITICAL").slice(0, 2).map(e => e.name).join(", ")
 
     if (criticalCount > 0) {
-      tips.push({ icon: Zap, text: `${criticalCount} employee(s) at critical risk — schedule immediate 1:1 check-ins` })
+      tips.push({ icon: Zap, text: `${criticalCount} employee(s) at critical risk — schedule immediate 1:1 check-ins`, action: `/ask-sentinel?q=${encodeURIComponent(`Schedule 1:1 check-in with ${criticalNames} to discuss wellbeing`)}` })
     }
     if (highVelocity > 0) {
-      tips.push({ icon: Clock, text: `${highVelocity} employee(s) showing high velocity — review workload distribution` })
+      tips.push({ icon: Clock, text: `${highVelocity} employee(s) showing high velocity — review workload distribution`, action: `/ask-sentinel?q=${encodeURIComponent("Review workload distribution for my team and suggest rebalancing")}` })
     }
     if (elevatedCount > 0) {
-      tips.push({ icon: MessageSquare, text: `${elevatedCount} employee(s) at elevated risk — consider preventive interventions` })
+      tips.push({ icon: MessageSquare, text: `${elevatedCount} employee(s) at elevated risk — consider preventive interventions`, action: `/ask-sentinel?q=${encodeURIComponent("What preventive actions should I take for elevated risk team members")}` })
     }
     if (tips.length === 0) {
       tips.push({ icon: Heart, text: "Team health looks good — maintain current support practices" })
@@ -202,7 +204,14 @@ function PreventionTipsSection({ employees }: PreventionTipsSectionProps) {
           return (
             <div key={idx} className="flex items-start gap-2">
               <TipIcon className="h-3 w-3 text-[hsl(var(--sentinel-healthy))] mt-0.5 shrink-0" />
-              <span className="text-muted-foreground">{tip.text}</span>
+              <div className="flex flex-col gap-1">
+                <span className="text-muted-foreground">{tip.text}</span>
+                {tip.action && (
+                  <a href={tip.action} className="text-[hsl(var(--sentinel-healthy))] hover:underline cursor-pointer">
+                    Ask Copilot →
+                  </a>
+                )}
+              </div>
             </div>
           )
         })}
@@ -237,6 +246,7 @@ function SafetyContent() {
   const { data: nudgeData } = useNudge(selectedUserHash)
   const { data: teamData } = useTeamData()
   const { history: riskHistory } = useRiskHistory(selectedUserHash)
+  const { data: benchmarkData } = useBenchmarks()
 
   const currentEmployee = useMemo(() => {
     if (!selectedBaseEmployee) return null
@@ -248,6 +258,7 @@ function SafetyContent() {
       confidence: riskData.confidence,
       belongingness_score: riskData.belongingness_score,
       circadian_entropy: riskData.circadian_entropy,
+      attrition_probability: riskData.attrition_probability ?? 0,
       indicators: {
         chaotic_hours: riskData.indicators?.chaotic_hours || false,
         social_withdrawal: riskData.indicators?.social_withdrawal || false,
@@ -315,6 +326,34 @@ function SafetyContent() {
       healthyPct: Math.round((mappedTeamMetrics.healthy_count / total) * 100),
     }
   }, [employees, mappedTeamMetrics])
+
+  const weekOverWeek = useMemo(() => {
+    if (!riskHistory || riskHistory.length < 7) return null
+
+    const now = new Date()
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
+
+    const thisWeek = riskHistory.filter((r: any) => new Date(r.timestamp) >= oneWeekAgo)
+    const lastWeek = riskHistory.filter((r: any) => {
+      const d = new Date(r.timestamp)
+      return d >= twoWeeksAgo && d < oneWeekAgo
+    })
+
+    if (thisWeek.length === 0 || lastWeek.length === 0) return null
+
+    const avgVelThis = thisWeek.reduce((s: number, r: any) => s + (r.velocity || 0), 0) / thisWeek.length
+    const avgVelLast = lastWeek.reduce((s: number, r: any) => s + (r.velocity || 0), 0) / lastWeek.length
+    const avgBelongThis = thisWeek.reduce((s: number, r: any) => s + (r.belongingness_score || 0), 0) / thisWeek.length
+    const avgBelongLast = lastWeek.reduce((s: number, r: any) => s + (r.belongingness_score || 0), 0) / lastWeek.length
+
+    return {
+      velocityDelta: avgVelThis - avgVelLast,
+      belongingnessDelta: avgBelongThis - avgBelongLast,
+      velocityDirection: avgVelThis > avgVelLast ? "up" as const : "down" as const,
+      belongingnessDirection: avgBelongThis > avgBelongLast ? "up" as const : "down" as const,
+    }
+  }, [riskHistory])
 
   const highRiskEmployees = useMemo(() => {
     return employees
@@ -453,6 +492,57 @@ function SafetyContent() {
 
           {/* Stat Cards */}
           {mappedTeamMetrics && <StatCards metrics={mappedTeamMetrics} />}
+
+          {/* Industry Benchmark Comparison */}
+          {benchmarkData && (
+            <div className="bg-card border border-border rounded-lg p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <BarChart3 className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <h3 className="text-base font-semibold text-foreground">Industry Comparison</h3>
+                  <p className="text-xs text-muted-foreground">Your team vs {benchmarkData.industry} industry average (Source: {benchmarkData.source})</p>
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                {[
+                  {
+                    label: "Burnout Rate",
+                    team: `${(benchmarkData.team_burnout_rate * 100).toFixed(0)}%`,
+                    industry: `${(benchmarkData.burnout_rate * 100).toFixed(0)}%`,
+                    worse: benchmarkData.team_burnout_rate > benchmarkData.burnout_rate,
+                  },
+                  {
+                    label: "Avg Velocity",
+                    team: benchmarkData.team_avg_velocity.toFixed(1),
+                    industry: benchmarkData.avg_velocity.toFixed(1),
+                    worse: benchmarkData.team_avg_velocity > benchmarkData.avg_velocity,
+                  },
+                  {
+                    label: "Avg Belongingness",
+                    team: benchmarkData.team_avg_belongingness.toFixed(2),
+                    industry: benchmarkData.avg_belongingness.toFixed(2),
+                    worse: benchmarkData.team_avg_belongingness < benchmarkData.avg_belongingness,
+                  },
+                ].map((metric) => (
+                  <div key={metric.label} className="bg-muted/20 rounded-lg p-4">
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-2">{metric.label}</p>
+                    <div className="flex items-end gap-3">
+                      <div>
+                        <p className={cn("text-2xl font-bold tabular-nums", metric.worse ? "text-[hsl(var(--sentinel-critical))]" : "text-[hsl(var(--sentinel-healthy))]")}>
+                          {metric.team}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">Your team</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-semibold tabular-nums text-muted-foreground">{metric.industry}</p>
+                        <p className="text-[10px] text-muted-foreground">Industry avg</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Main Content Grid */}
           <div className="grid gap-6 lg:grid-cols-3">
@@ -609,6 +699,43 @@ function SafetyContent() {
                 </div>
               </div>
             </div>
+
+            {weekOverWeek && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-card border border-border rounded-lg p-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Velocity</p>
+                    <p className="text-xs text-muted-foreground">vs last week</p>
+                  </div>
+                  <div className={cn("flex items-center gap-1 text-sm font-semibold tabular-nums",
+                    weekOverWeek.velocityDirection === "up" ? "text-[hsl(var(--sentinel-critical))]" : "text-[hsl(var(--sentinel-healthy))]"
+                  )}>
+                    {weekOverWeek.velocityDirection === "up" ? (
+                      <TrendingUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <TrendingUp className="h-3.5 w-3.5 rotate-180" />
+                    )}
+                    {weekOverWeek.velocityDelta > 0 ? "+" : ""}{weekOverWeek.velocityDelta.toFixed(2)}
+                  </div>
+                </div>
+                <div className="bg-card border border-border rounded-lg p-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Belongingness</p>
+                    <p className="text-xs text-muted-foreground">vs last week</p>
+                  </div>
+                  <div className={cn("flex items-center gap-1 text-sm font-semibold tabular-nums",
+                    weekOverWeek.belongingnessDirection === "up" ? "text-[hsl(var(--sentinel-healthy))]" : "text-[hsl(var(--sentinel-critical))]"
+                  )}>
+                    {weekOverWeek.belongingnessDirection === "up" ? (
+                      <TrendingUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <TrendingUp className="h-3.5 w-3.5 rotate-180" />
+                    )}
+                    {weekOverWeek.belongingnessDelta > 0 ? "+" : ""}{(weekOverWeek.belongingnessDelta * 100).toFixed(0)}%
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="bg-card border border-border rounded-lg p-6">
               <VelocityChart history={chartData} title="" />

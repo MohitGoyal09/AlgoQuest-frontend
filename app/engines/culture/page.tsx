@@ -115,14 +115,14 @@ function riskToHeatLevel(risk: string | undefined): HeatLevel {
  * Falls back to a realistic static pattern weighted towards weekday activity.
  */
 function buildHeatmapData(
-  apiDays: Array<{ date: string; dominant_risk_level?: string }> | null,
+  apiDays: Array<{ date: string; risk_level?: string }> | null,
   decayRate: number,
 ): HeatLevel[][] {
   if (apiDays && apiDays.length > 0) {
     // Use up to the last 28 days from the API, pad the front with "low" if needed
     const tail = apiDays.slice(-28)
     const padded = Array.from({ length: 28 - tail.length }, (): HeatLevel => "low").concat(
-      tail.map((d) => riskToHeatLevel(d.dominant_risk_level)),
+      tail.map((d) => riskToHeatLevel(d.risk_level)),
     )
     return Array.from({ length: 4 }, (_, w) =>
       padded.slice(w * 7, w * 7 + 7) as HeatLevel[],
@@ -181,7 +181,7 @@ function CultureContent() {
   const { data: forecast, isLoading: forecastLoading } = useForecast()
 
   // Heatmap data from the energy endpoint (best-effort; falls back to derived mock)
-  const [heatmapApiData, setHeatmapApiData] = useState<Array<{ date: string; dominant_risk_level?: string }> | null>(null)
+  const [heatmapApiData, setHeatmapApiData] = useState<Array<{ date: string; risk_level?: string }> | null>(null)
 
   useEffect(() => {
     getTeamEnergyHeatmap(30)
@@ -291,7 +291,7 @@ function CultureContent() {
         {!isLoading && !teamError && (
           <>
             {/* Row 2: KPI cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
               <StatCard
                 label="Culture Score"
                 value={cultureScore ?? "--"}
@@ -329,15 +329,45 @@ function CultureContent() {
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">Week-over-week change</p>
               </div>
+
+              <div className="bg-card border border-border rounded-lg p-5">
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Flight Risk (30d)</p>
+                <div className="flex items-baseline gap-1.5 mt-2">
+                  <span className={cn("text-2xl font-semibold tabular-nums",
+                    (teamData?.attrition_forecast?.high_risk_30d ?? 0) > 0 ? "text-red-400" : "text-foreground"
+                  )}>
+                    {teamData?.attrition_forecast?.high_risk_30d ?? 0}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    / {teamData?.attrition_forecast?.total_members ?? users.length}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Members with &gt;60% attrition probability
+                </p>
+              </div>
             </div>
 
-            {/* Fix 2: Backend recommendation card */}
-            {teamData?.recommendation && (
-              <div className="bg-card border border-border rounded-lg p-4 flex items-start gap-3">
+            {/* Recommendation card -- always visible */}
+            <div className="bg-card border border-border rounded-lg p-4 flex items-start gap-3">
+              {teamRiskLevel === "CRITICAL" ? (
+                <AlertTriangle className="h-4 w-4 text-red-400 mt-0.5 shrink-0" />
+              ) : teamRiskLevel === "ELEVATED" ? (
                 <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
-                <p className="text-sm text-foreground">{teamData.recommendation}</p>
+              ) : (
+                <Activity className="h-4 w-4 text-emerald-400 mt-0.5 shrink-0" />
+              )}
+              <div className="flex-1">
+                <p className="text-sm text-foreground">
+                  {teamData?.recommendation || "Team dynamics healthy. Continue current wellbeing practices."}
+                </p>
+                {teamRiskLevel !== "LOW" && (
+                  <a href="/ask-sentinel?q=What%20actions%20should%20I%20take%20for%20team%20culture%20risk" className="inline-block mt-2 text-xs text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer">
+                    Ask Copilot for action plan
+                  </a>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Row 3: Contagion Forecast + Team Connectivity */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -385,6 +415,21 @@ function CultureContent() {
                     </div>
                   ))}
                 </div>
+                {teamData?.attrition_forecast && teamData.attrition_forecast.avg_probability > 0 && (
+                  <div className="mb-4">
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Team Attrition Risk</p>
+                    <div className="flex items-baseline gap-2">
+                      <span className={cn("text-xl font-semibold tabular-nums",
+                        teamData.attrition_forecast.avg_probability >= 0.4 ? "text-red-400"
+                        : teamData.attrition_forecast.avg_probability >= 0.2 ? "text-amber-400"
+                        : "text-foreground"
+                      )}>
+                        {(teamData.attrition_forecast.avg_probability * 100).toFixed(0)}%
+                      </span>
+                      <span className="text-xs text-muted-foreground">avg attrition probability</span>
+                    </div>
+                  </div>
+                )}
                 <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Member Risk Map</p>
                 <div className="flex flex-wrap gap-2">
                   {users.slice(0, 20).map((u) => (
@@ -418,10 +463,10 @@ function CultureContent() {
               */}
               <SectionCard
                 title="Communication Trend"
-                subtitle="14-day interaction volume"
+                subtitle="14-day projection based on communication patterns"
                 action={
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
-                    Simulated
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 shrink-0">
+                    Projected
                   </span>
                 }
               >

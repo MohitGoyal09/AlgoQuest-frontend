@@ -53,6 +53,7 @@ export interface SafetyValveData {
   confidence: number;
   belongingness_score: number;
   circadian_entropy: number;
+  attrition_probability?: number;
   indicators: Record<string, boolean>;
   nudge_status?: string;
 }
@@ -134,6 +135,12 @@ export interface CultureThermometerData {
   recommendation: string;
   contagion_risk?: RiskLevel;
   graph_fragmentation?: number;
+  attrition_forecast?: {
+    avg_probability: number;
+    high_risk_30d: number;
+    high_risk_60d: number;
+    total_members: number;
+  };
 }
 
 // ============================================
@@ -206,6 +213,7 @@ export interface UserSummary {
   social_withdrawal?: boolean;
   sustained_intensity?: boolean;
   has_explained_context?: boolean;
+  attrition_probability?: number;
 }
 
 export interface CreatePersonaResponse {
@@ -412,6 +420,7 @@ export interface Employee {
   confidence: number;
   belongingness_score: number;
   circadian_entropy: number;
+  attrition_probability: number;
   updated_at: string;
   persona: string;
   indicators: RiskIndicators;

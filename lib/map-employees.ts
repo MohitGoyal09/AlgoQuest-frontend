@@ -16,6 +16,7 @@ export function mapUserToEmployee(u: UserSummary): Employee {
     confidence: u.confidence || 0,
     belongingness_score: u.belongingness_score ?? 0.5,
     circadian_entropy: u.circadian_entropy ?? 0.5,
+    attrition_probability: u.attrition_probability ?? 0,
     updated_at: u.updated_at || new Date().toISOString(),
     persona: "Engineer",
     indicators: {

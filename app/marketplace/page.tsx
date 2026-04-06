@@ -14,7 +14,7 @@ import {
 } from "lucide-react"
 import {
   initiateConnection, getConnectedToolsLive, disconnectTool, listToolkits,
-  invalidateToolCache,
+  invalidateToolCache, postConnectSync,
 } from "@/lib/api"
 
 interface ToolDef {
@@ -465,6 +465,9 @@ function MarketplaceContent() {
         setLoadingSlug(null)
         toast.success(`Connected to ${toolName}`)
         invalidateToolCache().catch(() => {})
+        postConnectSync().then(() => {
+          toast.success("Syncing your data in the background...")
+        }).catch(() => {})
         window.dispatchEvent(new CustomEvent("sentinel:tool-connected", { detail: { toolSlug: slug } }))
         return
       }
@@ -482,6 +485,9 @@ function MarketplaceContent() {
           setConnectedSlugs(new Set(status.tools)); setLoadingSlug(null)
           popup?.close(); toast.success(`${toolName} connected!`)
           invalidateToolCache().catch(() => {})
+          postConnectSync().then(() => {
+            toast.success("Syncing your data in the background...")
+          }).catch(() => {})
           window.dispatchEvent(new CustomEvent("sentinel:tool-connected", { detail: { toolSlug: slug } }))
         }
       }, 3000)
@@ -501,6 +507,9 @@ function MarketplaceContent() {
             if (s.tools.includes(slug)) {
               toast.success(`${toolName} connected!`)
               invalidateToolCache().catch(() => {})
+              postConnectSync().then(() => {
+                toast.success("Syncing your data in the background...")
+              }).catch(() => {})
               window.dispatchEvent(new CustomEvent("sentinel:tool-connected", { detail: { toolSlug: slug } }))
             }
             setLoadingSlug(null)

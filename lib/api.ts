@@ -346,6 +346,18 @@ export async function getRiskHistory(userHash: string, days: number = 30): Promi
 }
 
 // ============================================
+// Industry Benchmarks API
+// ============================================
+
+/**
+ * Get industry benchmark comparison data
+ * GET /engines/benchmarks
+ */
+export async function getBenchmarks(industry: string = "tech"): Promise<any> {
+  return handleResponse(api.get(`/engines/benchmarks?industry=${industry}`));
+}
+
+// ============================================
 // Health Check
 // ============================================
 
@@ -673,6 +685,26 @@ export async function disconnectTool(
     throw new Error((result as Record<string, unknown>).error as string || 'Disconnection failed')
   }
   return result as { success: boolean; toolkit_name: string; message: string }
+}
+
+// ============================================
+// Data Sync API
+// ============================================
+
+/**
+ * Trigger manual data sync for connected tools
+ * POST /ingestion/sync
+ */
+export async function syncConnectedTools(source: string = "all"): Promise<any> {
+  return handleResponse(api.post(`/ingestion/sync?source=${source}`));
+}
+
+/**
+ * Trigger post-OAuth-connection data sync (7-day backfill)
+ * POST /connections/post-connect-sync
+ */
+export async function postConnectSync(): Promise<any> {
+  return handleResponse(api.post('/connections/post-connect-sync'));
 }
 
 // ============================================

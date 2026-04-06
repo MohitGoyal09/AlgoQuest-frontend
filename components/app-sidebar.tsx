@@ -20,13 +20,14 @@ import {
   Settings,
   Shield,
   Star,
+  Database,
+  HeartPulse,
   Store,
   Thermometer,
   Trash2,
   User,
   UserCog,
   Users,
-  Workflow,
 } from 'lucide-react'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { toast } from 'sonner'
@@ -373,20 +374,6 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {/* Workflows */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive(pathname, '/workflows')}
-                  tooltip="Workflows"
-                >
-                  <Link href="/workflows">
-                    <Workflow />
-                    <span>Workflows</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
 
               {/* Marketplace — all roles */}
               <SidebarMenuItem>
@@ -401,6 +388,38 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+
+              {/* Data Ingestion — manager + admin only */}
+              {isManager && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(pathname, '/data-ingestion')}
+                    tooltip="Data Ingestion"
+                  >
+                    <Link href="/data-ingestion">
+                      <Database />
+                      <span>Data Ingestion</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+
+              {/* Team Health — manager + admin */}
+              {isManager && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(pathname, '/team-health')}
+                    tooltip="Team Health"
+                  >
+                    <Link href="/team-health">
+                      <HeartPulse />
+                      <span>Team Health</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
 
               {/* Engines — manager + admin only, collapsible */}
               {isManager && (
@@ -486,8 +505,8 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       {/* Footer: tenant switcher, user menu                                 */}
       {/* ----------------------------------------------------------------- */}
       <SidebarFooter>
-        {/* Tenant switcher */}
-        {!authLoading && tenants.length > 1 ? (
+        {/* Tenant switcher — only shown when user belongs to multiple tenants */}
+        {!authLoading && tenants.length > 1 && (
           <SidebarMenu>
             <SidebarMenuItem>
               <DropdownMenu>
@@ -539,25 +558,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               </DropdownMenu>
             </SidebarMenuItem>
           </SidebarMenu>
-        ) : !authLoading ? (
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton size="lg" tooltip={currentTenant?.name ?? 'Loading workspace…'}>
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg border bg-background text-xs font-medium">
-                  {currentTenant ? getInitials(currentTenant.name) : '…'}
-                </div>
-                <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-medium truncate">
-                    {tenantLoading ? 'Loading…' : (currentTenant?.name ?? 'No workspace')}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {currentTenant ? capitalize(currentTenant.plan ?? 'free') : ''}
-                  </span>
-                </div>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        ) : null}
+        )}
 
         <SidebarSeparator />
 
@@ -606,9 +607,9 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
-                    <DropdownMenuItem onClick={() => router.push('/account')}>
+                    <DropdownMenuItem onClick={() => router.push('/me')}>
                       <User className="mr-2 size-4" />
-                      Account
+                      My Profile
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
                       <Settings className="mr-2 size-4" />

@@ -18,48 +18,25 @@ import { cn, getInitials, timeAgo } from "@/lib/utils"
 
 // ── Types & constants ────────────────────────────────────────────────────────
 
-interface SkillScores {
-  technical: number; communication: number; leadership: number
-  collaboration: number; adaptability: number; creativity: number
-}
-
 interface TalentMember {
   user_hash: string; name: string; role: string; risk_level: RiskLevel
   betweenness: number; eigenvector: number; unblocking: number
-  networkScore: number; skills: SkillScores
+  networkScore: number
 }
 
-const SKILL_KEYS: (keyof SkillScores)[] = ["technical", "communication", "leadership", "collaboration", "adaptability", "creativity"]
-const SKILL_LABELS = ["Techn", "Commu", "Leade", "Colla", "Adapt", "Creat"]
 const NODE_CLR: Record<RiskLevel, string> = { LOW: "#10b981", ELEVATED: "#f59e0b", CRITICAL: "#ef4444" }
 
 // ── Pure helpers ─────────────────────────────────────────────────────────────
 
-const clamp = (v: number) => Math.max(0, Math.min(100, Math.round(v)))
 const netScore = (b: number, e: number, u: number, mx: number) => (b * 0.4 + e * 0.4 + (u / Math.max(mx, 1)) * 0.2) * 100
 const impactScore = (b: number, e: number, u: number, mx: number, r: RiskLevel) =>
   (b * 0.4 + e * 0.3 + (u / Math.max(mx, 1)) * 0.3) * (r === "CRITICAL" ? 1 : r === "ELEVATED" ? 0.7 : 0.3) * 100
-
-function deriveSkills(b: number, e: number, vel: number, conf: number): SkillScores {
-  return {
-    technical: clamp(conf * 100), communication: clamp(e * 100),
-    leadership: clamp(b * 80 + e * 20), collaboration: clamp((b + e) * 50),
-    adaptability: clamp(vel * 1.2), creativity: clamp(conf * 60 + vel * 0.4),
-  }
-}
 
 function gemReason(m: TalentMember): string {
   if (m.betweenness >= 0.5) return `Bridges multiple teams (betweenness ${(m.betweenness * 100).toFixed(0)}%)`
   if (m.unblocking >= 5) return `Unblocks ${m.unblocking} people -- removes bottlenecks`
   if (m.eigenvector >= 0.5) return "Connected to the most influential people"
   return "High centrality across multiple dimensions"
-}
-
-function skillCell(v: number): { text: string; cls: string } {
-  if (v >= 70) return { text: "Expert", cls: "bg-emerald-500/20 text-emerald-400" }
-  if (v >= 40) return { text: "Prof", cls: "bg-primary/10 text-primary" }
-  if (v >= 20) return { text: "Dev", cls: "bg-amber-500/15 text-amber-400" }
-  return { text: "Gap", cls: "bg-muted text-muted-foreground" }
 }
 
 const isNonMgmt = (role: string) => !["manager", "admin"].includes(role.toLowerCase())
@@ -119,12 +96,12 @@ function TalentContent() {
       return nodes.map((nd, i) => {
         const emp = employees.find((e) => e.user_hash === nd.id) ?? employees[i % Math.max(employees.length, 1)]
         const b = nd.betweenness ?? 0, e = nd.eigenvector ?? 0, u = nd.unblocking_count ?? 0
-        return { user_hash: nd.id || `n${i}`, name: nd.label || emp?.name || `User ${i + 1}`, role: emp?.role || "Employee", risk_level: toRiskLevel(nd.risk_level), betweenness: b, eigenvector: e, unblocking: u, networkScore: netScore(b, e, u, mxU), skills: deriveSkills(b, e, emp?.velocity ?? 50, emp?.confidence ?? 0.5) }
+        return { user_hash: nd.id || `n${i}`, name: nd.label || emp?.name || `User ${i + 1}`, role: emp?.role || "Employee", risk_level: toRiskLevel(nd.risk_level), betweenness: b, eigenvector: e, unblocking: u, networkScore: netScore(b, e, u, mxU) }
       })
     }
     return employees.map((emp) => {
       const b = emp.confidence, e = emp.velocity / 100
-      return { user_hash: emp.user_hash, name: emp.name, role: emp.role, risk_level: emp.risk_level, betweenness: b, eigenvector: e, unblocking: 0, networkScore: netScore(b, e, 0, 1), skills: deriveSkills(b, e, emp.velocity, emp.confidence) }
+      return { user_hash: emp.user_hash, name: emp.name, role: emp.role, risk_level: emp.risk_level, betweenness: b, eigenvector: e, unblocking: 0, networkScore: netScore(b, e, 0, 1) }
     })
   }, [net, employees])
 
@@ -142,8 +119,8 @@ function TalentContent() {
     const out: { text: string; type: "gem" | "risk" | "skill" }[] = []
     if (hiddenGems[0]) out.push({ text: `${hiddenGems[0].name} is structurally critical (betweenness: ${(hiddenGems[0].betweenness * 100).toFixed(0)}%, unblocks ${hiddenGems[0].unblocking} people) but under-recognized -- consider recognition.`, type: "gem" })
     if (retRisks[0]) out.push({ text: `${retRisks[0].name} is at ${retRisks[0].risk_level} risk and unblocks ${retRisks[0].unblocking} people -- losing them would impact throughput.`, type: "risk" })
-    const gapPct = members.length > 0 ? Math.round(members.filter((m) => m.skills.leadership < 40).length / members.length * 100) : 0
-    if (gapPct > 30) out.push({ text: `${gapPct}% of members score below proficiency in Leadership -- consider development programs.`, type: "skill" })
+    const lowNetPct = members.length > 0 ? Math.round(members.filter((m) => m.networkScore < 40).length / members.length * 100) : 0
+    if (lowNetPct > 30) out.push({ text: `${lowNetPct}% of members have a network score below 40 -- consider cross-team collaboration programs.`, type: "skill" })
     if (out.length === 0) out.push({ text: "Collect more data to generate insights about hidden talent and network dynamics.", type: "skill" })
     return out.slice(0, 3)
   }, [hiddenGems, retRisks, members])
@@ -204,7 +181,7 @@ function TalentContent() {
                         <span>Unblocked: {g.unblocking}</span>
                       </div>
                     </div>
-                    <button onClick={() => router.push(`/search?q=${g.user_hash}`)} className="shrink-0 text-xs text-emerald-400 hover:text-emerald-300 cursor-pointer transition-colors">Schedule 1:1</button>
+                    <button onClick={() => router.push(`/ask-sentinel?q=${encodeURIComponent(`Prepare a 1:1 agenda for ${g.name} who is a hidden gem - high betweenness ${(g.betweenness * 100).toFixed(0)}%, unblocks ${g.unblocking} people`)}`)} className="shrink-0 text-xs text-emerald-400 hover:text-emerald-300 cursor-pointer transition-colors">Schedule 1:1</button>
                   </div>
                 ))}
               </div>
@@ -217,27 +194,37 @@ function TalentContent() {
           </SectionCard>
         </div>
 
-        {/* Row 4 -- Skills + Retention (50/50) */}
+        {/* Row 4 -- Network Impact + Retention (50/50) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <SectionCard title="Skill Coverage" subtitle="6 dimensions">
+          <SectionCard title="Network Impact Assessment" subtitle="4 real metrics">
             <div className="overflow-x-auto">
               <div className="flex items-center gap-0.5 mb-1">
                 <div className="w-24 shrink-0" />
-                {SKILL_LABELS.map((s) => <div key={s} className="flex-1 text-[10px] text-muted-foreground text-center font-medium uppercase tracking-wider">{s}</div>)}
+                {(["Betweenness", "Eigenvector", "Unblocking", "Net Score"] as const).map((h) => <div key={h} className="flex-1 text-[10px] text-muted-foreground text-center font-medium uppercase tracking-wider">{h}</div>)}
               </div>
-              {members.slice(0, 5).map((m) => (
-                <div key={m.user_hash} className="flex items-center gap-0.5 mb-0.5">
-                  <div className="w-24 shrink-0 text-xs text-muted-foreground truncate pr-2">{m.name}</div>
-                  {SKILL_KEYS.map((sk) => { const { text, cls } = skillCell(m.skills[sk]); return <div key={sk} className={cn("flex-1 rounded-sm py-1 text-center text-[9px] font-medium", cls)} title={`${sk}: ${m.skills[sk]}`}>{text}</div> })}
-                </div>
-              ))}
+              {members.slice(0, 5).map((m) => {
+                const bPct = m.betweenness * 100
+                const ePct = m.eigenvector * 100
+                const pctLabel = (v: number) => v >= 70 ? { text: "High", cls: "bg-emerald-500/20 text-emerald-400" } : v >= 40 ? { text: "Med", cls: "bg-primary/10 text-primary" } : v >= 20 ? { text: "Low", cls: "bg-amber-500/15 text-amber-400" } : { text: "Min", cls: "bg-muted text-muted-foreground" }
+                const countLabel = (v: number) => v >= 8 ? { text: "High", cls: "bg-emerald-500/20 text-emerald-400" } : v >= 4 ? { text: "Med", cls: "bg-primary/10 text-primary" } : v >= 2 ? { text: "Low", cls: "bg-amber-500/15 text-amber-400" } : { text: "Min", cls: "bg-muted text-muted-foreground" }
+                const bL = pctLabel(bPct), eL = pctLabel(ePct), uL = countLabel(m.unblocking), nL = pctLabel(m.networkScore)
+                return (
+                  <div key={m.user_hash} className="flex items-center gap-0.5 mb-0.5">
+                    <div className="w-24 shrink-0 text-xs text-muted-foreground truncate pr-2">{m.name}</div>
+                    <div className={cn("flex-1 rounded-sm py-1 text-center text-[9px] font-medium", bL.cls)} title={`Betweenness: ${bPct.toFixed(0)}%`}>{bL.text}</div>
+                    <div className={cn("flex-1 rounded-sm py-1 text-center text-[9px] font-medium", eL.cls)} title={`Eigenvector: ${ePct.toFixed(0)}%`}>{eL.text}</div>
+                    <div className={cn("flex-1 rounded-sm py-1 text-center text-[9px] font-medium", uL.cls)} title={`Unblocking: ${m.unblocking}`}>{uL.text}</div>
+                    <div className={cn("flex-1 rounded-sm py-1 text-center text-[9px] font-medium", nL.cls)} title={`Net Score: ${m.networkScore.toFixed(1)}`}>{nL.text}</div>
+                  </div>
+                )
+              })}
               {members.length > 5 && <p className="text-xs text-muted-foreground mt-2">+{members.length - 5} more</p>}
-              {members.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No skill data available</p>}
+              {members.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No network data available</p>}
               <div className="flex gap-3 mt-3 text-[10px] text-muted-foreground">
-                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-emerald-500/20" />Expert</span>
-                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-primary/10" />Prof</span>
-                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-amber-500/15" />Dev</span>
-                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-muted" />Gap</span>
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-emerald-500/20" />High</span>
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-primary/10" />Med</span>
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-amber-500/15" />Low</span>
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-muted" />Min</span>
               </div>
             </div>
           </SectionCard>
@@ -257,7 +244,7 @@ function TalentContent() {
                         <div className={cn("h-full rounded-full transition-all duration-500", m.risk_level === "CRITICAL" ? "bg-red-500" : "bg-amber-500")} style={{ width: `${Math.min(m.impact, 100)}%` }} />
                       </div>
                     </div>
-                    <button onClick={() => router.push(`/search?q=${m.user_hash}`)} className="shrink-0 text-xs border border-border rounded-md px-2.5 py-1 text-muted-foreground hover:text-foreground hover:border-white/[0.12] transition-colors duration-150 cursor-pointer active:scale-[0.97]">Schedule Talk</button>
+                    <button onClick={() => router.push(`/ask-sentinel?q=${encodeURIComponent(`Prepare a retention conversation for ${m.name} who is at ${m.risk_level} risk and unblocks ${m.unblocking} people`)}`)} className="shrink-0 text-xs border border-border rounded-md px-2.5 py-1 text-muted-foreground hover:text-foreground hover:border-white/[0.12] transition-colors duration-150 cursor-pointer active:scale-[0.97]">Schedule Talk</button>
                   </div>
                 ))}
               </div>

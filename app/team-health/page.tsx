@@ -258,6 +258,7 @@ export default function TeamHealthPage() {
         confidence: u.confidence ?? 0,
         belongingness_score: u.belongingness_score ?? 0,
         circadian_entropy: u.circadian_entropy ?? 0,
+        attrition_probability: u.attrition_probability ?? 0,
         updated_at: u.updated_at ?? new Date().toISOString(),
         persona: "",
         indicators: {

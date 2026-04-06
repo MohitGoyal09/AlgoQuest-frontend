@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useTenant } from "@/contexts/tenant-context"
-import { api } from "@/lib/api"
+import { api, syncConnectedTools } from "@/lib/api"
 import { ProtectedRoute } from "@/components/protected-route"
 import { createClient } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -105,6 +105,8 @@ function DataIngestionContent() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [uploadResult, setUploadResult] = useState<any>(null)
+  const [syncingSource, setSyncingSource] = useState<string | null>(null)
+  const [syncResult, setSyncResult] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchStatus = useCallback(async () => {
@@ -115,6 +117,19 @@ function DataIngestionContent() {
       // pipeline status fetch failed
     } finally {
       setLoading(false)
+    }
+  }, [])
+
+  const handleSync = useCallback(async (source: string) => {
+    setSyncingSource(source)
+    setSyncResult(null)
+    try {
+      const result = await syncConnectedTools(source)
+      setSyncResult(result?.message || "Sync started! Check back in ~30 seconds.")
+    } catch {
+      setSyncResult("Sync failed. Please try again.")
+    } finally {
+      setTimeout(() => setSyncingSource(null), 2000)
     }
   }, [])
 
@@ -344,10 +359,25 @@ function DataIngestionContent() {
             {/* Source Connectors */}
             <Card className="bg-[#111827]/50 border-white/10">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-foreground text-base">
-                  <Database className="h-5 w-5 text-blue-400" />
-                  Source Connectors
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-foreground text-base">
+                    <Database className="h-5 w-5 text-blue-400" />
+                    Source Connectors
+                  </CardTitle>
+                  <button
+                    onClick={() => handleSync("all")}
+                    disabled={syncingSource !== null}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-border rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={cn("h-3.5 w-3.5", syncingSource === "all" && "animate-spin")} />
+                    {syncingSource === "all" ? "Syncing..." : "Sync All Connected"}
+                  </button>
+                </div>
+                {syncResult && (
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm rounded-lg p-3 mt-3">
+                    {syncResult}
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="space-y-3">
                 {connectors.map((c) => {
@@ -370,6 +400,15 @@ function DataIngestionContent() {
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-mono text-slate-400">{c.events_ingested.toLocaleString()}</span>
                         <div className={cn("h-2 w-2 rounded-full", colors.dot)} />
+                        {c.status === "connected" && (
+                          <button
+                            onClick={() => handleSync(c.name.toLowerCase())}
+                            disabled={syncingSource !== null}
+                            className="ml-1 px-3 py-1.5 text-xs border border-border rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            {syncingSource === c.name.toLowerCase() ? "Syncing..." : "Sync Now"}
+                          </button>
+                        )}
                       </div>
                     </div>
                   )

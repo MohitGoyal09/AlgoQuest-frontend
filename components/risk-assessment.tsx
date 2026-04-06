@@ -68,6 +68,39 @@ export function RiskAssessment({ employee }: RiskAssessmentProps) {
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
+        {/* Attrition Probability */}
+        {employee.attrition_probability > 0 && (
+          <div className={cn(
+            "rounded-lg p-4 text-center border",
+            employee.attrition_probability >= 0.6
+              ? "bg-[hsl(var(--sentinel-critical))]/8 border-[hsl(var(--sentinel-critical))]/20"
+              : employee.attrition_probability >= 0.3
+                ? "bg-[hsl(var(--sentinel-elevated))]/8 border-[hsl(var(--sentinel-elevated))]/20"
+                : "bg-[hsl(var(--sentinel-healthy))]/8 border-[hsl(var(--sentinel-healthy))]/20"
+          )}>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1">
+              Attrition Probability (30-day)
+            </p>
+            <p className={cn(
+              "text-3xl font-bold tabular-nums",
+              employee.attrition_probability >= 0.6
+                ? "text-[hsl(var(--sentinel-critical))]"
+                : employee.attrition_probability >= 0.3
+                  ? "text-[hsl(var(--sentinel-elevated))]"
+                  : "text-[hsl(var(--sentinel-healthy))]"
+            )}>
+              {(employee.attrition_probability * 100).toFixed(0)}%
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              {employee.attrition_probability >= 0.6
+                ? "High resignation risk — immediate action recommended"
+                : employee.attrition_probability >= 0.3
+                  ? "Moderate risk — monitor and intervene"
+                  : "Low risk — maintain current support"}
+            </p>
+          </div>
+        )}
+
         {/* Gauge */}
         <div className="flex flex-col items-center gap-3">
           <div className="relative h-32 w-32">

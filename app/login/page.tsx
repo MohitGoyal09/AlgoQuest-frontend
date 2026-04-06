@@ -10,22 +10,26 @@ import { toast } from 'sonner'
 
 // ─── Security ────────────────────────────────────────────────────────────────
 
-const ALLOWED_SSO_ORIGINS = [
-  'https://accounts.google.com',
-  'https://login.microsoftonline.com',
-  'https://login.windows.net',
+const ALLOWED_SSO_HOSTS = [
+  'accounts.google.com',
+  'login.microsoftonline.com',
+  'login.windows.net',
 ]
 
-function safeRedirect(url: string) {
+function safeRedirect(url: string): boolean {
   try {
     const parsed = new URL(url)
-    if (!ALLOWED_SSO_ORIGINS.some(o => parsed.origin === o || parsed.origin.endsWith('.google.com'))) {
-      console.error('Blocked unsafe SSO redirect to:', parsed.origin)
-      return
+    // Check exact match or subdomain match (must be preceded by a dot)
+    const allowed = ALLOWED_SSO_HOSTS.some(host =>
+      parsed.hostname === host || parsed.hostname.endsWith('.' + host)
+    )
+    if (!allowed) {
+      return false
     }
     window.location.href = url
+    return true
   } catch {
-    // invalid URL — do nothing
+    return false
   }
 }
 

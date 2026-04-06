@@ -21,6 +21,7 @@ import { ProtectedRoute } from "@/components/protected-route"
 import { useAuth } from "@/contexts/auth-context"
 import { api } from "@/lib/api"
 import { cn } from "@/lib/utils"
+import { ProfileModal } from "@/components/profile-modal"
 import {
   Dialog,
   DialogContent,
@@ -199,6 +200,7 @@ function AdminPageContent() {
   const [teamDetail, setTeamDetail] = useState<TeamDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [profileHash, setProfileHash] = useState<string | null>(null)
 
   // ---- Fetch functions ----
 
@@ -615,7 +617,12 @@ function AdminPageContent() {
                     filteredUsers.map(user => (
                       <tr key={user.user_hash} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
                         <td className="px-4 py-2.5">
-                          <span className="text-sm font-medium text-foreground">{user.name ?? user.user_hash.slice(0, 8)}</span>
+                          <button
+                            className="text-sm font-medium text-foreground cursor-pointer hover:text-primary transition-colors"
+                            onClick={() => setProfileHash(user.user_hash)}
+                          >
+                            {user.name ?? user.user_hash.slice(0, 8)}
+                          </button>
                         </td>
                         <td className="px-4 py-2.5">
                           <span className="text-sm font-mono text-muted-foreground">{user.user_hash.slice(0, 8)}</span>
@@ -1119,6 +1126,13 @@ function AdminPageContent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Profile Modal */}
+      <ProfileModal
+        userHash={profileHash}
+        open={!!profileHash}
+        onOpenChange={(open) => !open && setProfileHash(null)}
+      />
     </div>
   )
 }
