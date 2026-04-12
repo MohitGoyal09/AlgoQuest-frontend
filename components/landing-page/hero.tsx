@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { ArrowRight, Play, Shield, Sparkles, Lock, Eye, Users, Zap, Heart, BarChart3 } from "lucide-react"
+import { ArrowRight, Activity, TrendingUp, ShieldCheck, Database } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -12,30 +12,23 @@ export function LandingHero() {
   useEffect(() => setMounted(true), [])
 
   const stats = [
-    { value: "94%", label: "Detection Accuracy", icon: BarChart3 },
-    { value: "30d", label: "Early Warning", icon: Zap },
-    { value: "100%", label: "Privacy First", icon: Lock },
-    { value: "2x", label: "Talent Discovery", icon: Sparkles },
+    { label: "6 Behavioral Signals", icon: Activity },
+    { label: "30-Day Trends", icon: TrendingUp },
+    { label: "Zero Content Access", icon: ShieldCheck },
+    { label: "Two-Vault Privacy", icon: Database },
   ]
 
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center pt-28 pb-20 overflow-hidden">
-      {/* Layered ambient gradients */}
-      <div className="absolute inset-0">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-primary/8 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-accent/5 rounded-full blur-[100px]" />
-        <div className="absolute top-1/3 right-1/4 w-[300px] h-[300px] bg-sentinel-info/4 rounded-full blur-[80px]" />
-      </div>
-
-      <div className="container relative z-10 px-6">
+    <section className="relative min-h-screen flex flex-col items-center justify-center pt-28 pb-20">
+      <div className="container relative px-6">
         {/* Badge */}
         <div className={cn(
           "flex justify-center mb-8 opacity-0 translate-y-4 transition-all duration-500",
           mounted && "opacity-100 translate-y-0"
         )}>
-          <Badge variant="outline" className="gap-2 px-4 py-1.5 rounded-full border-primary/20 bg-primary/8 text-primary text-sm font-medium">
-            <span className="flex h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-            AI-Powered Employee Insights
+          <Badge variant="outline" className="gap-2 px-4 py-1.5 rounded-full border-border bg-emerald-500/10 text-emerald-500 text-sm font-medium">
+            <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Behavioral Signal Intelligence
           </Badge>
         </div>
 
@@ -45,10 +38,8 @@ export function LandingHero() {
           mounted && "opacity-100 translate-y-0"
         )}>
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-foreground max-w-4xl mx-auto leading-[1.1]">
-            Predict Burnout.{" "}
-            <span className="text-gradient-hero">
-              Uncover Talent.
-            </span>
+            Know Your Team{" "}
+            <span className="text-emerald-500">Before It's Too Late.</span>
           </h1>
         </div>
 
@@ -58,39 +49,43 @@ export function LandingHero() {
           mounted && "opacity-100 translate-y-0"
         )}>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Metadata-only analysis that detects burnout 30 days early and finds hidden gems — without reading a single message.
+            Sentinel measures the velocity of behavioral change using metadata only.
+            No message content. No surveillance. Just timestamps, frequencies, and
+            network patterns that reveal what surveys miss.
           </p>
         </div>
 
         {/* CTAs */}
         <div className={cn(
-          "flex flex-col sm:flex-row items-center justify-center gap-3 mb-20 opacity-0 translate-y-6 transition-all duration-700 delay-300",
+          "flex flex-col sm:flex-row items-center justify-center gap-4 mb-20 opacity-0 translate-y-6 transition-all duration-700 delay-300",
           mounted && "opacity-100 translate-y-0"
         )}>
-          <Link href="/login">
-            <Button size="lg" className="h-12 px-7 rounded-xl font-medium text-base shadow-lg shadow-primary/20 group">
-              Start Free Trial
+          <Link href="/onboarding">
+            <Button size="lg" className="h-12 px-7 rounded-xl font-medium text-base bg-emerald-600 hover:bg-emerald-700 text-white group">
+              Try Interactive Demo
               <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-150 group-hover:translate-x-0.5" />
             </Button>
           </Link>
-          <Link href="/demo">
-            <Button size="lg" variant="ghost" className="h-12 px-7 rounded-xl text-muted-foreground hover:text-foreground text-base">
-              <Play className="mr-2 h-4 w-4" />
-              Watch Demo
-            </Button>
+          <Link
+            href="/login"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Sign In
           </Link>
         </div>
 
         {/* Stats row */}
         <div className={cn(
-          "grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto opacity-0 translate-y-6 transition-all duration-700 delay-400",
+          "grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto opacity-0 translate-y-6 transition-all duration-700 delay-[400ms]",
           mounted && "opacity-100 translate-y-0"
         )}>
           {stats.map((stat, i) => (
-            <div key={i} className="metric-card text-center py-6">
-              <stat.icon className="h-5 w-5 mx-auto mb-2 text-primary/60" />
-              <div className="text-2xl font-bold text-foreground">{stat.value}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">{stat.label}</div>
+            <div
+              key={i}
+              className="flex flex-col items-center gap-2 rounded-lg border border-border bg-card px-4 py-5 text-center"
+            >
+              <stat.icon className="h-5 w-5 text-emerald-500/70" />
+              <span className="text-sm font-medium text-foreground">{stat.label}</span>
             </div>
           ))}
         </div>

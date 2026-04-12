@@ -6,22 +6,17 @@ import { Shield, Twitter, Github, Linkedin, Mail } from "lucide-react"
 export function LandingFooter() {
   const footerLinks = {
     Product: [
-      { label: "Features", href: "#features" },
-      { label: "How it Works", href: "#how-it-works" },
-      { label: "Pricing", href: "#" },
-      { label: "Integrations", href: "#" },
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "Methodology", href: "/methodology" },
+      { label: "Data Ingestion", href: "/data-ingestion" },
     ],
     Company: [
       { label: "About", href: "#" },
-      { label: "Blog", href: "#" },
-      { label: "Careers", href: "#" },
-      { label: "Contact", href: "#" },
     ],
     Legal: [
       { label: "Privacy", href: "#" },
       { label: "Terms", href: "#" },
-      { label: "Security", href: "#" },
-      { label: "GDPR", href: "#" },
+      { label: "DPDPA 2023 Compliant", href: "" },
     ],
   }
 
@@ -45,7 +40,7 @@ export function LandingFooter() {
               <span className="text-sm font-semibold text-foreground">Sentinel</span>
             </Link>
             <p className="text-xs text-muted-foreground leading-relaxed mb-4 max-w-[200px]">
-              Privacy-first burnout detection and talent discovery.
+              Metadata-only behavioral signal intelligence.
             </p>
             <div className="flex gap-2">
               {socialLinks.map((social) => (
@@ -67,9 +62,15 @@ export function LandingFooter() {
               <ul className="space-y-2">
                 {links.map((link) => (
                   <li key={link.label}>
-                    <Link href={link.href} className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-150">
-                      {link.label}
-                    </Link>
+                    {link.href ? (
+                      <Link href={link.href} className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-150">
+                        {link.label}
+                      </Link>
+                    ) : (
+                      <span className="text-xs text-muted-foreground/60">
+                        {link.label}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -78,12 +79,17 @@ export function LandingFooter() {
         </div>
 
         <div className="border-t border-border/50 pt-6 flex flex-col sm:flex-row justify-between items-center gap-3">
-          <p className="text-[11px] text-muted-foreground/60">
-            &copy; {new Date().getFullYear()} Sentinel. All rights reserved.
-          </p>
-          <div className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[11px] text-emerald-500/80 font-medium">All systems operational</span>
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[11px] text-muted-foreground/60">
+              &copy; {new Date().getFullYear()} Sentinel. All rights reserved.
+            </p>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground/50">
+              <span>GDPR Compliant</span>
+              <span>&middot;</span>
+              <span>DPDPA 2023 Ready</span>
+              <span>&middot;</span>
+              <span>Two-Vault Architecture</span>
+            </div>
           </div>
         </div>
       </div>

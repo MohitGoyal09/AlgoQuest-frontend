@@ -9,16 +9,10 @@ import Link from "next/link"
 
 export default function Home() {
   const steps = [
-    { number: "01", title: "Connect Tools", description: "GitHub, Slack, Jira — we only see timestamps, never content.", icon: Zap },
-    { number: "02", title: "AI Analysis", description: "Velocity regression, entropy, and network centrality on metadata.", icon: Heart },
-    { number: "03", title: "Early Detection", description: "Risk scores flag burnout 30 days before it manifests.", icon: Shield },
-    { number: "04", title: "Intervene", description: "Supportive nudges to employees first. Managers see anonymized trends.", icon: Users },
-  ]
-
-  const testimonials = [
-    { name: "Sarah Chen", role: "VP of Engineering", company: "TechCorp", content: "Sentinel caught burnout in 3 team members before it became a problem. We saved months of productivity." },
-    { name: "Marcus Johnson", role: "Engineering Manager", company: "StartupXYZ", content: "The hidden talent feature found an incredible engineer who'd been quietly unblocking everyone." },
-    { name: "Emily Rodriguez", role: "CTO", company: "ScaleUp Inc", content: "Finally a tool that helps managers care without being invasive. Retention improved 40%." },
+    { number: "01", title: "Connect Sources", description: "GitHub, Slack, Calendar, Jira. We ingest timestamps, file counts, and reply patterns. Never message content.", icon: Zap },
+    { number: "02", title: "Mathematical Analysis", description: "Linear regression for velocity. Shannon entropy for schedule chaos. NetworkX for team structure. Deterministic math, not AI opinion.", icon: Heart },
+    { number: "03", title: "Pattern Detection", description: "We measure the velocity of change from personal baselines. A night owl working late is normal. A day worker suddenly at midnight is a signal.", icon: Shield },
+    { number: "04", title: "Supportive Action", description: "Employees see their own wellbeing first. Managers see anonymized team trends. Identity reveal requires consent and audit logging.", icon: Users },
   ]
 
   return (
@@ -27,6 +21,45 @@ export default function Home() {
 
       <main className="flex-1 w-full">
         <LandingHero />
+
+        {/* Problem Statement */}
+        <section className="py-20 px-6">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-12">
+              <p className="text-sm font-medium text-primary uppercase tracking-wider mb-3">The Problem</p>
+              <h2 className="text-3xl font-bold text-foreground mb-4">
+                Burnout is detected 6 months too late
+              </h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                76% of employees experience burnout. Current detection happens in exit interviews,
+                quarterly surveys, and resignation letters. By then, it costs $150K-$300K per engineer to replace.
+              </p>
+            </div>
+
+            {/* Comparison Table */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+              <div className="p-6 rounded-lg bg-muted/30 border border-border/50">
+                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Current Approach</h3>
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-2"><span className="text-destructive mt-0.5">✕</span> Exit interviews (too late)</li>
+                  <li className="flex items-start gap-2"><span className="text-destructive mt-0.5">✕</span> Quarterly surveys (snapshot, not trend)</li>
+                  <li className="flex items-start gap-2"><span className="text-destructive mt-0.5">✕</span> Content surveillance (illegal in EU, destroys trust)</li>
+                  <li className="flex items-start gap-2"><span className="text-destructive mt-0.5">✕</span> Manager intuition (biased, inconsistent)</li>
+                </ul>
+              </div>
+              <div className="p-6 rounded-lg bg-primary/5 border border-primary/20">
+                <h3 className="text-sm font-medium text-primary uppercase tracking-wider mb-4">Sentinel</h3>
+                <ul className="space-y-3 text-sm text-foreground/80">
+                  <li className="flex items-start gap-2"><span className="text-primary mt-0.5">✓</span> Continuous behavioral monitoring (daily signals)</li>
+                  <li className="flex items-start gap-2"><span className="text-primary mt-0.5">✓</span> 30-day trend analysis (pattern changes over time)</li>
+                  <li className="flex items-start gap-2"><span className="text-primary mt-0.5">✓</span> Metadata only (timestamps, not content)</li>
+                  <li className="flex items-start gap-2"><span className="text-primary mt-0.5">✓</span> Mathematical models (deterministic, auditable)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <FeaturesBentoGrid />
 
         {/* How It Works */}
@@ -64,40 +97,69 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Testimonials */}
-        <section id="testimonials" className="py-24">
-          <div className="container px-6 mx-auto">
-            <div className="text-center mb-14">
-              <Badge variant="outline" className="mb-3 border-accent/20 text-accent bg-accent/5">
-                <Star className="w-3 h-3 mr-1" />
-                Loved by Leaders
-              </Badge>
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-                Trusted by engineering teams
+        {/* Real-World Scenarios */}
+        <section className="py-20 px-6 bg-muted/20">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-12">
+              <p className="text-sm font-medium text-primary uppercase tracking-wider mb-3">Real-World Impact</p>
+              <h2 className="text-3xl font-bold text-foreground mb-4">
+                What Sentinel catches that humans miss
               </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto stagger-children">
-              {testimonials.map((t, i) => (
-                <div key={i} className="metric-card p-6">
-                  <div className="flex items-center gap-0.5 mb-4">
-                    {[...Array(5)].map((_, j) => (
-                      <Star key={j} className="h-3.5 w-3.5 fill-primary text-primary" />
-                    ))}
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-5">&ldquo;{t.content}&rdquo;</p>
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-semibold">
-                      {t.name.split(" ").map(n => n[0]).join("")}
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-foreground">{t.name}</div>
-                      <div className="text-[11px] text-muted-foreground">{t.role}, {t.company}</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="p-6 rounded-lg border border-border/50 bg-card/50">
+                <div className="text-xs font-medium text-destructive uppercase tracking-wider mb-2">Safety Valve Detection</div>
+                <p className="text-sm text-foreground font-medium mb-2">Senior dev starts committing at 2 AM</p>
+                <p className="text-sm text-muted-foreground">
+                  Velocity trending from 1.5 to 3.2 over 3 weeks. Slack replies dropped from 15/day to 3.
+                  Entropy jumped above 1.5. The pattern says burnout — 30 days before anyone notices.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-lg border border-border/50 bg-card/50">
+                <div className="text-xs font-medium text-primary uppercase tracking-wider mb-2">Talent Scout Discovery</div>
+                <p className="text-sm text-foreground font-medium mb-2">Quiet IC bridges two disconnected teams</p>
+                <p className="text-sm text-muted-foreground">
+                  Betweenness centrality 0.85 but eigenvector only 0.15. She reviews PRs across Engineering and Design.
+                  22 unblocking events last month. Traditional metrics show nothing special.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-lg border border-border/50 bg-card/50">
+                <div className="text-xs font-medium text-amber-500 uppercase tracking-wider mb-2">Culture Thermometer Alert</div>
+                <p className="text-sm text-foreground font-medium mb-2">Burnout spreading across Engineering</p>
+                <p className="text-sm text-muted-foreground">
+                  SIR model detects R&#x2080; = 1.96 — epidemic growth. Two team members CRITICAL, average velocity
+                  above threshold. Communication decay measured at 35% decline over 2 weeks.
+                </p>
+              </div>
             </div>
+          </div>
+        </section>
+
+        {/* Privacy Architecture */}
+        <section className="py-20 px-6">
+          <div className="max-w-4xl mx-auto text-center">
+            <p className="text-sm font-medium text-primary uppercase tracking-wider mb-3">Privacy Architecture</p>
+            <h2 className="text-3xl font-bold text-foreground mb-4">
+              Privacy by physics, not policy
+            </h2>
+            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+              Two separate database vaults with no foreign key constraints between them.
+              Even a full breach yields only anonymous hashes and encrypted blobs.
+            </p>
+            <div className="grid grid-cols-2 gap-6 max-w-2xl mx-auto">
+              <div className="p-6 rounded-lg bg-primary/5 border border-primary/20 text-left">
+                <h3 className="text-sm font-semibold text-primary mb-2">Vault A — Analytics</h3>
+                <p className="text-sm text-muted-foreground">Anonymous hashes, event timestamps, computed scores. Zero PII. Cannot identify anyone.</p>
+              </div>
+              <div className="p-6 rounded-lg bg-muted/30 border border-border/50 text-left">
+                <h3 className="text-sm font-semibold text-foreground mb-2">Vault B — Identity</h3>
+                <p className="text-sm text-muted-foreground">AES-encrypted emails, consent flags, RBAC data. Without the Fernet key, unreadable.</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground/60 mt-4">HMAC-SHA256 links vaults. Vault key never stored in database.</p>
           </div>
         </section>
 
@@ -106,10 +168,10 @@ export default function Home() {
           <div className="container px-6 mx-auto text-center">
             <div className="max-w-2xl mx-auto">
               <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-                Ready to see what your data says?
+                See Sentinel in action
               </h2>
               <p className="text-muted-foreground mb-8">
-                Join engineering leaders using Sentinel to build healthier, more productive teams.
+                Explore the interactive demo to see how behavioral metadata becomes actionable insight.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link href="/onboarding">
@@ -120,14 +182,14 @@ export default function Home() {
                 </Link>
                 <Link href="/login">
                   <Button size="lg" variant="outline" className="h-11 px-6 rounded-xl">
-                    Start Free Trial
+                    Sign In
                   </Button>
                 </Link>
               </div>
               <div className="mt-6 flex items-center justify-center gap-4 text-[11px] text-muted-foreground/60">
-                <span className="flex items-center gap-1"><Check className="h-3 w-3" />No credit card</span>
-                <span className="flex items-center gap-1"><Check className="h-3 w-3" />14-day trial</span>
-                <span className="flex items-center gap-1"><Check className="h-3 w-3" />Cancel anytime</span>
+                <span className="flex items-center gap-1"><Check className="h-3 w-3" />Metadata only</span>
+                <span className="flex items-center gap-1"><Check className="h-3 w-3" />Two-vault encryption</span>
+                <span className="flex items-center gap-1"><Check className="h-3 w-3" />GDPR & DPDPA compliant</span>
               </div>
             </div>
           </div>

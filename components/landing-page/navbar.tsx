@@ -19,7 +19,7 @@ export function LandingNavbar() {
   const navLinks = [
     { href: "#features", label: "Features" },
     { href: "#how-it-works", label: "How it Works" },
-    { href: "#testimonials", label: "Testimonials" },
+    { href: "/methodology", label: "Methodology" },
   ]
 
   return (
@@ -27,7 +27,7 @@ export function LandingNavbar() {
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-200",
         scrolled
-          ? "bg-background/80 backdrop-blur-xl border-b border-border/50 py-3"
+          ? "bg-background/95 border-b border-border/50 py-3"
           : "bg-transparent py-5"
       )}
     >
@@ -55,9 +55,9 @@ export function LandingNavbar() {
           <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-150 px-3 py-2">
             Sign In
           </Link>
-          <Link href="/login">
+          <Link href="/onboarding">
             <Button size="sm" className="rounded-lg px-5 h-9 font-medium">
-              Get Started
+              Try Demo
             </Button>
           </Link>
         </div>
@@ -71,7 +71,7 @@ export function LandingNavbar() {
       </div>
 
       {mobileOpen && (
-        <div className="md:hidden absolute top-full left-0 right-0 bg-background/95 backdrop-blur-xl border-b border-border p-4 flex flex-col gap-1">
+        <div className="md:hidden absolute top-full left-0 right-0 bg-background/95 border-b border-border p-4 flex flex-col gap-1">
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -86,8 +86,8 @@ export function LandingNavbar() {
             <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground py-2.5 px-3">
               Sign In
             </Link>
-            <Link href="/login">
-              <Button className="rounded-lg w-full h-10">Get Started</Button>
+            <Link href="/onboarding">
+              <Button className="rounded-lg w-full h-10">Try Demo</Button>
             </Link>
           </div>
         </div>
