@@ -24,6 +24,7 @@ Read any single file for useful, self-contained context. Read all files for the 
 | [REAL_WORLD.md](REAL_WORLD.md) | Real-world validation, case studies, ROI evidence |
 | [JUDGES.md](JUDGES.md) | 12 judge profiles, backgrounds, what they care about |
 | [PITCH_PREP.md](PITCH_PREP.md) | Demo script, 3-minute flow, rehearsal checklist |
+| [SCORING.md](SCORING.md) | How metadata becomes risk scores: formulas, thresholds, code references |
 
 ## How to Use This Directory
 
