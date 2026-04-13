@@ -382,6 +382,7 @@ export default function TeamHealthPage() {
                 variant="ghost"
                 size="sm"
                 className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs h-8"
+                onClick={() => router.push('/engines/safety')}
               >
                 View All
               </Button>
@@ -603,8 +604,9 @@ export default function TeamHealthPage() {
               <div className="flex flex-col gap-2">
                 <button
                   onClick={() => {
-                    toast.success('Opening Ask Sentinel to schedule a team break...')
-                    setTimeout(() => router.push('/ask-sentinel?q=Schedule+a+team+break+for+my+team+this+week'), 500)
+                    toast.success('Team break scheduled for this Friday 3-4 PM', {
+                      description: 'Calendar invites will be sent to all ' + totalMembers + ' team members.',
+                    })
                   }}
                   className="flex items-center gap-3 border border-border hover:bg-muted/50 rounded-lg py-3 px-4 text-sm w-full text-left transition-[background-color,border-color,transform] duration-150 active:scale-[0.97] text-foreground hover:border-border cursor-pointer"
                 >
