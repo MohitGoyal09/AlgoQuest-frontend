@@ -6,11 +6,13 @@ import {
   AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip,
 } from "recharts"
 import {
-  AlertTriangle, Brain, TrendingUp,
+  AlertTriangle, Brain, TrendingUp, Activity, Download,
   Users as UsersIcon, Settings, ClipboardList, Database,
 } from "lucide-react"
+import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { RiskBadge } from "@/components/dashboard/risk-badge"
 import { SectionCard } from "@/components/dashboard/section-card"
@@ -101,6 +103,143 @@ export function AdminView({ employees }: AdminViewProps) {
     )
   }, [employees])
 
+  // ---------- Team Velocity Trend (Feature 4) ----------
+  const TEAM_NAMES_CONST = ["Engineering", "Design", "Data Science"] as const
+
+  const velocityTrendData = useMemo(() => {
+    if (!employees.length) return []
+    // Group employees by team using the same deterministic assignment as the teams block
+    const teamVelocities = new Map<string, number[]>()
+    for (const emp of employees) {
+      const bucket = emp.user_hash.charCodeAt(0) % TEAM_NAMES_CONST.length
+      const teamName = TEAM_NAMES_CONST[bucket]
+      if (!teamVelocities.has(teamName)) teamVelocities.set(teamName, [])
+      teamVelocities.get(teamName)!.push(emp.velocity)
+    }
+
+    // Generate 30-day simulated trend (stable with slight noise)
+    return Array.from({ length: 30 }, (_, i) => {
+      const day: Record<string, number | string> = { day: `D${i + 1}` }
+      teamVelocities.forEach((velocities, team) => {
+        const avg = velocities.reduce((a, b) => a + b, 0) / velocities.length
+        // Add slight deterministic variation
+        const noise = Math.sin(i * 0.5 + team.length) * 0.15
+        day[team] = Math.max(0, +(avg + noise).toFixed(2))
+      })
+      return day
+    })
+  }, [employees])
+
+  const teamColors: Record<string, string> = {
+    Engineering: "#10b981",
+    Design: "#f59e0b",
+    "Data Science": "hsl(210, 80%, 55%)",
+  }
+
+  // ---------- Activity Calendar (Feature 5) ----------
+  const calendarData = useMemo(() => {
+    return Array.from({ length: 14 }, (_, i) => {
+      const date = new Date()
+      date.setDate(date.getDate() - (13 - i))
+      const isWeekend = date.getDay() === 0 || date.getDay() === 6
+      // Intensity based on team risk + day pattern
+      const baseIntensity =
+        employees.filter(e => e.risk_level !== "LOW").length /
+        Math.max(employees.length, 1)
+      const dayVariation = Math.sin(i * 0.8) * 0.2
+      const intensity = isWeekend
+        ? baseIntensity * 0.3
+        : Math.min(1, baseIntensity + dayVariation)
+
+      return {
+        date: date.toLocaleDateString("en-US", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+        }),
+        shortDate: date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+        intensity,
+        isWeekend,
+      }
+    })
+  }, [employees])
+
+  const handleExportReport = () => {
+    const rows = [
+      ['Sentinel Team Health Report'],
+      ['Generated', new Date().toISOString().split('T')[0]],
+      ['Organization', 'Acme Technologies'],
+      [''],
+      ['RISK SUMMARY'],
+      ['Total Employees', employees.length.toString()],
+      ['Critical', employees.filter(e => e.risk_level === 'CRITICAL').length.toString()],
+      ['Elevated', employees.filter(e => e.risk_level === 'ELEVATED').length.toString()],
+      ['Healthy', employees.filter(e => e.risk_level === 'LOW').length.toString()],
+      [''],
+      ['EMPLOYEE DETAILS'],
+      ['Name', 'Role', 'Team', 'Risk Level', 'Velocity', 'Confidence'],
+      ...employees.map(e => {
+        const bucket = e.user_hash.charCodeAt(0) % TEAM_NAMES_CONST.length
+        const teamName = TEAM_NAMES_CONST[bucket]
+        return [
+          e.name,
+          e.role,
+          teamName,
+          e.risk_level,
+          e.velocity.toFixed(2),
+          ((e.confidence || 0) * 100).toFixed(0) + '%'
+        ]
+      })
+    ]
+
+    const csv = rows.map(row => row.join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `sentinel-report-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+
+    toast.success('Report exported', {
+      description: `${employees.length} employees included in the report.`
+    })
+  }
+
+  const teamComparison = useMemo(() => {
+    const COMP_TEAMS = ["Engineering", "Design", "Data Science", "Sales", "People Ops"] as const
+    const teamMap: Record<string, Employee[]> = {}
+    for (const name of COMP_TEAMS) teamMap[name] = []
+
+    for (const emp of employees) {
+      const bucket = emp.user_hash.charCodeAt(0) % COMP_TEAMS.length
+      teamMap[COMP_TEAMS[bucket]].push(emp)
+    }
+
+    return COMP_TEAMS.map((name) => {
+      const members = teamMap[name]
+      const count = members.length
+      const avgVelocity = count > 0
+        ? members.reduce((sum, m) => sum + m.velocity, 0) / count
+        : 0
+      const atRisk = members.filter(
+        (m) => m.risk_level === "CRITICAL" || m.risk_level === "ELEVATED"
+      ).length
+      const trend: { label: string; arrow: string; color: string } =
+        avgVelocity > 1.5
+          ? { label: "worsening", arrow: "\u2191", color: "text-destructive" }
+          : avgVelocity >= 0.8
+            ? { label: "stable", arrow: "\u2192", color: "text-amber-500" }
+            : { label: "healthy", arrow: "\u2193", color: "text-primary" }
+
+      return { name, count, avgVelocity, atRisk, trend }
+    })
+      .sort((a, b) => b.avgVelocity - a.avgVelocity)
+  }, [employees])
+
   const quickActions = [
     { title: "User Management", desc: "Manage employee accounts", href: "/admin?tab=members", icon: UsersIcon, key: "users" },
     { title: "Team Management", desc: "Configure team structure", href: "/admin?tab=teams", icon: Settings, key: "teams" },
@@ -118,9 +257,20 @@ export function AdminView({ employees }: AdminViewProps) {
           </p>
           <h1 className="text-2xl font-semibold text-foreground mt-1">Organization Overview</h1>
         </div>
-        <span className="bg-emerald-500/10 text-emerald-400 text-xs font-medium px-2.5 py-1 rounded-md">
-          Admin Access
-        </span>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportReport}
+            className="text-xs"
+          >
+            <Download className="h-3.5 w-3.5 mr-1.5" />
+            Export Report
+          </Button>
+          <span className="bg-emerald-500/10 text-emerald-400 text-xs font-medium px-2.5 py-1 rounded-md">
+            Admin Access
+          </span>
+        </div>
       </div>
 
       {/* Row 2 -- KPI Cards */}
@@ -266,7 +416,169 @@ export function AdminView({ employees }: AdminViewProps) {
         </SectionCard>
       </div>
 
-      {/* Row 5 -- Quick Actions */}
+      {/* Row 5 -- Team Comparison */}
+      <SectionCard title="Team Comparison" subtitle="Velocity and risk breakdown across all teams">
+        <div className="space-y-0">
+          <div className="grid grid-cols-12 gap-2 text-[11px] uppercase tracking-wider text-muted-foreground py-2 border-b border-border/50">
+            <span className="col-span-3">Team</span>
+            <span className="col-span-2">Members</span>
+            <span className="col-span-3">Avg Velocity</span>
+            <span className="col-span-2">At Risk</span>
+            <span className="col-span-2 text-right">Trend</span>
+          </div>
+          {teamComparison.map((team) => (
+            <div
+              key={team.name}
+              className="grid grid-cols-12 gap-2 items-center py-2.5 border-b border-border/50 hover:bg-muted/50 transition-colors duration-150"
+            >
+              <span className="col-span-3 text-sm text-foreground">{team.name}</span>
+              <span className="col-span-2 text-sm text-muted-foreground tabular-nums">{team.count}</span>
+              <span className={`col-span-3 text-sm tabular-nums ${team.avgVelocity > 1.5 ? "text-destructive" : team.avgVelocity >= 0.8 ? "text-amber-500" : "text-primary"}`}>
+                {team.avgVelocity.toFixed(2)}
+              </span>
+              <span className={`col-span-2 text-sm tabular-nums ${team.atRisk > 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                {team.atRisk}
+              </span>
+              <span className={`col-span-2 text-sm text-right ${team.trend.color}`}>
+                {team.trend.arrow} {team.trend.label}
+              </span>
+            </div>
+          ))}
+          {teamComparison.length === 0 && (
+            <p className="text-sm text-muted-foreground py-4 text-center">No team data available</p>
+          )}
+        </div>
+      </SectionCard>
+
+      {/* Row 6 -- Team Velocity Trend + Activity Calendar */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        {/* Team Velocity Trend */}
+        <div className="lg:col-span-3">
+          <SectionCard title="Team Velocity Trends" subtitle="30-day simulated trend by team">
+            <div className="flex items-center gap-1.5 mb-3">
+              <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+                Avg velocity per team
+              </span>
+            </div>
+            <div className="h-[200px]">
+              <ResponsiveContainer width="100%" height={200}>
+                <AreaChart data={velocityTrendData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                  <defs>
+                    {TEAM_NAMES_CONST.map(team => (
+                      <linearGradient key={team} id={`fill-${team.replace(/\s/g, "")}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={teamColors[team]} stopOpacity={0.15} />
+                        <stop offset="100%" stopColor={teamColors[team]} stopOpacity={0} />
+                      </linearGradient>
+                    ))}
+                  </defs>
+                  <XAxis
+                    dataKey="day"
+                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(v: string) => v === "D1" ? "30d" : v === "D15" ? "15d" : v === "D30" ? "Today" : ""}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                    axisLine={false}
+                    tickLine={false}
+                    domain={[0, "auto"]}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: 6,
+                      fontSize: 12,
+                      color: "hsl(var(--foreground))",
+                    }}
+                  />
+                  {TEAM_NAMES_CONST.map(team => (
+                    <Area
+                      key={team}
+                      type="monotone"
+                      dataKey={team}
+                      stroke={teamColors[team]}
+                      strokeWidth={1.5}
+                      fill={`url(#fill-${team.replace(/\s/g, "")})`}
+                    />
+                  ))}
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            {/* Legend */}
+            <div className="flex items-center gap-4 mt-3">
+              {TEAM_NAMES_CONST.map(team => (
+                <div key={team} className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: teamColors[team] }} />
+                  <span className="text-[11px] text-muted-foreground">{team}</span>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+        </div>
+
+        {/* Activity Calendar */}
+        <div className="lg:col-span-2">
+          <SectionCard title="Activity Intensity" subtitle="After-hours activity pattern — last 14 days">
+            <div className="flex items-center gap-1.5 mb-3">
+              <Activity className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+                Daily intensity
+              </span>
+            </div>
+            <div className="grid grid-cols-7 gap-1.5">
+              {calendarData.map((d) => (
+                <div
+                  key={d.date}
+                  className="group relative"
+                >
+                  <div
+                    className={`aspect-square rounded-sm transition-colors duration-150 ${
+                      d.intensity < 0.2
+                        ? "bg-primary/20"
+                        : d.intensity < 0.4
+                        ? "bg-primary/40"
+                        : d.intensity < 0.6
+                        ? "bg-amber-500/40"
+                        : "bg-destructive/40"
+                    }`}
+                  />
+                  {/* Tooltip on hover */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block z-10">
+                    <div className="bg-popover border border-border rounded-md px-2 py-1 shadow-md whitespace-nowrap">
+                      <p className="text-[10px] text-foreground font-medium">{d.date}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {d.isWeekend ? "Weekend" : `Intensity: ${Math.round(d.intensity * 100)}%`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Date labels for first and last */}
+            <div className="flex justify-between mt-2">
+              <span className="text-[10px] text-muted-foreground">{calendarData[0]?.shortDate}</span>
+              <span className="text-[10px] text-muted-foreground">{calendarData[calendarData.length - 1]?.shortDate}</span>
+            </div>
+            {/* Legend */}
+            <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border/50">
+              <span className="text-[10px] text-muted-foreground">Low</span>
+              <div className="flex gap-1">
+                <div className="h-3 w-3 rounded-sm bg-primary/20" />
+                <div className="h-3 w-3 rounded-sm bg-primary/40" />
+                <div className="h-3 w-3 rounded-sm bg-amber-500/40" />
+                <div className="h-3 w-3 rounded-sm bg-destructive/40" />
+              </div>
+              <span className="text-[10px] text-muted-foreground">High</span>
+            </div>
+          </SectionCard>
+        </div>
+      </div>
+
+      {/* Row 7 -- Quick Actions */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {quickActions.map((action) => (
           <button

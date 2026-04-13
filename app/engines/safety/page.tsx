@@ -368,6 +368,57 @@ function SafetyContent() {
     ? highRiskEmployees
     : employees
 
+  const recommendedActions = useMemo(() => {
+    if (!currentEmployee) return []
+    const items: { title: string; description: string; priority: 'high' | 'medium' | 'low' }[] = []
+
+    const vel = currentEmployee.velocity ?? 0
+    const belong = currentEmployee.belongingness_score ?? 0.5
+    const risk = currentEmployee.risk_level
+
+    if (risk === 'CRITICAL') {
+      items.push({
+        title: 'Schedule immediate 1:1',
+        description: 'Velocity trending above critical threshold. Discuss workload and set boundaries.',
+        priority: 'high'
+      })
+    }
+
+    if (vel > 2.0) {
+      items.push({
+        title: 'Review workload distribution',
+        description: 'Sustained high intensity detected. Consider reassigning 2-3 tasks to reduce load.',
+        priority: 'high'
+      })
+    }
+
+    if (belong < 0.4) {
+      items.push({
+        title: 'Address social withdrawal',
+        description: 'Communication engagement declining. Schedule informal team activity or coffee chat.',
+        priority: 'medium'
+      })
+    }
+
+    if (vel > 1.5 && vel <= 2.0) {
+      items.push({
+        title: 'Monitor work patterns',
+        description: 'Velocity approaching elevated threshold. Check in within the next week.',
+        priority: 'medium'
+      })
+    }
+
+    if (items.length === 0) {
+      items.push({
+        title: 'No actions needed',
+        description: 'Risk metrics are within healthy range. Continue regular check-ins.',
+        priority: 'low'
+      })
+    }
+
+    return items
+  }, [currentEmployee])
+
   const chartData = riskHistory && riskHistory.length > 0 ? riskHistory : []
 
   const handleUserSelect = (emp: Employee) => {
@@ -618,6 +669,35 @@ function SafetyContent() {
               {currentEmployee ? (
                 <div className="space-y-4">
                   <RiskAssessment employee={currentEmployee} />
+
+                  {/* Recommended Actions */}
+                  <div className="bg-card border border-border rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Zap className="h-4 w-4 text-muted-foreground" />
+                      <h4 className="text-sm font-semibold text-foreground">Recommended Actions</h4>
+                    </div>
+                    <div className="space-y-3">
+                      {recommendedActions.map((action, idx) => (
+                        <div key={idx} className="flex items-start gap-2.5">
+                          <div
+                            className={cn(
+                              "mt-1.5 h-2 w-2 rounded-full shrink-0",
+                              action.priority === 'high'
+                                ? "bg-destructive"
+                                : action.priority === 'medium'
+                                  ? "bg-amber-500"
+                                  : "bg-primary"
+                            )}
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground">{action.title}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{action.description}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <NudgeCard nudge={nudgeData ?? undefined} />
                 </div>
               ) : (
