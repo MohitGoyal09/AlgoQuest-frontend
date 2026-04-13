@@ -43,13 +43,20 @@
 | 31 | Composio OAuth Flow | Shipped | `/connections/*` | Marketplace | OAuth initiate/callback/connected/disconnect |
 | 32 | Workflows (Automation) | Partial | Models exist (`workflow.py`) | `/workflows` | Templates + execution logging exist. End-to-end flow basic. |
 | 33 | Marketplace (Tools) | Partial | `/tools/*`, `/connections/*` | `/marketplace` | Tool status/execution works. OAuth popup flow implemented. |
-| 34 | Data Ingestion Pipeline | Partial | `services/ingestion.py` | N/A | Connectors for Git, Slack, Jira, CSV defined. Real webhooks not deployed. |
-| 35 | Data Ingestion UI | Planned | Route exists | `/data-ingestion` | Placeholder page |
+| 34 | Data Ingestion Pipeline | Partial | `services/ingestion.py` | N/A | Calendar sync and GitHub GraphEdge creation now work. Slack/Jira use seed data. |
+| 35 | Data Ingestion UI | Shipped | Route exists | `/data-ingestion` | 640-line page with connector status, sync controls, pipeline monitoring |
 | 36 | Onboarding Flow | Planned | Route exists | `/onboarding` | Basic page |
 | 37 | Employee Growth Dashboard | Planned | N/A | N/A | Skill progress, career path, learning recs — designed, not built |
 | 38 | Peer Recognition | Planned | N/A | N/A | Kudos as positive ONA signal — designed, not built |
 | 39 | Key Person Risk Simulation | Planned | N/A | N/A | "What if this person leaves?" NetworkX removal — designed |
 | 40 | Minimum Group Size Threshold | Planned | N/A | N/A | Suppress data when team < 5 members — designed |
+| 41 | Methodology Page | Shipped | N/A | `/methodology` | Engine formulas, thresholds, accuracy disclaimer |
+| 42 | CSV Export | Shipped | Admin dashboard | Export Report button | CSV download of engine reports |
+| 43 | Team Comparison | Shipped | Admin dashboard | `/dashboard` | Side-by-side team stats comparison |
+| 44 | Manager Action Plans | Shipped | Safety Valve | `/dashboard` | Context-aware recommendations for managers |
+| 45 | Team Velocity Trends | Shipped | Admin dashboard | `/dashboard` | 30-day area chart of team velocity |
+| 46 | Activity Calendar | Shipped | Admin dashboard | `/dashboard` | 14-day intensity heatmap |
+| 47 | Mobile Navigation | Shipped | N/A | SidebarTrigger | Hamburger menu for mobile viewports |
 
 ## Backend File Counts
 
@@ -61,5 +68,5 @@
 
 ## Frontend Route Counts
 
-- **29 page routes** in `frontend/app/`
+- **30+ page routes** in `frontend/app/`
 - **100+ components** (40+ shadcn/ui primitives, 30+ AI-element components, custom components)

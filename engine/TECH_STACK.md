@@ -67,7 +67,7 @@ Sentinel uses Gemini 2.5 Flash in two modes:
 
 2. **Generation** (All agents): Via LiteLLM wrapper. SSE token streaming. Role-scoped system prompts. Temperature varies by agent.
 
-Env vars: `GEMINI_API_KEY` (primary), `LLM_MODEL` (default: `gemini-2.0-flash`).
+Env vars: `GEMINI_API_KEY` (primary), `LLM_MODEL` (default: `gemini-2.5-flash`).
 
 Portkey AI Gateway is supported as an optional proxy layer: `PORTKEY_API_KEY`, `PORTKEY_VIRTUAL_KEY`.
 

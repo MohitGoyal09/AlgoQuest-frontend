@@ -20,6 +20,10 @@ Read any single file for useful, self-contained context. Read all files for the 
 | [DEMO.md](DEMO.md) | Demo credentials, seed data personas, demo script |
 | [ROADMAP.md](ROADMAP.md) | What's done, what's planned, what's deferred |
 | [CEO_ANALYSIS.md](CEO_ANALYSIS.md) | Strategic analysis, competitive positioning, risks |
+| [PITCH_STRATEGY.md](PITCH_STRATEGY.md) | Industry-tailored pitch strategy, objection matrix |
+| [REAL_WORLD.md](REAL_WORLD.md) | Real-world validation, case studies, ROI evidence |
+| [JUDGES.md](JUDGES.md) | 12 judge profiles, backgrounds, what they care about |
+| [PITCH_PREP.md](PITCH_PREP.md) | Demo script, 3-minute flow, rehearsal checklist |
 
 ## How to Use This Directory
 
@@ -30,13 +34,15 @@ Read any single file for useful, self-contained context. Read all files for the 
 - **Adding permissions?** Read RBAC.md for the 52-permission matrix.
 - **Preparing a demo?** Read DEMO.md for credentials and walkthrough.
 - **Understanding the business?** Read OVERVIEW.md and CEO_ANALYSIS.md.
+- **Preparing for hackathon?** Read JUDGES.md and PITCH_STRATEGY.md for judge profiles and tailored pitch.
+- **Rehearsing the pitch?** Read PITCH_PREP.md for demo script and REAL_WORLD.md for validation evidence.
 
 ## Project Location
 
 ```
-D:\code\AlgoQuest\
-  backend\       Python 3.12 / FastAPI
-  frontend\      Next.js 16 / React 19 / TypeScript
-  docs\          Extended documentation
-  engine\        THIS DIRECTORY — context for AI agents
+/Users/mohit/Code/AlgoQuest/
+  backend/       Python 3.12 / FastAPI
+  frontend/      Next.js 16 / React 19 / TypeScript
+  docs/          Extended documentation
+  engine/        THIS DIRECTORY — context for AI agents
 ```

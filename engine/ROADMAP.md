@@ -1,6 +1,6 @@
 # Sentinel — Roadmap
 
-Updated: 2026-04-05
+Updated: 2026-04-13
 
 ## What's Shipped
 
@@ -20,16 +20,28 @@ Everything below is working code, tested, and integrated.
 | **Settings** | Modal from sidebar dropdown. Role-aware (employee privacy, manager anonymization, admin full access). Theme toggle. |
 | **Marketplace** | Dynamic from Composio API (500+ tools, auto-paginate all pages). Tool detail view. OAuth popup + 3s polling. Banner with rotating taglines. Category filters (top 5 + Others). |
 | **Tool Integration** | Real OAuth via auth_configs.create + connected_accounts.link. Connection link cards in chat. MCP cache invalidation. Marketplace ↔ chat sync via custom events + /invalidate-cache endpoint. |
-| **Seed Data** | Deterministic (Random(42)). 5 persona archetypes. 550 events with rich metadata. 101 audit logs. 2 chat sessions. 7 blocking edges. Engine-compatible velocity scale (0-5). |
+| **Seed Data** | Deterministic (Random(42)). 15 users, 5 teams, 624 events, 60 graph edges, 450 risk history, 116 audit logs, 2 chat sessions. Only seed_fresh.py + seed_master.py remain (11 duplicates deleted). |
 | **Context Engine** | 14 documentation files in engine/ for AI agent context. 17 files total including JUDGES, PITCH_STRATEGY, REAL_WORLD. |
 | **Frontend** | Industrial/utilitarian design system. Geist font. Input pinned at bottom. Session persistence. Welcome screen with suggestion chips. Sidebar with search + new chat row. Chat history page with date grouping. |
+
+## Completed (April 12-13, 2026)
+
+| Category | Deliverables |
+|----------|-------------|
+| **Security Hardening** | 27 fixes across backend and frontend |
+| **Data Ingestion Improvements** | Calendar sync, GitHub GraphEdge creation, dynamic connectors |
+| **Auth Fixes** | Middleware hardening, CSP headers, refresh token handling |
+| **Engine Fixes** | SafetyValve/TalentScout seed preservation, real names in engine output, entropy threshold tuning |
+| **Design Polish** | Landing page, methodology page, confidence badges |
+| **New Features** | Team Comparison, Manager Action Plans, Velocity Trends, Activity Calendar, CSV Export, mobile hamburger menu, simulation link |
+| **Model Migration** | Gemini 2.0 to 2.5 migration |
 
 ## What's Partially Done
 
 | Feature | What Exists | What's Missing |
 |---------|-------------|----------------|
 | Workflows | Models, UI page, template cards | End-to-end execution from chat intent |
-| Data Ingestion | CSV upload works, pipeline status page | Real webhook receivers for Slack/GitHub/Calendar (uses seed data for demo) |
+| Data Ingestion | CSV upload works, pipeline status page. Calendar sync and GitHub GraphEdge creation now work. | Real webhook receivers for Slack/Jira (uses seed data for demo) |
 | Connection Auto-Resume | Backend polls after connection_link, detects OAuth completion | Sometimes the polling times out or the LLM doesn't auto-continue |
 | Notifications | Full CRUD, preferences | Not triggered by engine analysis (manual only) |
 
