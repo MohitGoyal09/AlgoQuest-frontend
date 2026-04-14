@@ -17,7 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Lock, Search, Users, Eye } from "lucide-react"
+import { MoreHorizontal, Lock, Search, Users } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Employee } from "@/types"
@@ -34,21 +34,12 @@ export function TeamGrid({ employees, isAnonymized }: TeamGridProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const router = useRouter()
 
-  const getDisplayName = (emp: Employee): string => {
-    // CRITICAL employees: always show real name (safety override)
-    if (emp.risk_level === "CRITICAL" && emp.name) {
-      return emp.name
+  const getDisplayName = (emp: Employee) => {
+    if (isAnonymized) {
+      return `Dev-${emp.user_hash.slice(-2).toUpperCase()}`
     }
-    // Toggle ON: show all names (manager chose to reveal)
-    if (!isAnonymized && emp.name) {
-      return emp.name
-    }
-    // Default: anonymized hash
-    return `Employee-${emp.user_hash.substring(0, 4).toUpperCase()}`
+    return emp.name
   }
-
-  const isCriticalReveal = (emp: Employee): boolean =>
-    emp.risk_level === "CRITICAL" && isAnonymized
 
   const getStatus = (emp: Employee): { label: string; color: string } => {
     if ((emp as any).monitoring_paused) {
@@ -82,18 +73,10 @@ export function TeamGrid({ employees, isAnonymized }: TeamGridProps) {
 
   const handleScheduleCheckin = async (e: React.MouseEvent, emp: Employee) => {
     e.stopPropagation()
-    // Open window synchronously in click handler (before async gap)
-    const calendarWindow = window.open("about:blank", "_blank")
     try {
-      const result = await scheduleBreak(emp.user_hash)
-      if (result?.calendar_link && calendarWindow) {
-        calendarWindow.location.href = result.calendar_link
-      } else if (calendarWindow) {
-        calendarWindow.close()
-      }
-      toast.success(`Check-in scheduled for ${getDisplayName(emp)}`)
+      await scheduleBreak(emp.user_hash)
+      toast.success(`Check-in scheduled for ${isAnonymized ? getDisplayName(emp) : emp.name}`)
     } catch {
-      calendarWindow?.close()
       toast.error("Failed to schedule check-in. Please try again.")
     }
   }
@@ -158,19 +141,16 @@ export function TeamGrid({ employees, isAnonymized }: TeamGridProps) {
                       <TableCell className="font-medium text-foreground">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-9 w-9 border border-border ring-2 ring-transparent group-hover:ring-primary/20 transition-all">
-                            <AvatarImage src={(employee.risk_level === "CRITICAL" || !isAnonymized) ? `/avatars/${employee.user_hash}.png` : ""} />
-                            <AvatarFallback className={(employee.risk_level === "CRITICAL" || !isAnonymized) ? "bg-muted text-foreground" : "bg-primary/10 text-primary"}>
-                              {(employee.risk_level === "CRITICAL" || !isAnonymized) ? getInitials(employee.name) : <Lock className="w-3.5 h-3.5" />}
+                            <AvatarImage src={isAnonymized ? "" : `/avatars/${employee.user_hash}.png`} />
+                            <AvatarFallback className={isAnonymized ? "bg-primary/10 text-primary" : "bg-muted text-foreground"}>
+                              {isAnonymized ? <Lock className="w-3.5 h-3.5" /> : getInitials(employee.name)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex flex-col">
-                            <span className={`text-sm ${(isAnonymized && employee.risk_level !== "CRITICAL") ? "font-mono text-primary/80" : "text-foreground"}`}>
+                            <span className={`text-sm ${isAnonymized ? "font-mono text-primary/80" : "text-foreground"}`}>
                               {getDisplayName(employee)}
-                              {isCriticalReveal(employee) && (
-                                <Eye className="inline h-3 w-3 ml-1 text-red-400/70" aria-label="Identity revealed for safety" />
-                              )}
                             </span>
-                            {(isAnonymized && employee.risk_level !== "CRITICAL") && <span className="text-[10px] text-muted-foreground">ID: {employee.user_hash.slice(0, 6)}</span>}
+                            {isAnonymized && <span className="text-[10px] text-muted-foreground">ID: {employee.user_hash.slice(0, 6)}</span>}
                           </div>
                         </div>
                       </TableCell>

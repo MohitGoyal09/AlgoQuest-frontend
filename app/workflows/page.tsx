@@ -31,7 +31,7 @@ import {
   XCircle,
 } from "lucide-react"
 
-import { getWorkflows, createWorkflow, toggleWorkflow, executeWorkflow } from "@/lib/api"
+import { getWorkflows, createWorkflow, toggleWorkflow } from "@/lib/api"
 
 // ============================================================================
 // TYPES
@@ -302,11 +302,10 @@ function CreateWorkflowDialog({ onCreated }: CreateWorkflowDialogProps) {
 interface WorkflowCardProps {
   workflow: Workflow
   onToggle: (id: string, enabled: boolean) => void
-  onRun: (id: string) => void
   isToggling: boolean
 }
 
-function WorkflowCard({ workflow, onToggle, onRun, isToggling }: WorkflowCardProps) {
+function WorkflowCard({ workflow, onToggle, isToggling }: WorkflowCardProps) {
   const TriggerIcon = TRIGGER_ICONS[workflow.trigger] ?? Zap
   const iconColorClass = TRIGGER_COLORS[workflow.trigger] ?? "text-muted-foreground"
 
@@ -368,7 +367,6 @@ function WorkflowCard({ workflow, onToggle, onRun, isToggling }: WorkflowCardPro
 
         {/* Run button */}
         <button
-          onClick={() => onRun(workflow.id)}
           className="cursor-pointer rounded-md border border-border px-3 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:border-primary hover:text-primary active:scale-[0.97]"
           aria-label={`Run ${workflow.name}`}
         >
@@ -445,15 +443,6 @@ function WorkflowsContent() {
     }
   }
 
-  const handleRun = async (id: string) => {
-    try {
-      await executeWorkflow(id)
-      toast.success("Workflow executed")
-    } catch {
-      toast.error("Failed to execute workflow")
-    }
-  }
-
   const activeCount = workflows.filter((w) => w.enabled).length
   const totalRuns = workflows.reduce((acc, w) => acc + w.runCount, 0)
 
@@ -521,7 +510,6 @@ function WorkflowsContent() {
                   key={workflow.id}
                   workflow={workflow}
                   onToggle={handleToggle}
-                  onRun={handleRun}
                   isToggling={togglingId === workflow.id}
                 />
               ))}

@@ -23,53 +23,34 @@ export interface UnreadCountResponse {
   unread_count: number;
 }
 
-/**
- * Unwrap the backend success_response envelope.
- * Backend returns `{ success: true, data: <payload> }` via success_response().
- * api.get already strips the axios response to `.data`, so we receive the envelope.
- */
-function unwrap<T>(response: unknown): T {
-  if (response && typeof response === 'object' && 'success' in response) {
-    return (response as Record<string, any>).data as T;
-  }
-  return response as T;
-}
-
 export async function getNotifications(unreadOnly: boolean = false, limit: number = 50): Promise<NotificationsResponse> {
   const params = new URLSearchParams();
   if (unreadOnly) params.set('unread_only', 'true');
   params.set('limit', String(limit));
-  const response = await api.get<any>(`/notifications/?${params.toString()}`);
-  return unwrap<NotificationsResponse>(response);
+  return api.get<NotificationsResponse>(`/notifications/?${params.toString()}`);
 }
 
 export async function getUnreadCount(): Promise<number> {
-  const response = await api.get<any>('/notifications/unread-count');
-  const data = unwrap<UnreadCountResponse>(response);
-  return data.unread_count || 0;
+  const response = await api.get<UnreadCountResponse>('/notifications/unread-count');
+  return response.unread_count || 0;
 }
 
 export async function markAsRead(notificationId: string): Promise<void> {
-  const response = await api.put<any>(`/notifications/${notificationId}/read`);
-  return unwrap<void>(response);
+  return api.put(`/notifications/${notificationId}/read`);
 }
 
 export async function markAllRead(): Promise<void> {
-  const response = await api.put<any>('/notifications/mark-all-read');
-  return unwrap<void>(response);
+  return api.put('/notifications/mark-all-read');
 }
 
 export async function deleteNotification(notificationId: string): Promise<void> {
-  const response = await api.delete<any>(`/notifications/${notificationId}`);
-  return unwrap<void>(response);
+  return api.delete(`/notifications/${notificationId}`);
 }
 
 export async function getNotificationPreferences(): Promise<any[]> {
-  const response = await api.get<any>('/notifications/preferences');
-  return unwrap<any[]>(response);
+  return api.get('/notifications/preferences');
 }
 
 export async function updateNotificationPreferences(preferences: any[]): Promise<void> {
-  const response = await api.put<any>('/notifications/preferences', preferences);
-  return unwrap<void>(response);
+  return api.put('/notifications/preferences', preferences);
 }

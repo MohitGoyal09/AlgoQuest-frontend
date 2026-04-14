@@ -67,18 +67,10 @@ export function AgendaGenerator({
   }
 
   const handleSchedule = async () => {
-    // Open window synchronously in click handler (before async gap)
-    const calendarWindow = window.open("about:blank", "_blank")
     try {
-      const result = await scheduleBreak(userHash)
-      if (result?.calendar_link && calendarWindow) {
-        calendarWindow.location.href = result.calendar_link
-      } else if (calendarWindow) {
-        calendarWindow.close()
-      }
+      await scheduleBreak(userHash)
       toast.success(`1:1 meeting with ${userName} scheduled!`)
-    } catch {
-      calendarWindow?.close()
+    } catch (err) {
       toast.error("Failed to schedule meeting")
     }
   }

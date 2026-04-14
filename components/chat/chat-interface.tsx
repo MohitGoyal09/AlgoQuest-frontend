@@ -136,9 +136,9 @@ function InputArea({
           {/* Left: attach + model label */}
           <div className="flex items-center gap-2">
             <button
-              disabled
-              className="h-7 w-7 rounded-full bg-muted/60 flex items-center justify-center text-muted-foreground/40 cursor-not-allowed transition-colors duration-150"
-              title="File upload available in a future release"
+              onClick={() => toast("File upload coming soon")}
+              className="h-7 w-7 rounded-full bg-muted/60 flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors duration-150 active:scale-[0.97]"
+              title="Attach file"
             >
               <Plus className="h-3.5 w-3.5" />
             </button>

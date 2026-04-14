@@ -20,7 +20,6 @@ import { SentinelCard } from "@/components/dashboard/sentinel-card"
 import { formatDate, sparkPoints, buildTrendData } from "@/components/dashboard/helpers"
 import { getInitials } from "@/lib/utils"
 import type { Employee, RiskLevel } from "@/types"
-import { useTenant } from "@/contexts/tenant-context"
 
 interface AdminViewProps {
   employees: Employee[]
@@ -28,7 +27,6 @@ interface AdminViewProps {
 
 export function AdminView({ employees }: AdminViewProps) {
   const router = useRouter()
-  const { currentTenant } = useTenant()
 
   const critical = employees.filter(e => e.risk_level === "CRITICAL")
   const elevated = employees.filter(e => e.risk_level === "ELEVATED")
@@ -173,7 +171,7 @@ export function AdminView({ employees }: AdminViewProps) {
     const rows = [
       ['Sentinel Team Health Report'],
       ['Generated', new Date().toISOString().split('T')[0]],
-      ['Organization', currentTenant?.name || 'Sentinel Organization'],
+      ['Organization', 'Acme Technologies'],
       [''],
       ['RISK SUMMARY'],
       ['Total Employees', employees.length.toString()],

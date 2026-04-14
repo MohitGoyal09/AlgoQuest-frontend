@@ -121,18 +121,10 @@ export function IndividualInsights({
   }, [employee])
 
   const handleScheduleCheckin = useCallback(async () => {
-    // Open window synchronously in click handler (before async gap)
-    const calendarWindow = window.open("about:blank", "_blank")
     try {
-      const result = await scheduleBreak(employee.user_hash)
-      if (result?.calendar_link && calendarWindow) {
-        calendarWindow.location.href = result.calendar_link
-      } else if (calendarWindow) {
-        calendarWindow.close()
-      }
+      await scheduleBreak(employee.user_hash)
       toast.success("Check-in scheduled successfully")
     } catch {
-      calendarWindow?.close()
       toast.error("Failed to schedule check-in. Please try again.")
     }
   }, [employee.user_hash])
