@@ -24,12 +24,14 @@ Read any single file for useful, self-contained context. Read all files for the 
 | [REAL_WORLD.md](REAL_WORLD.md) | Real-world validation, case studies, ROI evidence |
 | [JUDGES.md](JUDGES.md) | 12 judge profiles, backgrounds, what they care about |
 | [PITCH_PREP.md](PITCH_PREP.md) | Demo script, 3-minute flow, rehearsal checklist |
+| [PIPELINE.md](PIPELINE.md) | End-to-end data pipeline: ingestion → hashing → scoring → risk → notification |
 | [SCORING.md](SCORING.md) | How metadata becomes risk scores: formulas, thresholds, code references |
 | [COMPETITIVE_ANALYSIS.md](COMPETITIVE_ANALYSIS.md) | Competitor comparison, loopholes, gaming defenses, roadmap to close gaps |
 | [PS_COMPLIANCE.md](PS_COMPLIANCE.md) | Problem statement vs implementation: compliance scoring, evolution story, judge answers |
 
 ## How to Use This Directory
 
+- **Understanding the pipeline?** Read PIPELINE.md for the complete data flow.
 - **Starting a new feature?** Read ARCHITECTURE.md and TECH_STACK.md first.
 - **Touching the database?** Read DATA_MODEL.md for the two-vault rules.
 - **Building UI?** Read DESIGN_SYSTEM.md for mandatory visual rules.

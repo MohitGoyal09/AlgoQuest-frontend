@@ -28,7 +28,7 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
             <TableHead className="w-[300px] text-white/70 font-medium">Employee</TableHead>
             <TableHead className="text-white/70 font-medium">Risk Status</TableHead>
             <TableHead className="text-white/70 font-medium">Velocity</TableHead>
-            <TableHead className="text-white/70 font-medium">Belongingness</TableHead>
+            <TableHead className="text-white/70 font-medium">Connection Index</TableHead>
             <TableHead className="text-right text-white/70 font-medium">Last Updated</TableHead>
           </TableRow>
         </TableHeader>
@@ -79,7 +79,7 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
               <TableCell>
                 <div className="flex w-[140px] flex-col gap-1.5">
                   <div className="flex justify-between text-xs">
-                    <span className="text-white/50">Sentiment</span>
+                    <span className="text-white/50">Connection</span>
                     <span className="text-white/80">{(employee.belongingness_score * 100).toFixed(0)}%</span>
                   </div>
                   <Progress 

@@ -96,7 +96,7 @@ export function EmployeeView({ employee, events }: EmployeeViewProps) {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="WORK VELOCITY" value={vel.toFixed(1)} description="story pts / sprint" valueClassName={riskColor} />
-        <StatCard label="SOCIAL CONNECTION" value={`${socialConnection}%`} description="belongingness score" valueClassName="text-emerald-400" />
+        <StatCard label="SOCIAL CONNECTION" value={`${socialConnection}%`} description="connection index" valueClassName="text-emerald-400" />
         <StatCard label="NETWORK INFLUENCE" value={`${networkInfluence}`} description="collaboration index" />
         <StatCard label="UNBLOCKING IMPACT" value={`${unblockingImpact}`} description="team enablement score" valueClassName={unblockingImpact < 50 ? "text-amber-400" : "text-emerald-400"} />
       </div>

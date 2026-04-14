@@ -4,6 +4,7 @@ import { Suspense, useState, useMemo, useEffect } from "react"
 
 import { ProtectedRoute } from "@/components/protected-route"
 import { RiskAssessment } from "@/components/risk-assessment"
+import { AiInsightCard } from "@/components/ai/AiInsightCard"
 import { StatCards } from "@/components/stat-cards"
 import { NudgeCard } from "@/components/nudge-card"
 import { VelocityChart } from "@/components/velocity-chart"
@@ -368,57 +369,6 @@ function SafetyContent() {
     ? highRiskEmployees
     : employees
 
-  const recommendedActions = useMemo(() => {
-    if (!currentEmployee) return []
-    const items: { title: string; description: string; priority: 'high' | 'medium' | 'low' }[] = []
-
-    const vel = currentEmployee.velocity ?? 0
-    const belong = currentEmployee.belongingness_score ?? 0.5
-    const risk = currentEmployee.risk_level
-
-    if (risk === 'CRITICAL') {
-      items.push({
-        title: 'Schedule immediate 1:1',
-        description: 'Velocity trending above critical threshold. Discuss workload and set boundaries.',
-        priority: 'high'
-      })
-    }
-
-    if (vel > 2.0) {
-      items.push({
-        title: 'Review workload distribution',
-        description: 'Sustained high intensity detected. Consider reassigning 2-3 tasks to reduce load.',
-        priority: 'high'
-      })
-    }
-
-    if (belong < 0.4) {
-      items.push({
-        title: 'Address social withdrawal',
-        description: 'Communication engagement declining. Schedule informal team activity or coffee chat.',
-        priority: 'medium'
-      })
-    }
-
-    if (vel > 1.5 && vel <= 2.0) {
-      items.push({
-        title: 'Monitor work patterns',
-        description: 'Velocity approaching elevated threshold. Check in within the next week.',
-        priority: 'medium'
-      })
-    }
-
-    if (items.length === 0) {
-      items.push({
-        title: 'No actions needed',
-        description: 'Risk metrics are within healthy range. Continue regular check-ins.',
-        priority: 'low'
-      })
-    }
-
-    return items
-  }, [currentEmployee])
-
   const chartData = riskHistory && riskHistory.length > 0 ? riskHistory : []
 
   const handleUserSelect = (emp: Employee) => {
@@ -569,7 +519,7 @@ function SafetyContent() {
                     worse: benchmarkData.team_avg_velocity > benchmarkData.avg_velocity,
                   },
                   {
-                    label: "Avg Belongingness",
+                    label: "Avg Connection Index",
                     team: benchmarkData.team_avg_belongingness.toFixed(2),
                     industry: benchmarkData.avg_belongingness.toFixed(2),
                     worse: benchmarkData.team_avg_belongingness < benchmarkData.avg_belongingness,
@@ -670,33 +620,8 @@ function SafetyContent() {
                 <div className="space-y-4">
                   <RiskAssessment employee={currentEmployee} />
 
-                  {/* Recommended Actions */}
-                  <div className="bg-card border border-border rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Zap className="h-4 w-4 text-muted-foreground" />
-                      <h4 className="text-sm font-semibold text-foreground">Recommended Actions</h4>
-                    </div>
-                    <div className="space-y-3">
-                      {recommendedActions.map((action, idx) => (
-                        <div key={idx} className="flex items-start gap-2.5">
-                          <div
-                            className={cn(
-                              "mt-1.5 h-2 w-2 rounded-full shrink-0",
-                              action.priority === 'high'
-                                ? "bg-destructive"
-                                : action.priority === 'medium'
-                                  ? "bg-amber-500"
-                                  : "bg-primary"
-                            )}
-                          />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-foreground">{action.title}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{action.description}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  {/* AI Insight + Manager Action Plan */}
+                  <AiInsightCard employee={currentEmployee} />
 
                   <NudgeCard nudge={nudgeData ?? undefined} />
                 </div>
@@ -775,7 +700,7 @@ function SafetyContent() {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="h-2 w-2 rounded-full bg-[hsl(var(--sentinel-healthy))]" />
-                  <span>Belongingness</span>
+                  <span>Connection Index</span>
                 </div>
               </div>
             </div>
@@ -800,7 +725,7 @@ function SafetyContent() {
                 </div>
                 <div className="bg-card border border-border rounded-lg p-3 flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Belongingness</p>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Connection Index</p>
                     <p className="text-xs text-muted-foreground">vs last week</p>
                   </div>
                   <div className={cn("flex items-center gap-1 text-sm font-semibold tabular-nums",

@@ -515,7 +515,7 @@ function EmployeeDashboardContent() {
                   <div className="flex-1 space-y-3">
                     {[
                       { label: "Work velocity", severity: Math.min(velocity ?? 50, 100), color: velocity && velocity > 60 ? "bg-[hsl(var(--sentinel-elevated))]" : "bg-accent" },
-                      { label: "Belonging gap", severity: belongingness ?? 50, color: "bg-primary" },
+                      { label: "Connection gap", severity: belongingness ?? 50, color: "bg-primary" },
                       { label: "Recovery time", severity: 30, color: "bg-accent" },
                     ].map((factor) => (
                       <div key={factor.label}>

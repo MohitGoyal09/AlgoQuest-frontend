@@ -128,8 +128,8 @@ These are the gaming vectors that a sharp judge (or a sharp employee) will ident
 
 ### README-only commits
 **The attack:** Employee pads commit count by making trivial README edits.
-**Our defense:** Talent Scout tracks `files_changed` metadata. A commit touching 1 file with 2 lines changed scores differently than a commit touching 15 files with 200 lines changed. We don't read the content, but file count and change volume are metadata we do capture.
-**Remaining gap:** Someone could make meaningfully-sized but still trivial changes. Weighted event scoring (roadmap) will partially address this.
+**Our defense:** Weighted event scoring: `min(files_changed * log1p(additions + deletions), 5.0)`. A 1-file, 2-line README edit scores 0.5. A 15-file, 200-line refactor scores 4.6. Trivial commits barely move the needle.
+**Remaining gap:** Someone could make meaningfully-sized but still trivial changes (auto-generated code, copy-paste). Content analysis would catch this, but we don't read content. Accept this tradeoff.
 
 ### PR rubber stamps
 **The attack:** Reviewer approves PRs instantly without actually reviewing.
@@ -148,8 +148,8 @@ These are the gaming vectors that a sharp judge (or a sharp employee) will ident
 
 ### Multi-source signal strength
 **The concern:** Some employees only use one or two of our signal sources (e.g., a designer who doesn't write code).
-**Our defense:** Currently, we require three convergent signals. This means we simply can't analyze people who only appear in one or two sources.
-**Remaining gap:** This is a real coverage gap. Future: `source_count` confidence multiplier -- alerts from 5 sources weighted higher than alerts from 3 sources, and we set a minimum source threshold below which we don't generate alerts at all.
+**Our defense:** Multi-source confidence multiplier: `R-squared * min(source_count / 3.0, 1.0)`. Single-source predictions get 67% confidence penalty. Two sources get 33% penalty. Three or more sources get full confidence. This means predictions from thin data are automatically flagged as lower confidence.
+**Remaining gap:** We still generate predictions from single-source data (with low confidence), rather than refusing entirely. A minimum source threshold for alert generation is a potential improvement.
 
 ---
 
@@ -157,20 +157,20 @@ These are the gaming vectors that a sharp judge (or a sharp employee) will ident
 
 These are the concrete technical investments that move us from "interesting hackathon project" to "defensible product."
 
-### 1. Weighted event scoring
-**What:** `files_changed * log(additions + deletions)` as a commit quality proxy.
+### 1. Weighted event scoring -- SHIPPED
+**What:** `files_changed * log1p(additions + deletions)` capped at 5.0 as a commit quality proxy.
 **Why:** Raw commit count is too gameable. Weighting by change volume makes trivial commits worth less without reading content.
-**Effort:** Small. Metadata already collected, just need the scoring formula in the aggregation layer.
+**Status:** Implemented in `safety_valve.py:289`. A README typo (score 0.5) now weighs differently from a 15-file refactor (score 4.6).
 
-### 2. Multi-source confidence multiplier
-**What:** Alerts from more signal sources get higher confidence scores. 5-source convergence > 3-source convergence.
-**Why:** More independent signals confirming the same pattern is stronger evidence. Also lets us set a minimum source threshold for alert generation.
-**Effort:** Medium. Need to refactor the alert scoring pipeline to be source-count-aware.
+### 2. Multi-source confidence multiplier -- SHIPPED
+**What:** `R-squared * min(source_count / 3.0, 1.0)`. Single-source predictions penalized by 67%.
+**Why:** More independent signals confirming the same pattern is stronger evidence. One source = 33% confidence multiplier, three sources = 100%.
+**Status:** Implemented in `safety_valve.py:158-176`. Sources auto-detected from event types and metadata.
 
-### 3. Shadow deployment framework
-**What:** Run Sentinel alongside existing HR tools for 6+ months. Compare our alerts against actual attrition outcomes. Build our own accuracy numbers.
-**Why:** We can't claim accuracy without this. Qualtrics has 73% historical accuracy. We need our own number, whatever it turns out to be.
-**Effort:** Large. Need a design partner willing to run both systems. Need to build the comparison analytics. 6-month minimum timeline.
+### 3. Shadow deployment framework -- SHIPPED
+**What:** POST actual departures, compare against Sentinel's predictions, track accuracy over time.
+**Why:** We can't claim accuracy without this. Qualtrics has 73% historical accuracy. We need our own number.
+**Status:** Implemented at `POST /api/v1/shadow/actual-departure` and `GET /api/v1/shadow/stats`. Needs 6+ months of real-world data to produce meaningful accuracy numbers.
 
 ### 4. HRIS integration
 **What:** Pull tenure, role, level, team, and (with consent) compensation data from Workday/BambooHR/Rippling.

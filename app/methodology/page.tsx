@@ -78,10 +78,10 @@ function MethodologyContent() {
                 </div>
 
                 <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
-                  <h4 className="text-xs font-medium text-emerald-400 uppercase tracking-wider mb-1">Belongingness</h4>
-                  <p className="text-sm text-foreground/80">Social engagement via reply rate and mention frequency</p>
-                  <code className="text-xs text-muted-foreground/70 block mt-1">belongingness = (replies + mentions_others) / (2 × total_interactions)</code>
-                  <p className="text-xs text-muted-foreground/70 mt-1">Measures social connection. Low values indicate withdrawal from team communication.</p>
+                  <h4 className="text-xs font-medium text-emerald-400 uppercase tracking-wider mb-1">Connection Index</h4>
+                  <p className="text-sm text-foreground/80">Social engagement through reply rates and mention frequency</p>
+                  <code className="text-xs text-muted-foreground/70 block mt-1">connection_index = (replies + mentions_others) / (2 × total_interactions)</code>
+                  <p className="text-xs text-muted-foreground/70 mt-1">Connection Index measures social engagement through reply rates and mention frequency — behavioral signals that indicate whether someone is connected to their team or withdrawing.</p>
                 </div>
 
                 <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
@@ -97,11 +97,11 @@ function MethodologyContent() {
                 <div className="space-y-1 text-sm">
                   <div className="flex items-center gap-2">
                     <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-xs">CRITICAL</Badge>
-                    <span className="text-muted-foreground">velocity &gt; 2.5 AND belongingness &lt; 0.3 AND entropy &gt; 1.5</span>
+                    <span className="text-muted-foreground">velocity &gt; 2.5 AND sentiment_index &lt; 0.3 AND entropy &gt; 1.5</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">ELEVATED</Badge>
-                    <span className="text-muted-foreground">velocity &gt; 1.5 OR belongingness &lt; 0.4</span>
+                    <span className="text-muted-foreground">velocity &gt; 1.5 OR sentiment_index &lt; 0.4</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs">LOW</Badge>

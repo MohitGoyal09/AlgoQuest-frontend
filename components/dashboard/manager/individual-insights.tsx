@@ -100,7 +100,7 @@ export function IndividualInsights({
         id: 6,
         type: "positive",
         title: "Strong Team Connection",
-        description: `Belongingness score of ${(employee.belongingness_score * 100).toFixed(0)}/100 reflects healthy team integration.`,
+        description: `Connection index of ${(employee.belongingness_score * 100).toFixed(0)}/100 reflects healthy team integration.`,
         severity: "low",
         timestamp: "This week",
       })
@@ -278,12 +278,12 @@ export function IndividualInsights({
 
         <Card className="bg-card/50 backdrop-blur-sm border-border">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Belongingness</CardTitle>
+            <CardTitle className="text-sm font-medium">Connection Index</CardTitle>
             <Shield className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-xl font-semibold">{(employee.belongingness_score * 100).toFixed(0)}/100</div>
-            <p className="text-xs text-muted-foreground mt-1">Sentiment analysis score</p>
+            <p className="text-xs text-muted-foreground mt-1">Social connection score</p>
             <div className="h-2 w-full bg-muted rounded-full mt-2 overflow-hidden">
               <div className="h-full" style={{ width: belongingnessWidth, backgroundColor: 'hsl(var(--sentinel-info))' }} />
             </div>
@@ -349,7 +349,7 @@ export function IndividualInsights({
                 <div className="p-4 rounded-lg border" style={{ backgroundColor: 'hsl(var(--sentinel-info) / 0.05)', borderColor: 'hsl(var(--sentinel-info) / 0.2)' }}>
                   <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'hsl(var(--sentinel-info))' }}>Positive Signal</p>
                   <p className="text-sm font-medium text-foreground">Strong Collaboration</p>
-                  <p className="text-xs text-muted-foreground mt-1">High belongingness score.</p>
+                  <p className="text-xs text-muted-foreground mt-1">High connection index.</p>
                 </div>
               )}
             </div>

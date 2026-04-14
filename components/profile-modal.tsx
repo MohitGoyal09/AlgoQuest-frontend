@@ -112,7 +112,7 @@ export function ProfileModal({ userHash, open, onOpenChange }: ProfileModalProps
                 <div className="grid grid-cols-4 gap-3">
                   {[
                     { label: "Velocity", value: data.risk.velocity.toFixed(1), sub: "pts/week" },
-                    { label: "Belonging", value: `${(data.risk.belongingness_score * 100).toFixed(0)}%`, sub: "integration" },
+                    { label: "Connection Index", value: `${(data.risk.belongingness_score * 100).toFixed(0)}%`, sub: "integration" },
                     { label: "Attrition", value: `${(data.risk.attrition_probability * 100).toFixed(0)}%`, sub: "30-day risk" },
                     { label: "Confidence", value: `${(data.risk.confidence * 100).toFixed(0)}%`, sub: "model" },
                   ].map(m => (

@@ -89,7 +89,7 @@ export function ManagerView({ employees, userName }: ManagerViewProps) {
       icon: Brain,
       color: "text-emerald-400",
       text: `${healthy.length} member${healthy.length !== 1 ? "s" : ""} in the healthy zone`,
-      sub: "Belongingness & circadian entropy nominal",
+      sub: "Connection index & circadian entropy nominal",
     },
   ], [critical.length, avgVelocity, healthy.length])
 

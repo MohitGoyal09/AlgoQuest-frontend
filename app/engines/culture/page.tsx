@@ -530,7 +530,7 @@ function CultureContent() {
               ) : (
                 <>
                   <div className="grid grid-cols-5 gap-2 pb-2 border-b border-border/50 mt-1">
-                    {["Member", "Risk", "Belongingness", "Velocity", "Confidence"].map((h) => (
+                    {["Member", "Risk", "Connection Index", "Velocity", "Confidence"].map((h) => (
                       <span key={h} className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{h}</span>
                     ))}
                   </div>
@@ -539,7 +539,7 @@ function CultureContent() {
                       <div key={u.user_hash} className="grid grid-cols-5 gap-2 py-2.5 hover:bg-muted/50 transition-colors duration-100 cursor-pointer">
                         <span className="text-sm text-foreground truncate">{u.name ?? u.user_hash.slice(0, 12)}</span>
                         <span><RiskBadge level={toRiskLevel(u.risk_level)} /></span>
-                        {/* Belongingness: use real belongingness_score from API */}
+                        {/* Connection Index: use real belongingness_score from API */}
                         <span className="text-sm tabular-nums text-foreground">
                           {u.belongingness_score != null && u.belongingness_score > 0
                             ? `${(u.belongingness_score * 100).toFixed(0)}%`

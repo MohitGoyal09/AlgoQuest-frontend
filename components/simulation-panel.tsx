@@ -42,7 +42,7 @@ const personas = [
 
 const injectionTypes = [
   { id: "late_commit", label: "Late Night Commit", icon: Zap, impact: "Increases velocity + entropy" },
-  { id: "missed_standup", label: "Missed Standup", icon: AlertTriangle, impact: "Reduces belongingness" },
+  { id: "missed_standup", label: "Missed Standup", icon: AlertTriangle, impact: "Reduces connection index" },
   { id: "weekend_work", label: "Weekend Work", icon: Zap, impact: "Adds overwork indicator" },
   { id: "pr_review", label: "Helpful PR Review", icon: Beaker, impact: "Increases unblocking count" },
 ]

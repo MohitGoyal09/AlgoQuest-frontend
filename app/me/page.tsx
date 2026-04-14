@@ -370,10 +370,10 @@ function MePageContent() {
             </p>
           </div>
 
-          {/* Belongingness */}
+          {/* Connection Index */}
           <div className="metric-card">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Belonging</p>
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Connection</p>
               <ShieldCheck className="h-3.5 w-3.5" style={{ color: "hsl(var(--sentinel-healthy) / 0.5)" }} />
             </div>
             <p className="text-xl font-semibold text-foreground font-mono tabular-nums">
@@ -425,7 +425,7 @@ function MePageContent() {
                   </div>
                 </div>
               ) : (
-                <VelocityChart history={history as HistoryPoint[]} title="Work Velocity vs. Belongingness (30 Days)" />
+                <VelocityChart history={history as HistoryPoint[]} title="Work Velocity vs. Connection Index (30 Days)" />
               )}
             </section>
 

@@ -323,7 +323,7 @@ export function BurnoutPrediction({ riskData, history }: BurnoutPredictionProps)
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-xs text-muted-foreground">Belongingness</span>
+                  <span className="text-xs text-muted-foreground">Connection Index</span>
                    <span className="text-xs font-mono text-foreground">
                     {riskData?.belongingness_score?.toFixed(2) || "—"}
                   </span>

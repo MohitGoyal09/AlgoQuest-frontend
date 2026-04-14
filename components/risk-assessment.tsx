@@ -137,7 +137,7 @@ export function RiskAssessment({ employee }: RiskAssessmentProps) {
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Users className="h-3.5 w-3.5" />
-                <span>Belongingness</span>
+                <span>Connection Index</span>
               </div>
               <span
                 className={cn(

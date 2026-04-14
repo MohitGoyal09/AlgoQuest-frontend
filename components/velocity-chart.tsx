@@ -34,7 +34,7 @@ function CustomTooltip({
       {payload.map((item) => (
         <div key={item.dataKey} className="flex items-center gap-2 text-xs">
           <span className="text-muted-foreground">
-            {item.dataKey === "velocity" ? "Velocity" : "Belongingness"}:
+            {item.dataKey === "velocity" ? "Velocity" : "Connection Index"}:
           </span>
           <span className="font-mono font-semibold text-foreground">{item.value}</span>
         </div>
@@ -122,7 +122,7 @@ export function VelocityChart({ history, title = "Risk Velocity (30 Days)" }: Ve
           </div>
           <div className="flex items-center gap-2">
             <span className="h-0.5 w-4 rounded bg-[hsl(var(--sentinel-healthy))]" />
-            <span className="text-[11px] text-muted-foreground">Belongingness</span>
+            <span className="text-[11px] text-muted-foreground">Connection Index</span>
           </div>
         </div>
       </CardContent>

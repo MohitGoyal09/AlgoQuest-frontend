@@ -48,7 +48,7 @@ export function TeamRoster({ employees }: TeamRosterProps) {
             <TableHead className="w-[100px]">User Hash</TableHead>
             <TableHead>Role</TableHead>
             <TableHead>Burnout Risk</TableHead>
-            <TableHead>Belongingness</TableHead>
+            <TableHead>Connection Index</TableHead>
             <TableHead>Velocity</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
