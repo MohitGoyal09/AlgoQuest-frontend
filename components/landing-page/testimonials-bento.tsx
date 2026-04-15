@@ -5,6 +5,49 @@ import { Quote, TrendingUp, Users, Shield } from "lucide-react"
 
 const customEase = [0.32, 0.72, 0, 1] as [number, number, number, number]
 
+const colorClasses: Record<string, { bg: string; border: string; text: string; gradient: string; textMuted: string; hoverGlow: string; iconBg: string; iconBorder: string }> = {
+  emerald: {
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/20",
+    text: "text-emerald-400",
+    gradient: "from-emerald-500/15 via-emerald-500/5 to-transparent",
+    textMuted: "text-emerald-400/40",
+    hoverGlow: "from-emerald-500/[0.03]",
+    iconBg: "bg-emerald-500/5",
+    iconBorder: "border-emerald-500/10",
+  },
+  amber: {
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/20",
+    text: "text-amber-400",
+    gradient: "from-amber-500/15 via-amber-500/5 to-transparent",
+    textMuted: "text-amber-400/40",
+    hoverGlow: "from-amber-500/[0.03]",
+    iconBg: "bg-amber-500/5",
+    iconBorder: "border-amber-500/10",
+  },
+  rose: {
+    bg: "bg-rose-500/10",
+    border: "border-rose-500/20",
+    text: "text-rose-400",
+    gradient: "from-rose-500/15 via-rose-500/5 to-transparent",
+    textMuted: "text-rose-400/40",
+    hoverGlow: "from-rose-500/[0.03]",
+    iconBg: "bg-rose-500/5",
+    iconBorder: "border-rose-500/10",
+  },
+  blue: {
+    bg: "bg-blue-500/10",
+    border: "border-blue-500/20",
+    text: "text-blue-400",
+    gradient: "from-blue-500/15 via-blue-500/5 to-transparent",
+    textMuted: "text-blue-400/40",
+    hoverGlow: "from-blue-500/[0.03]",
+    iconBg: "bg-blue-500/5",
+    iconBorder: "border-blue-500/10",
+  },
+}
+
 const testimonials = [
   {
     quote: "Sentinel's Talent Scout found Emma — a mid-level dev with modest output but the highest betweenness centrality. She bridges Engineering and Design. If she left, four people lose their unblocker.",
@@ -104,11 +147,11 @@ export function TestimonialsBento() {
                 className={`group ${isLarge ? 'md:row-span-1' : ''}`}
               >
                 {/* Double-bezel container */}
-                <div className={`p-[2px] rounded-[2rem] bg-gradient-to-br from-${testimonial.color}-500/15 via-${testimonial.color}-500/5 to-transparent h-full`}>
+                <div className={`p-[2px] rounded-[2rem] bg-gradient-to-br ${colorClasses[testimonial.color].gradient} h-full`}>
                   <div className="relative h-full rounded-[calc(2rem-2px)] bg-[#0a0a0a]/90 border border-white/[0.06] p-8 md:p-10 overflow-hidden">
                     {/* Quote icon */}
-                    <div className={`absolute top-6 right-6 w-12 h-12 rounded-full bg-${testimonial.color}-500/5 border border-${testimonial.color}-500/10 flex items-center justify-center`}>
-                      <Quote className={`w-5 h-5 text-${testimonial.color}-400/40`} />
+                    <div className={`absolute top-6 right-6 w-12 h-12 rounded-full ${colorClasses[testimonial.color].iconBg} border ${colorClasses[testimonial.color].iconBorder} flex items-center justify-center`}>
+                      <Quote className={`w-5 h-5 ${colorClasses[testimonial.color].textMuted}`} />
                     </div>
 
                     {/* Content */}
@@ -131,10 +174,10 @@ export function TestimonialsBento() {
 
                         {/* Metric badge */}
                         <div className="hidden sm:block text-right">
-                          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-${testimonial.color}-500/10 border border-${testimonial.color}-500/20`}>
-                            <IconComponent className={`w-4 h-4 text-${testimonial.color}-400`} />
+                          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${colorClasses[testimonial.color].bg} border ${colorClasses[testimonial.color].border}`}>
+                            <IconComponent className={`w-4 h-4 ${colorClasses[testimonial.color].text}`} />
                             <div>
-                              <div className={`text-[13px] font-semibold text-${testimonial.color}-400`}>
+                              <div className={`text-[13px] font-semibold ${colorClasses[testimonial.color].text}`}>
                                 {testimonial.metricValue}
                               </div>
                               <div className="text-[10px] text-white/40 tracking-wider uppercase">
@@ -147,7 +190,7 @@ export function TestimonialsBento() {
                     </div>
 
                     {/* Hover gradient */}
-                    <div className={`absolute inset-0 bg-gradient-to-t from-${testimonial.color}-500/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
+                    <div className={`absolute inset-0 bg-gradient-to-t ${colorClasses[testimonial.color].hoverGlow} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
                   </div>
                 </div>
               </motion.div>

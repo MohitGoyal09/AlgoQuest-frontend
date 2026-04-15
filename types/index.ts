@@ -54,6 +54,8 @@ export interface SafetyValveData {
   belongingness_score: number;
   circadian_entropy: number;
   attrition_probability?: number;
+  sentiment_score?: number | null;
+  sentiment_available?: boolean;
   indicators: Record<string, boolean>;
   nudge_status?: string;
 }
@@ -421,6 +423,8 @@ export interface Employee {
   belongingness_score: number;
   circadian_entropy: number;
   attrition_probability: number;
+  sentiment_score?: number | null;
+  sentiment_available?: boolean;
   updated_at: string;
   persona: string;
   indicators: RiskIndicators;

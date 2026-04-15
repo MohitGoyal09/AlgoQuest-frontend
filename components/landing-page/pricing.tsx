@@ -7,6 +7,24 @@ import Link from "next/link"
 
 const customEase = [0.32, 0.72, 0, 1] as [number, number, number, number]
 
+const colorClasses: Record<string, { bg: string; border: string; text: string }> = {
+  emerald: {
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/20",
+    text: "text-emerald-400",
+  },
+  amber: {
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/20",
+    text: "text-amber-400",
+  },
+  blue: {
+    bg: "bg-blue-500/10",
+    border: "border-blue-500/20",
+    text: "text-blue-400",
+  },
+}
+
 const plans = [
   {
     name: "Starter",
@@ -119,8 +137,8 @@ export function PricingSection() {
                 }`}>
                   {/* Plan header */}
                   <div className="flex items-center gap-3 mb-4">
-                    <div className={`w-10 h-10 rounded-xl bg-${plan.color}-500/10 border border-${plan.color}-500/20 flex items-center justify-center`}>
-                      <plan.icon className={`w-5 h-5 text-${plan.color}-400`} />
+                    <div className={`w-10 h-10 rounded-xl ${colorClasses[plan.color].bg} border ${colorClasses[plan.color].border} flex items-center justify-center`}>
+                      <plan.icon className={`w-5 h-5 ${colorClasses[plan.color].text}`} />
                     </div>
                     <div>
                       <h3 className="text-[18px] font-semibold text-white">{plan.name}</h3>
@@ -141,8 +159,8 @@ export function PricingSection() {
                   <ul className="space-y-3 mb-8">
                     {plan.features.map((feature, j) => (
                       <li key={j} className="flex items-start gap-3">
-                        <div className={`w-5 h-5 rounded-full bg-${plan.color}-500/10 flex items-center justify-center shrink-0 mt-0.5`}>
-                          <Check className={`w-3 h-3 text-${plan.color}-400`} />
+                        <div className={`w-5 h-5 rounded-full ${colorClasses[plan.color].bg} flex items-center justify-center shrink-0 mt-0.5`}>
+                          <Check className={`w-3 h-3 ${colorClasses[plan.color].text}`} />
                         </div>
                         <span className="text-[14px] text-white/60">{feature}</span>
                       </li>
@@ -175,9 +193,9 @@ export function PricingSection() {
         >
           <p className="text-[14px] text-white/40">
             Need a custom solution?{" "}
-            <Link href="/contact" className="text-emerald-400 hover:text-emerald-300 transition-colors">
+            <a href="mailto:team@sentinel.ai" className="text-emerald-400 hover:text-emerald-300 transition-colors">
               Contact our sales team
-            </Link>
+            </a>
           </p>
         </motion.div>
       </div>

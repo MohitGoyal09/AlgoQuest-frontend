@@ -6,6 +6,45 @@ import { Hash, Calculator, Sparkles, Bell, ArrowRight } from "lucide-react"
 
 const customEase = [0.32, 0.72, 0, 1] as [number, number, number, number]
 
+const colorClasses: Record<string, { bg: string; border: string; text: string; gradient: string; dot: string; hoverGlow: string; textMuted: string }> = {
+  emerald: {
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/20",
+    text: "text-emerald-400",
+    gradient: "from-emerald-500/20 via-emerald-500/5 to-transparent",
+    dot: "bg-emerald-400",
+    hoverGlow: "from-emerald-500/[0.05]",
+    textMuted: "text-emerald-400/60",
+  },
+  amber: {
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/20",
+    text: "text-amber-400",
+    gradient: "from-amber-500/20 via-amber-500/5 to-transparent",
+    dot: "bg-amber-400",
+    hoverGlow: "from-amber-500/[0.05]",
+    textMuted: "text-amber-400/60",
+  },
+  rose: {
+    bg: "bg-rose-500/10",
+    border: "border-rose-500/20",
+    text: "text-rose-400",
+    gradient: "from-rose-500/20 via-rose-500/5 to-transparent",
+    dot: "bg-rose-400",
+    hoverGlow: "from-rose-500/[0.05]",
+    textMuted: "text-rose-400/60",
+  },
+  blue: {
+    bg: "bg-blue-500/10",
+    border: "border-blue-500/20",
+    text: "text-blue-400",
+    gradient: "from-blue-500/20 via-blue-500/5 to-transparent",
+    dot: "bg-blue-400",
+    hoverGlow: "from-blue-500/[0.05]",
+    textMuted: "text-blue-400/60",
+  },
+}
+
 const steps = [
   {
     number: "01",
@@ -101,7 +140,7 @@ export function HowItWorksSection() {
                   style={{ zIndex: steps.length - i }}
                 >
                   {/* Double-bezel card with Z-depth */}
-                  <div className={`p-[2px] rounded-[2rem] bg-gradient-to-br from-${step.color}-500/20 via-${step.color}-500/5 to-transparent h-full`}>
+                  <div className={`p-[2px] rounded-[2rem] bg-gradient-to-br ${colorClasses[step.color].gradient} h-full`}>
                     <div className="relative h-full rounded-[calc(2rem-2px)] bg-[#0a0a0a]/90 border border-white/[0.06] p-8 overflow-hidden">
                       {/* Large background number */}
                       <div className="absolute top-4 right-4 text-[120px] font-bold text-white/[0.02] leading-none select-none">
@@ -112,10 +151,10 @@ export function HowItWorksSection() {
                       <div className="relative z-10">
                         {/* Icon and step number */}
                         <div className="flex items-center justify-between mb-8">
-                          <div className={`w-14 h-14 rounded-2xl bg-${step.color}-500/10 border border-${step.color}-500/20 flex items-center justify-center`}>
-                            <IconComponent className={`w-7 h-7 text-${step.color}-400`} />
+                          <div className={`w-14 h-14 rounded-2xl ${colorClasses[step.color].bg} border ${colorClasses[step.color].border} flex items-center justify-center`}>
+                            <IconComponent className={`w-7 h-7 ${colorClasses[step.color].text}`} />
                           </div>
-                          <span className={`text-[12px] font-mono font-bold tracking-wider text-${step.color}-400/60`}>
+                          <span className={`text-[12px] font-mono font-bold tracking-wider ${colorClasses[step.color].textMuted}`}>
                             {step.number}
                           </span>
                         </div>
@@ -125,9 +164,9 @@ export function HowItWorksSection() {
                         <p className="text-[15px] text-white/40 leading-relaxed mb-6">{step.description}</p>
 
                         {/* Detail pill */}
-                        <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-${step.color}-500/10 border border-${step.color}-500/20`}>
-                          <span className={`w-1.5 h-1.5 rounded-full bg-${step.color}-400`} />
-                          <span className={`text-[11px] font-medium text-${step.color}-400/80`}>{step.detail}</span>
+                        <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${colorClasses[step.color].bg} border ${colorClasses[step.color].border}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${colorClasses[step.color].dot}`} />
+                          <span className={`text-[11px] font-medium ${colorClasses[step.color].textMuted}`}>{step.detail}</span>
                         </div>
                       </div>
 
@@ -139,7 +178,7 @@ export function HowItWorksSection() {
                       )}
 
                       {/* Hover glow */}
-                      <div className={`absolute inset-0 bg-gradient-to-t from-${step.color}-500/[0.05] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
+                      <div className={`absolute inset-0 bg-gradient-to-t ${colorClasses[step.color].hoverGlow} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
                     </div>
                   </div>
                 </motion.div>
@@ -162,10 +201,10 @@ export function HowItWorksSection() {
                 className="p-6 rounded-2xl bg-[#0a0a0a] border border-white/[0.06]"
               >
                 <div className="flex items-center gap-4 mb-4">
-                  <div className={`w-12 h-12 rounded-xl bg-${step.color}-500/10 border border-${step.color}-500/20 flex items-center justify-center`}>
-                    <IconComponent className={`w-6 h-6 text-${step.color}-400`} />
+                  <div className={`w-12 h-12 rounded-xl ${colorClasses[step.color].bg} border ${colorClasses[step.color].border} flex items-center justify-center`}>
+                    <IconComponent className={`w-6 h-6 ${colorClasses[step.color].text}`} />
                   </div>
-                  <span className={`text-[11px] font-mono font-bold text-${step.color}-400/60`}>{step.number}</span>
+                  <span className={`text-[11px] font-mono font-bold ${colorClasses[step.color].textMuted}`}>{step.number}</span>
                 </div>
                 <h3 className="text-[20px] font-bold text-white/90 mb-2">{step.title}</h3>
                 <p className="text-[14px] text-white/40 leading-relaxed">{step.description}</p>

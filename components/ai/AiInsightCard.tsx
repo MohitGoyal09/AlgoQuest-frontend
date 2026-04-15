@@ -44,6 +44,10 @@ function generateNarrative(employee: Employee): string {
       parts.push("Schedule patterns have become erratic with irregular work hours detected.")
     }
 
+    if (employee.sentiment_available && employee.sentiment_score != null && employee.sentiment_score < -0.3) {
+      parts.push("Communication tone analysis reinforces this concern -- recent messages trend negative, suggesting frustration or disengagement.")
+    }
+
     parts.push("Immediate intervention is recommended before patterns become entrenched.")
     return parts.join(" ")
   }
@@ -63,6 +67,10 @@ function generateNarrative(employee: Employee): string {
 
     if (circadian_entropy > 1.0) {
       parts.push("Schedule regularity has decreased, which often precedes more serious patterns.")
+    }
+
+    if (employee.sentiment_available && employee.sentiment_score != null && employee.sentiment_score < -0.3) {
+      parts.push("Communication tone is also trending negative, adding weight to the early warning signals.")
     }
 
     parts.push("Monitor closely over the next 7 days and consider preventive check-in.")

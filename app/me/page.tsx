@@ -17,6 +17,7 @@ import {
   Users,
   Clock,
   Lock,
+  MessageSquare,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -45,6 +46,7 @@ interface RiskData {
   velocity: number | null; risk_level: string; confidence: number
   thwarted_belongingness: number | null; attrition_probability: number | null
   circadian_entropy: number | null; updated_at: string | null
+  sentiment_score?: number | null; sentiment_available?: boolean
 }
 
 interface AuditEntry { action: string; timestamp: string; details: unknown }
@@ -154,6 +156,24 @@ function entropySignalLevel(e: number | null): "healthy" | "warning" | "critical
   return "critical"
 }
 
+function sentimentSignalLevel(s: number): "healthy" | "warning" | "critical" {
+  if (s >= 0.3) return "healthy"
+  if (s >= -0.3) return "warning"
+  return "critical"
+}
+
+function sentimentLabel(s: number): string {
+  if (s >= 0.3) return "Positive"
+  if (s >= -0.3) return "Neutral"
+  return "Negative"
+}
+
+function sentimentDescription(s: number): string {
+  if (s >= 0.3) return "Healthy communication tone"
+  if (s >= -0.3) return "Mixed signals detected"
+  return "Negative tone trending"
+}
+
 function formatAuditAction(action: string): string {
   return action.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
 }
@@ -246,6 +266,8 @@ function MePageContent() {
   const connection = data.risk?.thwarted_belongingness ?? null
   const confidence = data.risk?.confidence ?? 0
   const entropy = data.risk?.circadian_entropy ?? null
+  const sentimentScore = data.risk?.sentiment_score ?? null
+  const sentimentAvail = data.risk?.sentiment_available ?? false
   const connectionPct = connection !== null ? Math.round(connection * 100) : null
   const confidencePct = Math.round(confidence * 100)
 
@@ -416,7 +438,7 @@ function MePageContent() {
               <Zap className="h-4 w-4 text-primary" />
               Your Signals
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className={`grid grid-cols-1 gap-4 ${sentimentAvail ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
               {/* Velocity Signal */}
               <div className="bg-card border border-border rounded-xl p-5">
                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-3">
@@ -472,6 +494,21 @@ function MePageContent() {
                   </>
                 )}
               </div>
+
+              {/* Sentiment Signal */}
+              {sentimentAvail && sentimentScore !== null && (
+                <div className="bg-card border border-border rounded-xl p-5">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-3">
+                    Communication Tone
+                  </p>
+                  <p className={`text-2xl font-semibold font-mono tabular-nums leading-none ${signalColor(sentimentSignalLevel(sentimentScore))}`}>
+                    {sentimentLabel(sentimentScore)}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-2">
+                    {sentimentDescription(sentimentScore)}
+                  </p>
+                </div>
+              )}
             </div>
           </section>
 

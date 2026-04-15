@@ -6,6 +6,41 @@ import { TiltCard } from "./tilt-card"
 
 const customEase = [0.32, 0.72, 0, 1] as [number, number, number, number]
 
+const colorClasses: Record<string, { bg: string; border: string; text: string; gradient: string; dot: string; hoverGlow: string }> = {
+  emerald: {
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/20",
+    text: "text-emerald-400",
+    gradient: "from-emerald-500/20 via-emerald-500/5 to-transparent",
+    dot: "bg-emerald-400",
+    hoverGlow: "from-emerald-500/[0.08]",
+  },
+  amber: {
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/20",
+    text: "text-amber-400",
+    gradient: "from-amber-500/20 via-amber-500/5 to-transparent",
+    dot: "bg-amber-400",
+    hoverGlow: "from-amber-500/[0.08]",
+  },
+  rose: {
+    bg: "bg-rose-500/10",
+    border: "border-rose-500/20",
+    text: "text-rose-400",
+    gradient: "from-rose-500/20 via-rose-500/5 to-transparent",
+    dot: "bg-rose-400",
+    hoverGlow: "from-rose-500/[0.08]",
+  },
+  blue: {
+    bg: "bg-blue-500/10",
+    border: "border-blue-500/20",
+    text: "text-blue-400",
+    gradient: "from-blue-500/20 via-blue-500/5 to-transparent",
+    dot: "bg-blue-400",
+    hoverGlow: "from-blue-500/[0.08]",
+  },
+}
+
 // ─── Living ECG Waveform ───
 function LivingECG({ isCritical = true }: { isCritical?: boolean }) {
   // Generate ECG path with realistic P-QRS-T waves
@@ -450,20 +485,20 @@ export function ThreeEnginesSection() {
                 style={{ perspective: "1000px" }}
               >
                 <TiltCard intensity={8} className="h-full">
-                  <div className={`h-full p-[2px] rounded-[2rem] bg-gradient-to-br from-${engine.color}-500/20 via-${engine.color}-500/5 to-transparent group`}>
+                  <div className={`h-full p-[2px] rounded-[2rem] bg-gradient-to-br ${colorClasses[engine.color].gradient} group`}>
                     <div className="relative h-full rounded-[calc(2rem-2px)] bg-[#0a0a0a] border border-white/[0.06] overflow-hidden">
                       {/* Header */}
                       <div className="p-6 md:p-8 border-b border-white/[0.04]">
                         <div className="flex items-start justify-between mb-4">
                           <motion.div 
-                            className={`w-14 h-14 rounded-2xl bg-${engine.color}-500/10 border border-${engine.color}-500/20 flex items-center justify-center`}
+                            className={`w-14 h-14 rounded-2xl ${colorClasses[engine.color].bg} border ${colorClasses[engine.color].border} flex items-center justify-center`}
                             whileHover={{ scale: 1.1, rotate: 5 }}
                             transition={{ type: "spring", stiffness: 400 }}
                           >
-                            <IconComponent className={`w-7 h-7 text-${engine.color}-400`} />
+                            <IconComponent className={`w-7 h-7 ${colorClasses[engine.color].text}`} />
                           </motion.div>
-                          <div className={`px-3 py-1.5 rounded-full bg-${engine.color}-500/10 border border-${engine.color}-500/20`}>
-                            <span className={`text-[10px] font-semibold tracking-wider text-${engine.color}-400 uppercase`}>
+                          <div className={`px-3 py-1.5 rounded-full ${colorClasses[engine.color].bg} border ${colorClasses[engine.color].border}`}>
+                            <span className={`text-[10px] font-semibold tracking-wider ${colorClasses[engine.color].text} uppercase`}>
                               {engine.subtitle}
                             </span>
                           </div>
@@ -482,17 +517,17 @@ export function ThreeEnginesSection() {
                       <div className="p-4 flex items-center justify-between border-t border-white/[0.04]">
                         <div className="flex items-center gap-2">
                           <motion.div
-                            className={`w-2 h-2 rounded-full bg-${engine.color}-400`}
+                            className={`w-2 h-2 rounded-full ${colorClasses[engine.color].dot}`}
                             animate={{ scale: [1, 1.2, 1], opacity: [1, 0.5, 1] }}
                             transition={{ duration: 1.5, repeat: Infinity }}
                           />
                           <span className="text-[11px] text-white/40 tracking-wider uppercase">Live</span>
                         </div>
-                        <div className="text-[11px] text-white/30 font-mono">{Math.floor(Math.random() * 50 + 150)}ms</div>
+                        <div className="text-[11px] text-white/30 font-mono">185ms</div>
                       </div>
 
                       {/* Hover glow */}
-                      <div className={`absolute inset-0 bg-gradient-to-t from-${engine.color}-500/[0.08] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
+                      <div className={`absolute inset-0 bg-gradient-to-t ${colorClasses[engine.color].hoverGlow} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
                     </div>
                   </div>
                 </TiltCard>

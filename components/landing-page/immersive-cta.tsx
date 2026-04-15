@@ -43,24 +43,30 @@ export function ImmersiveCTA() {
           ))}
         </motion.div>
 
-        {/* Floating particles */}
+        {/* Floating particles (deterministic positions to avoid hydration mismatch) */}
         <div className="absolute inset-0">
-          {[...Array(20)].map((_, i) => (
+          {[
+            { left: 5, top: 12 }, { left: 15, top: 45 }, { left: 22, top: 78 }, { left: 31, top: 23 },
+            { left: 38, top: 56 }, { left: 44, top: 8 }, { left: 52, top: 67 }, { left: 58, top: 34 },
+            { left: 65, top: 89 }, { left: 72, top: 18 }, { left: 78, top: 52 }, { left: 83, top: 71 },
+            { left: 88, top: 29 }, { left: 93, top: 61 }, { left: 10, top: 85 }, { left: 27, top: 41 },
+            { left: 47, top: 92 }, { left: 62, top: 15 }, { left: 75, top: 38 }, { left: 90, top: 74 },
+          ].map((pos, i) => (
             <motion.div
               key={i}
               className="absolute w-1 h-1 rounded-full bg-emerald-400/30"
               style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
+                left: `${pos.left}%`,
+                top: `${pos.top}%`,
               }}
               animate={{
                 y: [0, -30, 0],
                 opacity: [0.2, 0.5, 0.2],
               }}
               transition={{
-                duration: 3 + Math.random() * 2,
+                duration: 3 + (i % 5) * 0.4,
                 repeat: Infinity,
-                delay: Math.random() * 2,
+                delay: (i % 7) * 0.3,
                 ease: "easeInOut",
               }}
             />
@@ -106,7 +112,7 @@ export function ImmersiveCTA() {
           {/* CTA Buttons with extreme hover physics */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
             {/* Primary CTA - Double-bezel with magnetic hover */}
-            <Link href="/demo">
+            <Link href="/login">
               <motion.button
                 className="group relative p-[2px] rounded-full"
                 whileHover={{ scale: 1.02 }}
@@ -114,14 +120,14 @@ export function ImmersiveCTA() {
               >
                 {/* Outer gradient ring */}
                 <div className="absolute inset-0 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400 opacity-80 group-hover:opacity-100 transition-opacity duration-500" />
-                
+
                 {/* Inner button */}
                 <div className="relative flex items-center gap-3 px-10 py-5 rounded-full bg-[#050505] text-[17px] font-semibold text-white border border-emerald-500/30 overflow-hidden">
                   {/* Hover fill */}
                   <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  
-                  <span className="relative z-10">Try Interactive Demo</span>
-                  
+
+                  <span className="relative z-10">Get Started</span>
+
                   {/* Magnetic icon container */}
                   <div className="relative z-10 w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center group-hover:bg-emerald-500/30 group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]">
                     <Play className="w-5 h-5 text-emerald-400 fill-emerald-400" />

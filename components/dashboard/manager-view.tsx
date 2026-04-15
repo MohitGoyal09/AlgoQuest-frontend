@@ -457,6 +457,25 @@ export function ManagerView({ employees, userName }: ManagerViewProps) {
                   </div>
                 </div>
 
+                {emp.sentiment_available && emp.sentiment_score != null && (
+                  <div className="mt-6 flex items-center gap-3 rounded-lg bg-muted/20 px-4 py-3">
+                    <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Communication Tone</p>
+                      <p className={`text-sm font-semibold mt-0.5 ${
+                        emp.sentiment_score < -0.3 ? "text-red-400"
+                          : emp.sentiment_score < 0.3 ? "text-amber-400"
+                            : "text-emerald-400"
+                      }`}>
+                        {emp.sentiment_score < -0.3 ? "Negative" : emp.sentiment_score < 0.3 ? "Neutral" : "Positive"}
+                      </p>
+                    </div>
+                    <span className="text-xs text-muted-foreground/60 tabular-nums font-mono shrink-0">
+                      {emp.sentiment_score.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+
                 {indicators.length > 0 && (
                   <div className="mt-8">
                     <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3">Active Indicators</p>

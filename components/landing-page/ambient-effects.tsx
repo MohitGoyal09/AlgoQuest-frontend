@@ -93,23 +93,6 @@ export function AmbientEffects() {
 
       {/* Global cursor glow - follows mouse */}
       <CursorGlow />
-
-      <style jsx global>{`
-        @keyframes grain {
-          0%, 100% { opacity: 0.015; }
-          50% { opacity: 0.025; }
-        }
-        @keyframes lightLeak {
-          0%, 100% { 
-            background: radial-gradient(ellipse at 30% 20%, rgba(255,107,43,0.03) 0%, transparent 50%),
-                        radial-gradient(ellipse at 70% 80%, rgba(16,185,129,0.02) 0%, transparent 50%);
-          }
-          50% { 
-            background: radial-gradient(ellipse at 70% 30%, rgba(255,107,43,0.04) 0%, transparent 50%),
-                        radial-gradient(ellipse at 30% 70%, rgba(16,185,129,0.03) 0%, transparent 50%);
-          }
-        }
-      `}</style>
     </>
   )
 }

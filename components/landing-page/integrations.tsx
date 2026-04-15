@@ -15,6 +15,34 @@ import {
 
 const customEase = [0.32, 0.72, 0, 1] as [number, number, number, number]
 
+const colorClasses: Record<string, { bg: string; border: string; text: string }> = {
+  emerald: {
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/20",
+    text: "text-emerald-400",
+  },
+  amber: {
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/20",
+    text: "text-amber-400",
+  },
+  blue: {
+    bg: "bg-blue-500/10",
+    border: "border-blue-500/20",
+    text: "text-blue-400",
+  },
+  orange: {
+    bg: "bg-orange-500/10",
+    border: "border-orange-500/20",
+    text: "text-orange-400",
+  },
+  white: {
+    bg: "bg-white/10",
+    border: "border-white/20",
+    text: "text-white",
+  },
+}
+
 const integrations = [
   { name: "GitHub", icon: Github, category: "Code", color: "white" },
   { name: "Slack", icon: MessageSquare, category: "Communication", color: "emerald" },
@@ -63,8 +91,8 @@ export function IntegrationsSection() {
             >
               <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.04] transition-all duration-300">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className={`w-10 h-10 rounded-xl bg-${integration.color}-500/10 border border-${integration.color}-500/20 flex items-center justify-center`}>
-                    <integration.icon className={`w-5 h-5 text-${integration.color}-400`} />
+                  <div className={`w-10 h-10 rounded-xl ${colorClasses[integration.color].bg} border ${colorClasses[integration.color].border} flex items-center justify-center`}>
+                    <integration.icon className={`w-5 h-5 ${colorClasses[integration.color].text}`} />
                   </div>
                 </div>
                 <h3 className="text-[15px] font-medium text-white/80 group-hover:text-white transition-colors">

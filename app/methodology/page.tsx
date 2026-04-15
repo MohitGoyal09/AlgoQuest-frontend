@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Activity,
   Brain,
+  MessageSquare,
   Network,
   Thermometer,
   Shield,
@@ -97,17 +98,67 @@ function MethodologyContent() {
                 <div className="space-y-1 text-sm">
                   <div className="flex items-center gap-2">
                     <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-xs">CRITICAL</Badge>
-                    <span className="text-muted-foreground">velocity &gt; 2.5 AND sentiment_index &lt; 0.3 AND entropy &gt; 1.5</span>
+                    <span className="text-muted-foreground">velocity &gt; 2.5 AND connection_index &lt; 0.3 AND entropy &gt; 1.5</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">ELEVATED</Badge>
-                    <span className="text-muted-foreground">velocity &gt; 1.5 OR sentiment_index &lt; 0.4</span>
+                    <span className="text-muted-foreground">velocity &gt; 1.5 OR connection_index &lt; 0.4</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs">LOW</Badge>
                     <span className="text-muted-foreground">Everything else</span>
                   </div>
                 </div>
+                <p className="text-xs text-muted-foreground/70 mt-3">
+                  Sentiment analysis provides a supplementary signal that reinforces the three primary signals but does not independently trigger risk level changes.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Sentiment Analysis */}
+          <Card className="border-border/50 bg-card/50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-blue-400" />
+                Sentiment Analysis — Communication Tone
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-foreground/80">
+                Classifies the sentiment of workplace messages (Slack) to detect shifts in
+                communication tone. A sustained negative trend reinforces other burnout signals.
+              </p>
+
+              <div className="space-y-3">
+                <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
+                  <h4 className="text-xs font-medium text-blue-400 uppercase tracking-wider mb-1">Classification</h4>
+                  <p className="text-sm text-foreground/80">Each message is classified as positive, neutral, or negative using Gemini 2.5 Flash</p>
+                  <code className="text-xs text-muted-foreground/70 block mt-1">score: &quot;positive&quot; | &quot;neutral&quot; | &quot;negative&quot;, confidence: 0.0-1.0</code>
+                </div>
+
+                <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
+                  <h4 className="text-xs font-medium text-blue-400 uppercase tracking-wider mb-1">Aggregation</h4>
+                  <p className="text-sm text-foreground/80">Scores are mapped to numeric values and averaged over recent messages</p>
+                  <code className="text-xs text-muted-foreground/70 block mt-1">negative = -1, neutral = 0, positive = +1 → mean(values)</code>
+                  <p className="text-xs text-muted-foreground/70 mt-1">Requires at least 3 sentiment events to produce a score. Below that threshold, sentiment is marked as unavailable.</p>
+                </div>
+
+                <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
+                  <h4 className="text-xs font-medium text-blue-400 uppercase tracking-wider mb-1">Integration</h4>
+                  <p className="text-sm text-foreground/80">Sentiment feeds into Safety Valve as a 4th signal alongside velocity, connection index, and circadian entropy</p>
+                  <p className="text-xs text-muted-foreground/70 mt-1">A negative sentiment score combined with critical risk level strengthens the overall concern assessment.</p>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                <h4 className="text-xs font-medium text-emerald-400 uppercase tracking-wider mb-2">Privacy Guarantee</h4>
+                <p className="text-sm text-muted-foreground">
+                  Message text is <strong className="text-foreground">never stored</strong> in the database.
+                  Text is passed to the classification API, the score is returned, and the text
+                  goes out of scope. Only the numeric score and confidence persist. No message
+                  content is logged, cached, or retained in any form.
+                </p>
               </div>
             </CardContent>
           </Card>

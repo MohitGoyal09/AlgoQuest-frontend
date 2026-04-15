@@ -1,6 +1,6 @@
 "use client"
 
-import { Clock, Users } from "lucide-react"
+import { Clock, MessageSquare, Users } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -175,6 +175,42 @@ export function RiskAssessment({ employee }: RiskAssessmentProps) {
               </span>
             </div>
             <Progress value={Math.min((employee.circadian_entropy / 2) * 100, 100)} className="h-2 bg-muted" />
+          </div>
+
+          {/* Sentiment */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <MessageSquare className="h-3.5 w-3.5" />
+                <span>Communication Tone</span>
+              </div>
+              {employee.sentiment_available && employee.sentiment_score != null ? (
+                <span
+                  className={cn(
+                    "font-mono text-xs font-semibold",
+                    employee.sentiment_score < -0.3
+                      ? "text-[hsl(var(--sentinel-critical))]"
+                      : employee.sentiment_score < 0.3
+                        ? "text-[hsl(var(--sentinel-elevated))]"
+                        : "text-[hsl(var(--sentinel-healthy))]"
+                  )}
+                >
+                  {employee.sentiment_score < -0.3
+                    ? "Negative"
+                    : employee.sentiment_score < 0.3
+                      ? "Neutral"
+                      : "Positive"}
+                </span>
+              ) : (
+                <span className="font-mono text-xs text-muted-foreground/50">N/A</span>
+              )}
+            </div>
+            {employee.sentiment_available && employee.sentiment_score != null && (
+              <Progress
+                value={Math.round(((employee.sentiment_score + 1) / 2) * 100)}
+                className="h-2 bg-muted"
+              />
+            )}
           </div>
         </div>
 
