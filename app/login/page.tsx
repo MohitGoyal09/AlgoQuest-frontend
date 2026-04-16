@@ -188,7 +188,7 @@ function LoginContent() {
 
         {/* Top-left wordmark */}
         <Link href="/" className="relative z-10 flex items-center gap-2.5 p-8 hover:opacity-80 transition-opacity duration-150">
-          <SentinelGlyph size={24} />
+          <Image src="/favicon-sentinel.png" alt="Sentinel" width={32} height={32} className="rounded-lg" />
           <span className="text-2xl font-bold tracking-tight text-foreground">Sentinel</span>
         </Link>
 

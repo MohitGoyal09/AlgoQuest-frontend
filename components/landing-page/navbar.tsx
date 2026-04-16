@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { Shield, Menu, X } from "lucide-react"
+import Image from "next/image"
+import { Menu, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 
@@ -24,17 +25,21 @@ export function LandingNavbar() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+      className={`sticky top-0 left-0 right-0 z-50 transition-all duration-500 ${
         scrolled
-          ? "bg-black/80 backdrop-blur-xl border-b border-white/5 py-4"
-          : "bg-transparent py-6"
+          ? "bg-black/70 backdrop-blur-md border-b border-white/5 py-3"
+          : "bg-transparent py-5"
       }`}
     >
       <div className="w-full px-[5vw] flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 flex items-center justify-center border border-emerald-500/20 group-hover:border-emerald-400/40 transition-all duration-300">
-            <Shield className="h-4 w-4 text-emerald-400" />
-          </div>
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <Image
+            src="/favicon-sentinel.png"
+            alt="Sentinel"
+            width={32}
+            height={32}
+            className="rounded-lg transition-transform duration-200 group-hover:scale-105"
+          />
           <span className="text-lg font-semibold tracking-tight text-white group-hover:text-emerald-100 transition-colors duration-200">
             Sentinel
           </span>
@@ -45,14 +50,14 @@ export function LandingNavbar() {
             <Link
               key={link.href}
               href={link.href}
-              className="relative px-5 py-2.5 text-sm text-white/50 hover:text-white rounded-xl hover:bg-white/5 transition-all duration-200"
+              className="relative px-5 py-2.5 text-sm text-white/50 hover:text-white rounded-xl transition-all duration-200"
               onMouseEnter={() => setHoveredLink(link.href)}
               onMouseLeave={() => setHoveredLink(null)}
             >
               <span className="relative z-10">{link.label}</span>
               {hoveredLink === link.href && (
                 <motion.div
-                  className="absolute inset-0 bg-emerald-500/10 rounded-xl border border-emerald-500/20"
+                  className="absolute inset-0 bg-white/[0.06] rounded-xl border border-white/10"
                   layoutId="nav-hover"
                   transition={{ duration: 0.2 }}
                 />
