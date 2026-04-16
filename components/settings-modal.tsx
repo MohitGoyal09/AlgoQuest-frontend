@@ -34,11 +34,6 @@ interface NotificationSettings {
   teamUpdates: boolean
 }
 
-interface PrivacySettings {
-  shareWithManager: boolean
-  pauseMonitoring: boolean
-}
-
 interface TeamSettings {
   anonymizeDefault: boolean
 }
@@ -99,13 +94,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     teamUpdates: false,
   })
 
-  // Privacy state (API-backed, employee only)
-  const [privacy, setPrivacy] = useState<PrivacySettings>({
-    shareWithManager: userRole?.consent_share_with_manager ?? false,
-    pauseMonitoring: false,
-  })
-  const [privacyLoading, setPrivacyLoading] = useState(false)
-
   // Team defaults state (localStorage, manager/admin only)
   const [teamSettings, setTeamSettings] = useState<TeamSettings>({
     anonymizeDefault: true,
@@ -124,16 +112,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     setMounted(true)
   }, [])
 
-  // Sync privacy state from auth context when modal opens
-  useEffect(() => {
-    if (open && userRole) {
-      setPrivacy((prev) => ({
-        ...prev,
-        shareWithManager: userRole.consent_share_with_manager ?? false,
-      }))
-    }
-  }, [open, userRole])
-
   // ---- Notification handlers (localStorage) ----
 
   function updateNotification(key: keyof NotificationSettings, value: boolean) {
@@ -144,45 +122,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     }
     writeBoolean(storageKeyMap[key], value)
     setNotifications((prev) => ({ ...prev, [key]: value }))
-  }
-
-  // ---- Privacy handlers (API-backed) ----
-
-  async function handleConsentChange(value: boolean) {
-    setPrivacyLoading(true)
-    try {
-      await api.put("/me/consent", {
-        consent_share_with_manager: value,
-      })
-      setPrivacy((prev) => ({ ...prev, shareWithManager: value }))
-      toast.success(
-        value
-          ? "Data sharing with manager enabled"
-          : "Data sharing with manager disabled"
-      )
-    } catch {
-      toast.error("Failed to update consent setting")
-    } finally {
-      setPrivacyLoading(false)
-    }
-  }
-
-  async function handlePauseMonitoring(value: boolean) {
-    setPrivacyLoading(true)
-    try {
-      if (value) {
-        await api.post("/me/pause-monitoring", { hours: 24 })
-        toast.success("Monitoring paused for 24 hours")
-      } else {
-        await api.post("/me/resume-monitoring")
-        toast.success("Monitoring resumed")
-      }
-      setPrivacy((prev) => ({ ...prev, pauseMonitoring: value }))
-    } catch {
-      toast.error("Failed to update monitoring status")
-    } finally {
-      setPrivacyLoading(false)
-    }
   }
 
   // ---- Team defaults handler (localStorage) ----
@@ -323,55 +262,22 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           </section>
 
           {/* ----------------------------------------------------------- */}
-          {/* Privacy (employee only)                                       */}
+          {/* Privacy info (read-only)                                      */}
           {/* ----------------------------------------------------------- */}
-          {isEmployee && (
-            <section className="border-b border-border pb-6">
-              <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3 flex items-center gap-2">
-                <Lock className="h-3.5 w-3.5" />
-                Privacy
-              </h3>
-              <div className="space-y-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <Label
-                      htmlFor="settings-share-manager"
-                      className="text-sm text-foreground"
-                    >
-                      Share data with manager
-                    </Label>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Allow your manager to see your wellness metrics. Your data is always anonymized by default.</p>
-                  </div>
-                  <Switch
-                    id="settings-share-manager"
-                    checked={privacy.shareWithManager}
-                    onCheckedChange={handleConsentChange}
-                    disabled={privacyLoading}
-                    className="mt-0.5"
-                  />
-                </div>
-
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <Label
-                      htmlFor="settings-pause-monitoring"
-                      className="text-sm text-foreground"
-                    >
-                      Pause monitoring
-                    </Label>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Temporarily stop data collection for 24 hours</p>
-                  </div>
-                  <Switch
-                    id="settings-pause-monitoring"
-                    checked={privacy.pauseMonitoring}
-                    onCheckedChange={handlePauseMonitoring}
-                    disabled={privacyLoading}
-                    className="mt-0.5"
-                  />
-                </div>
-              </div>
-            </section>
-          )}
+          <section className="border-b border-border pb-6">
+            <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3 flex items-center gap-2">
+              <Lock className="h-3.5 w-3.5" />
+              Privacy
+            </h3>
+            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 space-y-1.5">
+              <p className="text-xs text-foreground font-medium">Your data is protected by design</p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Sentinel analyzes behavioral metadata only (timestamps, event counts).
+                All identities are HMAC-SHA256 hashed. No message content, code, or files are ever accessed.
+                Names are only revealed for critical safety interventions with a full audit trail.
+              </p>
+            </div>
+          </section>
 
           {/* ----------------------------------------------------------- */}
           {/* Team Defaults (manager only — admins see real names)          */}

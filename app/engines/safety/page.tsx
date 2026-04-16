@@ -3,6 +3,7 @@
 import { Suspense, useState, useMemo, useEffect, useCallback } from "react"
 
 import { ProtectedRoute } from "@/components/protected-route"
+import { useAuth } from "@/contexts/auth-context"
 import { RiskAssessment } from "@/components/risk-assessment"
 import { AiInsightCard } from "@/components/ai/AiInsightCard"
 import { StatCards } from "@/components/stat-cards"
@@ -21,6 +22,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import {
   Shield,
   Users,
@@ -44,6 +46,9 @@ import {
   Gauge,
   Link2,
   Sparkles,
+  Flame,
+  Signal,
+  Cpu,
 } from "lucide-react"
 
 import { Employee, RiskLevel, TeamMetrics, toRiskLevel } from "@/types"
@@ -243,7 +248,9 @@ function SafetyContent() {
   const [showAlertsOnly, setShowAlertsOnly] = useState(false)
   const [profileDialogEmployee, setProfileDialogEmployee] = useState<Employee | null>(null)
   const [isScheduling, setIsScheduling] = useState(false)
-  const [isAnonymized, setIsAnonymized] = useState(true)
+  const { userRole } = useAuth()
+  const isAdmin = userRole?.role === "admin"
+  const [isAnonymized, setIsAnonymized] = useState(!isAdmin)
 
   const { users, isLoading: usersLoading, refetch: refetchUsers } = useUsers()
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -901,110 +908,304 @@ function SafetyContent() {
           if (!open) setProfileDialogEmployee(null)
         }}
       >
-        {profileDialogEmployee && (
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
+        {profileDialogEmployee && (() => {
+          const entropy = profileDialogEmployee.circadian_entropy ?? Math.max(0, Math.min(3, profileDialogEmployee.velocity * 0.6))
+          return (
+          <DialogContent className="sm:max-w-2xl p-0 overflow-hidden">
+            {/* Risk-level accent bar */}
+            <div className={cn(
+              "h-1.5 w-full",
+              profileDialogEmployee.risk_level === "CRITICAL" ? "bg-red-500" : profileDialogEmployee.risk_level === "ELEVATED" ? "bg-amber-500" : "bg-emerald-500"
+            )} />
+
+            {/* Header row: avatar + name + role + badge + action buttons */}
+            <DialogHeader className="px-6 pt-4 pb-0">
               <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback className={getRiskBg(profileDialogEmployee.risk_level)}>
+                <Avatar className="h-11 w-11 shrink-0">
+                  <AvatarFallback className={cn("text-sm", getRiskBg(profileDialogEmployee.risk_level))}>
                     {(profileDialogEmployee.risk_level === "CRITICAL" || !isAnonymized) ? getInitials(profileDialogEmployee.name) : "??"}
                   </AvatarFallback>
                 </Avatar>
-                <div className="min-w-0">
-                  <DialogTitle className="text-base">
+                <div className="min-w-0 flex-1">
+                  <DialogTitle className="text-sm font-semibold leading-tight">
                     {displayName(profileDialogEmployee)}
                     {isCriticalReveal(profileDialogEmployee) && (
-                      <Eye className="inline h-3.5 w-3.5 ml-1.5 text-red-400/70" aria-label="Identity revealed for safety" />
+                      <Eye className="inline h-3 w-3 ml-1 text-red-400/70" aria-label="Identity revealed for safety" />
                     )}
                   </DialogTitle>
-                  <DialogDescription className="text-xs">
+                  <DialogDescription className="text-xs mt-0.5">
                     {(profileDialogEmployee.risk_level === "CRITICAL" || !isAnonymized) ? profileDialogEmployee.role : "Engineer"}
                   </DialogDescription>
                 </div>
                 <Badge
                   variant="outline"
-                  className={cn("ml-auto text-[9px] px-1.5 py-0 shrink-0", getRiskBg(profileDialogEmployee.risk_level))}
+                  className={cn("text-[9px] px-1.5 py-0 shrink-0", getRiskBg(profileDialogEmployee.risk_level))}
                 >
                   {profileDialogEmployee.risk_level}
                 </Badge>
+                <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                  <Button
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs"
+                    disabled={isScheduling}
+                    onClick={() => handleScheduleBreak(profileDialogEmployee.user_hash)}
+                  >
+                    <Calendar className="h-3.5 w-3.5" />
+                    {isScheduling ? "Scheduling..." : "Schedule 1:1"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs"
+                    onClick={() => {
+                      setProfileDialogEmployee(null)
+                      window.location.href = `/ask-sentinel?q=${encodeURIComponent(`Tell me about ${displayName(profileDialogEmployee)}'s wellbeing`)}`
+                    }}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    Ask Sentinel
+                  </Button>
+                </div>
               </div>
             </DialogHeader>
 
-            <div className="flex flex-col gap-4 pt-2">
-              {/* Key Metrics */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-muted/30 rounded-lg p-3 text-center">
-                  <Gauge className="h-3.5 w-3.5 mx-auto mb-1 text-muted-foreground" />
-                  <p className="text-lg font-bold tabular-nums font-mono">{profileDialogEmployee.velocity.toFixed(1)}</p>
-                  <p className="text-[10px] text-muted-foreground">Velocity</p>
-                </div>
-                <div className="bg-muted/30 rounded-lg p-3 text-center">
-                  <Link2 className="h-3.5 w-3.5 mx-auto mb-1 text-muted-foreground" />
-                  <p className="text-lg font-bold tabular-nums font-mono">{(profileDialogEmployee.belongingness_score * 100).toFixed(0)}%</p>
-                  <p className="text-[10px] text-muted-foreground">Connection</p>
-                </div>
-                <div className="bg-muted/30 rounded-lg p-3 text-center">
-                  <Sparkles className="h-3.5 w-3.5 mx-auto mb-1 text-muted-foreground" />
-                  <p className="text-lg font-bold tabular-nums font-mono">{(profileDialogEmployee.confidence * 100).toFixed(0)}%</p>
-                  <p className="text-[10px] text-muted-foreground">Confidence</p>
-                </div>
-              </div>
+            {/* Tabs */}
+            <div className="px-6 pt-3 pb-5">
+              <Tabs defaultValue="overview">
+                <TabsList className="w-full grid grid-cols-3">
+                  <TabsTrigger value="overview" className="text-xs gap-1.5">
+                    <Activity className="h-3.5 w-3.5" />
+                    Overview
+                  </TabsTrigger>
+                  <TabsTrigger value="signals" className="text-xs gap-1.5">
+                    <Signal className="h-3.5 w-3.5" />
+                    Signals
+                  </TabsTrigger>
+                  <TabsTrigger value="skills" className="text-xs gap-1.5">
+                    <Cpu className="h-3.5 w-3.5" />
+                    Skills
+                  </TabsTrigger>
+                </TabsList>
 
-              {/* Active Indicators */}
-              {profileDialogEmployee.indicators && (
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Active Indicators</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {profileDialogEmployee.indicators.chaotic_hours && (
-                      <Badge variant="outline" className="text-[10px] bg-[hsl(var(--sentinel-elevated))]/10 text-[hsl(var(--sentinel-elevated))] border-[hsl(var(--sentinel-elevated))]/20">
-                        <Clock className="h-3 w-3 mr-1" />Chaotic Schedule
-                      </Badge>
-                    )}
-                    {profileDialogEmployee.indicators.social_withdrawal && (
-                      <Badge variant="outline" className="text-[10px] bg-[hsl(var(--sentinel-critical))]/10 text-[hsl(var(--sentinel-critical))] border-[hsl(var(--sentinel-critical))]/20">
-                        <Users className="h-3 w-3 mr-1" />Social Withdrawal
-                      </Badge>
-                    )}
-                    {profileDialogEmployee.indicators.sustained_intensity && (
-                      <Badge variant="outline" className="text-[10px] bg-[hsl(var(--sentinel-elevated))]/10 text-[hsl(var(--sentinel-elevated))] border-[hsl(var(--sentinel-elevated))]/20">
-                        <Zap className="h-3 w-3 mr-1" />Sustained Intensity
-                      </Badge>
-                    )}
-                    {!profileDialogEmployee.indicators.chaotic_hours &&
-                      !profileDialogEmployee.indicators.social_withdrawal &&
-                      !profileDialogEmployee.indicators.sustained_intensity && (
-                        <span className="text-[11px] text-muted-foreground">No active indicators</span>
-                      )}
+                {/* ---- Overview Tab ---- */}
+                <TabsContent value="overview" className="mt-4 space-y-4">
+                  {/* 4 metric cards in a grid */}
+                  <div className="grid grid-cols-4 gap-2.5">
+                    <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
+                      <Gauge className="h-4 w-4 mx-auto text-muted-foreground mb-1.5" />
+                      <p className="text-xl font-bold font-mono tabular-nums text-foreground">{profileDialogEmployee.velocity.toFixed(1)}</p>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Velocity</p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
+                      <Link2 className="h-4 w-4 mx-auto text-muted-foreground mb-1.5" />
+                      <p className="text-xl font-bold font-mono tabular-nums text-foreground">{(profileDialogEmployee.belongingness_score * 100).toFixed(0)}%</p>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Connection</p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
+                      <Sparkles className="h-4 w-4 mx-auto text-muted-foreground mb-1.5" />
+                      <p className="text-xl font-bold font-mono tabular-nums text-foreground">{(profileDialogEmployee.confidence * 100).toFixed(0)}%</p>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Confidence</p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
+                      <Flame className="h-4 w-4 mx-auto text-muted-foreground mb-1.5" />
+                      <p className={cn(
+                        "text-xl font-bold font-mono tabular-nums",
+                        entropy > 2 ? "text-[hsl(var(--sentinel-critical))]" : entropy > 1 ? "text-[hsl(var(--sentinel-elevated))]" : "text-foreground"
+                      )}>{entropy.toFixed(1)}</p>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Entropy</p>
+                    </div>
                   </div>
-                </div>
-              )}
 
-              {/* Actions */}
-              <div className="flex flex-col gap-2 pt-1">
-                <Button
-                  variant="outline"
-                  className="w-full gap-2"
-                  disabled={isScheduling}
-                  onClick={() => handleScheduleBreak(profileDialogEmployee.user_hash)}
-                >
-                  <Calendar className="h-4 w-4" />
-                  {isScheduling ? "Scheduling..." : "Schedule 1:1"}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full gap-2"
-                  onClick={() => {
-                    setProfileDialogEmployee(null)
-                    window.location.href = `/ask-sentinel?q=${encodeURIComponent(`Tell me about ${displayName(profileDialogEmployee)}'s wellbeing`)}`
-                  }}
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  Ask Sentinel
-                </Button>
-              </div>
+                  {/* Active Indicators */}
+                  {profileDialogEmployee.indicators && (
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Active Indicators</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {profileDialogEmployee.indicators.chaotic_hours && (
+                          <Badge variant="outline" className="text-[10px] bg-[hsl(var(--sentinel-elevated))]/10 text-[hsl(var(--sentinel-elevated))] border-[hsl(var(--sentinel-elevated))]/20">
+                            <Clock className="h-3 w-3 mr-1" />Chaotic Schedule
+                          </Badge>
+                        )}
+                        {profileDialogEmployee.indicators.social_withdrawal && (
+                          <Badge variant="outline" className="text-[10px] bg-[hsl(var(--sentinel-critical))]/10 text-[hsl(var(--sentinel-critical))] border-[hsl(var(--sentinel-critical))]/20">
+                            <Users className="h-3 w-3 mr-1" />Social Withdrawal
+                          </Badge>
+                        )}
+                        {profileDialogEmployee.indicators.sustained_intensity && (
+                          <Badge variant="outline" className="text-[10px] bg-[hsl(var(--sentinel-elevated))]/10 text-[hsl(var(--sentinel-elevated))] border-[hsl(var(--sentinel-elevated))]/20">
+                            <Zap className="h-3 w-3 mr-1" />Sustained Intensity
+                          </Badge>
+                        )}
+                        {!profileDialogEmployee.indicators.chaotic_hours &&
+                          !profileDialogEmployee.indicators.social_withdrawal &&
+                          !profileDialogEmployee.indicators.sustained_intensity && (
+                            <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                              <CheckCircle2 className="h-3 w-3 mr-1" />All Clear
+                            </Badge>
+                          )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* AI Assessment */}
+                  <div className="rounded-lg border border-border bg-muted/20 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">AI Assessment</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {profileDialogEmployee.risk_level === "CRITICAL"
+                        ? "This employee is showing multiple high-risk signals. Immediate check-in recommended to understand workload and wellbeing concerns."
+                        : profileDialogEmployee.risk_level === "ELEVATED"
+                          ? "Elevated patterns detected. Proactive conversation recommended to prevent escalation and provide support."
+                          : "This employee appears to be in a healthy state. Continue regular check-ins and maintain current support."}
+                    </p>
+                  </div>
+                </TabsContent>
+
+                {/* ---- Signals Tab ---- */}
+                <TabsContent value="signals" className="mt-4 space-y-4">
+                  {/* Sentiment Score */}
+                  <div className="rounded-lg border border-border bg-muted/20 p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Heart className="h-4 w-4 text-muted-foreground" />
+                      <p className="text-xs font-semibold text-foreground">Sentiment</p>
+                    </div>
+                    {profileDialogEmployee.sentiment_available && profileDialogEmployee.sentiment_score != null ? (
+                      <div className="flex items-center gap-4">
+                        <div className="text-center">
+                          <p className={cn(
+                            "text-3xl font-bold font-mono tabular-nums",
+                            profileDialogEmployee.sentiment_score > 0.6 ? "text-[hsl(var(--sentinel-healthy))]" : profileDialogEmployee.sentiment_score > 0.3 ? "text-[hsl(var(--sentinel-elevated))]" : "text-[hsl(var(--sentinel-critical))]"
+                          )}>
+                            {(profileDialogEmployee.sentiment_score * 100).toFixed(0)}%
+                          </p>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Score</p>
+                        </div>
+                        <Separator orientation="vertical" className="h-10" />
+                        <div className="flex-1">
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            Sentiment trend data for this employee. Use the main dashboard for full time-series visualization.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center py-6 text-center">
+                        <div>
+                          <Heart className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
+                          <p className="text-xs text-muted-foreground">Sentiment data not available for this employee</p>
+                          <p className="text-[10px] text-muted-foreground/60 mt-1">Opt-in required for sentiment analysis</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Communication Tone */}
+                  <div className="rounded-lg border border-border bg-muted/20 p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                      <p className="text-xs font-semibold text-foreground">Communication Tone</p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="text-center">
+                        <p className="text-lg font-bold font-mono tabular-nums text-foreground">
+                          {profileDialogEmployee.belongingness_score > 0.7 ? "Warm" : profileDialogEmployee.belongingness_score > 0.4 ? "Neutral" : "Distant"}
+                        </p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Tone</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-bold font-mono tabular-nums text-foreground">
+                          {profileDialogEmployee.indicators?.social_withdrawal ? "Low" : "Normal"}
+                        </p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Engagement</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-bold font-mono tabular-nums text-foreground">
+                          {profileDialogEmployee.velocity > 2 ? "High" : profileDialogEmployee.velocity > 1 ? "Medium" : "Low"}
+                        </p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">Activity</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Attrition Probability */}
+                  <div className="rounded-lg border border-border bg-muted/20 p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-xs font-semibold text-foreground">Attrition Probability</p>
+                      </div>
+                      <p className={cn(
+                        "text-xl font-bold font-mono tabular-nums",
+                        profileDialogEmployee.attrition_probability > 0.6 ? "text-[hsl(var(--sentinel-critical))]" : profileDialogEmployee.attrition_probability > 0.3 ? "text-[hsl(var(--sentinel-elevated))]" : "text-[hsl(var(--sentinel-healthy))]"
+                      )}>
+                        {(profileDialogEmployee.attrition_probability * 100).toFixed(0)}%
+                      </p>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* ---- Skills Tab ---- */}
+                <TabsContent value="skills" className="mt-4 space-y-4">
+                  <div className="rounded-lg border border-border bg-muted/20 p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Cpu className="h-4 w-4 text-muted-foreground" />
+                      <p className="text-xs font-semibold text-foreground">Derived Skill Indicators</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { label: "Focus", value: Math.max(0, Math.min(100, Math.round((1 - (entropy / 3)) * 100))), icon: Eye },
+                        { label: "Collaboration", value: Math.round(profileDialogEmployee.belongingness_score * 100), icon: Users },
+                        { label: "Consistency", value: Math.round(profileDialogEmployee.confidence * 100), icon: CheckCircle2 },
+                        { label: "Resilience", value: Math.max(0, Math.min(100, Math.round((1 - profileDialogEmployee.attrition_probability) * 100))), icon: Shield },
+                      ].map((skill) => {
+                        const SkillIcon = skill.icon
+                        return (
+                          <div key={skill.label} className="flex items-center gap-3 rounded-lg border border-border bg-background p-3">
+                            <SkillIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-medium text-foreground">{skill.label}</span>
+                                <span className={cn(
+                                  "text-xs font-bold font-mono tabular-nums",
+                                  skill.value >= 70 ? "text-[hsl(var(--sentinel-healthy))]" : skill.value >= 40 ? "text-[hsl(var(--sentinel-elevated))]" : "text-[hsl(var(--sentinel-critical))]"
+                                )}>{skill.value}</span>
+                              </div>
+                              <div className="h-1.5 w-full rounded-full bg-muted">
+                                <div
+                                  className={cn(
+                                    "h-1.5 rounded-full transition-all",
+                                    skill.value >= 70 ? "bg-[hsl(var(--sentinel-healthy))]" : skill.value >= 40 ? "bg-[hsl(var(--sentinel-elevated))]" : "bg-[hsl(var(--sentinel-critical))]"
+                                  )}
+                                  style={{ width: `${skill.value}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Persona */}
+                  {profileDialogEmployee.persona && (
+                    <div className="rounded-lg border border-border bg-muted/20 p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Info className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-xs font-semibold text-foreground">Persona Profile</p>
+                      </div>
+                      <p className="text-xs text-muted-foreground capitalize">{profileDialogEmployee.persona.replace(/_/g, " ")}</p>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+
+              {/* User hash footer */}
+              <p className="text-[10px] text-muted-foreground/50 font-mono mt-3">ID: {profileDialogEmployee.user_hash.slice(0, 12)}...</p>
             </div>
           </DialogContent>
-        )}
+          )
+        })()}
       </Dialog>
     </div>
   )

@@ -19,9 +19,6 @@ import {
 import {
   Database,
   Upload,
-  GitBranch,
-  MessageSquare,
-  ClipboardList,
   Calendar,
   Shield,
   Activity,
@@ -39,7 +36,6 @@ import {
   Gauge,
   TrendingUp,
   AlertTriangle,
-  Mail,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -116,27 +112,27 @@ const EMPTY_SCORING: PipelineScoring = {
   riskDistribution: { low: 0, elevated: 0, critical: 0 },
 }
 
+/** Format an ISO timestamp as a relative time string like "2h ago" or "3d ago". */
+function formatRelativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const seconds = Math.floor(diff / 1000)
+  if (seconds < 60) return "just now"
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  const months = Math.floor(days / 30)
+  return `${months}mo ago`
+}
+
 // Validation constants
 const MAX_FILE_SIZE_MB = 10
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 const ALLOWED_FILE_TYPES = ['.csv']
 const POLLING_INTERVAL_MS = 30000
 
-// Icon map
-const connectorIcons: Record<string, React.ComponentType<{ className?: string }>> = {
-  "git-branch": GitBranch,
-  "message-square": MessageSquare,
-  "clipboard-list": ClipboardList,
-  calendar: Calendar,
-  upload: Upload,
-}
-
-const statusColors: Record<string, { bg: string; text: string; dot: string }> = {
-  connected: { bg: "bg-emerald-500/10", text: "text-emerald-400", dot: "bg-emerald-400" },
-  pending: { bg: "bg-amber-500/10", text: "text-amber-400", dot: "bg-amber-400" },
-  disconnected: { bg: "bg-muted/50", text: "text-muted-foreground", dot: "bg-muted-foreground" },
-  error: { bg: "bg-red-500/10", text: "text-red-400", dot: "bg-red-400" },
-}
 
 function DataIngestionContent() {
   const { currentTenant } = useTenant()
@@ -148,6 +144,7 @@ function DataIngestionContent() {
   const [syncResult, setSyncResult] = useState<string | null>(null)
   const [scoring, setScoring] = useState<PipelineScoring>(EMPTY_SCORING)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const hasAutoSynced = useRef(false)
 
   const fetchScoring = useCallback(async () => {
     try {
@@ -253,16 +250,32 @@ function DataIngestionContent() {
     }
   }, [fetchStatus, handleSync])
 
-  // Single consolidated polling effect — 30s interval for both status and scoring
+  // Poll pipeline status on mount and every 30s
   useEffect(() => {
     fetchStatus()
-    fetchScoring()
     const interval = setInterval(() => {
       fetchStatus()
-      fetchScoring()
     }, POLLING_INTERVAL_MS)
     return () => clearInterval(interval)
-  }, [fetchStatus, fetchScoring])
+  }, [fetchStatus])
+
+  // Scoring updates whenever status changes (avoids stale closure on first load)
+  useEffect(() => {
+    if (status) fetchScoring()
+  }, [status, fetchScoring])
+
+  // Auto-sync once when page loads in live mode
+  useEffect(() => {
+    if (
+      status?.mode === "live" &&
+      syncingSource === null &&
+      !hasAutoSynced.current
+    ) {
+      hasAutoSynced.current = true
+      setSyncResult("Auto-syncing connected sources...")
+      handleSync("all")
+    }
+  }, [status?.mode, syncingSource, handleSync])
 
   useEffect(() => {
     if (syncingSource && status?.last_engine_run) {
@@ -391,7 +404,9 @@ function DataIngestionContent() {
 
   const metrics = status?.metrics
   const connectors = status?.connectors || []
-  const connectedSourceCount = connectors.filter((c) => c.status === "connected").length
+  const connectedSourceCount = status?.mode === "live"
+    ? connectors.filter((c) => c.status === "connected").length
+    : connectors.filter((c) => c.events_ingested > 0).length
 
   return (
     <div className="flex flex-1 flex-col h-full bg-background">
@@ -503,43 +518,42 @@ function DataIngestionContent() {
               </p>
             </div>
 
-            {/* Row 1: Source Status Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            {/* Row 1: Source Data Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
               {[
                 { label: "GitHub", icon: GitHubLogo, sourceKey: "Git" },
                 { label: "Slack", icon: SlackLogo, sourceKey: "Slack" },
                 { label: "Calendar", icon: GoogleCalendarLogo, sourceKey: "Calendar" },
                 { label: "Gmail", icon: GmailLogo, sourceKey: "Gmail" },
+                { label: "Jira", icon: JiraLogo, sourceKey: "Jira" },
               ].map((src) => {
                 const connector = connectors.find((c) => c.name === src.sourceKey)
-                const isConnected = connector?.status === "connected"
                 const eventCount = connector?.events_ingested ?? 0
+                const hasData = eventCount > 0
+                const isLive = connector?.status === "connected"
                 return (
-                  <div key={src.label} className="rounded-lg border border-border bg-muted/30 p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className={cn(
-                        "h-9 w-9 rounded-lg flex items-center justify-center",
-                        isConnected ? "bg-emerald-500/10" : "bg-muted/50"
-                      )}>
-                        <src.icon className={cn(
-                          "h-4 w-4",
-                          isConnected ? "text-emerald-400" : "text-muted-foreground"
-                        )} />
-                      </div>
-                      <div className={cn(
-                        "h-2.5 w-2.5 rounded-full",
-                        isConnected ? "bg-emerald-400" : "bg-muted-foreground/40"
-                      )} />
+                  <div key={src.label} className={cn(
+                    "rounded-lg border p-3 transition-colors",
+                    hasData
+                      ? "border-border bg-muted/30"
+                      : "border-border/50 bg-muted/10 opacity-60"
+                  )}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <src.icon className="h-4 w-4" />
+                      <span className="text-xs font-medium text-foreground">{src.label}</span>
+                      {isLive && (
+                        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" title="Live connection" />
+                      )}
                     </div>
-                    <p className="text-sm font-medium text-foreground">{src.label}</p>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        {isConnected ? "Connected" : "Not connected"}
-                      </span>
-                      <span className="text-xs font-mono text-primary">
-                        {eventCount.toLocaleString()}
-                      </span>
-                    </div>
+                    <p className={cn(
+                      "text-lg font-bold font-mono",
+                      hasData ? "text-foreground" : "text-muted-foreground"
+                    )}>
+                      {eventCount.toLocaleString()}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground/70">
+                      {hasData ? "events ingested" : "no data yet"}
+                    </p>
                   </div>
                 )
               })}
@@ -800,86 +814,103 @@ function DataIngestionContent() {
             </div>
           </div>
 
-          {/* ── Section 3: Source Connectors + Data Transparency (two columns) ── */}
+          {/* ── Section 3: Data Sources + Data Transparency (two columns) ── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left: Source Connectors */}
+            {/* Left: Data Sources */}
             <Card className="bg-card border border-border">
-              <CardHeader>
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-foreground text-base">
                     <Database className="h-5 w-5 text-blue-400" />
-                    Source Connectors
+                    Data Sources
                   </CardTitle>
-                  <button
-                    onClick={() => handleSync("all")}
-                    disabled={syncingSource !== null}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-border rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer disabled:opacity-50"
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-[10px] px-2 py-0.5",
+                      status?.mode === "live"
+                        ? "border-emerald-500/30 text-emerald-400"
+                        : "border-amber-500/30 text-amber-400"
+                    )}
                   >
-                    <RefreshCw className={cn("h-3.5 w-3.5", syncingSource === "all" && "animate-spin")} />
-                    {syncingSource === "all" ? "Syncing..." : "Sync All"}
-                  </button>
+                    {status?.mode === "live" ? "Live" : "Demo Data"}
+                  </Badge>
                 </div>
+                <CardDescription className="text-xs text-muted-foreground">
+                  {status?.mode === "live"
+                    ? "Connected via Composio integrations. Syncing in real time."
+                    : "Running on seed data. Connect live sources via Integrations to enable real-time sync."
+                  }
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {connectors.map((c) => {
-                  const Icon = connectorIcons[c.icon] || Database
-                  const colors = statusColors[c.status] || statusColors.disconnected
+              <CardContent className="space-y-2">
+                {connectors.filter(c => c.name !== "CSV Upload").map((c) => {
+                  const hasData = c.events_ingested > 0
+                  const isLive = c.status === "connected"
+                  const logoMap: Record<string, React.ComponentType<{ className?: string }>> = {
+                    "Git": GitHubLogo, "Slack": SlackLogo, "Calendar": GoogleCalendarLogo,
+                    "Gmail": GmailLogo, "Jira": JiraLogo,
+                  }
+                  const Logo = logoMap[c.name] || Database
                   return (
                     <div
                       key={c.name}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border hover:border-border/80 transition-colors"
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors",
+                        hasData
+                          ? "border-border bg-muted/30"
+                          : "border-border/50 bg-muted/10"
+                      )}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center", colors.bg)}>
-                          <Icon className={cn("h-4 w-4", colors.text)} />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{c.name}</p>
-                          <p className="text-[10px] text-muted-foreground/70">{c.description}</p>
-                        </div>
+                      <Logo className="h-4 w-4 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground">{c.name === "Git" ? "GitHub" : c.name}</p>
+                        <p className="text-[10px] text-muted-foreground/70 truncate">{c.description}</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono text-muted-foreground">{c.events_ingested.toLocaleString()}</span>
-                        <div className={cn("h-2 w-2 rounded-full", colors.dot)} />
-                        {c.status === "connected" && c.name !== "CSV Upload" && c.name !== "Jira" ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              const sourceMap: Record<string, string> = { "Git": "github", "Slack": "slack", "Calendar": "calendar" }
-                              handleSync(sourceMap[c.name] || c.name.toLowerCase())
-                            }}
-                            disabled={syncingSource !== null}
-                            className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 h-8 text-xs"
-                          >
-                            {syncingSource ? (
-                              <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" />Syncing</>
-                            ) : (
-                              <><RefreshCw className="h-3 w-3 mr-1.5" />Sync Now</>
-                            )}
-                          </Button>
-                        ) : c.status !== "connected" && ["Git", "Slack", "Calendar"].includes(c.name) ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleConnect(c.name)}
-                            className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10 h-8 text-xs"
-                          >
-                            Connect
-                          </Button>
-                        ) : c.status === "connected" ? (
-                          <button
-                            onClick={() => handleSync(c.name.toLowerCase())}
-                            disabled={syncingSource !== null}
-                            className="ml-1 px-3 py-1.5 text-xs border border-border rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer disabled:opacity-50"
-                          >
-                            {syncingSource === c.name.toLowerCase() ? "Syncing..." : "Sync Now"}
-                          </button>
-                        ) : null}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={cn(
+                          "text-sm font-mono font-semibold tabular-nums",
+                          hasData ? "text-foreground" : "text-muted-foreground/50"
+                        )}>
+                          {c.events_ingested.toLocaleString()}
+                        </span>
+                        {c.last_sync && (
+                          <span className="text-[10px] text-muted-foreground/60 font-mono" title={c.last_sync}>
+                            {formatRelativeTime(c.last_sync)}
+                          </span>
+                        )}
+                        {isLive ? (
+                          <div className="flex items-center gap-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                const sourceMap: Record<string, string> = { "Git": "github", "Slack": "slack", "Calendar": "calendar", "Gmail": "gmail" }
+                                handleSync(sourceMap[c.name] || c.name.toLowerCase())
+                              }}
+                              disabled={syncingSource !== null}
+                              className="h-7 px-2 text-[10px] text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                            >
+                              {syncingSource ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                            </Button>
+                          </div>
+                        ) : hasData ? (
+                          <span className="h-1.5 w-1.5 rounded-full bg-blue-400" title="Seed data loaded" />
+                        ) : (
+                          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30" />
+                        )}
                       </div>
                     </div>
                   )
                 })}
+                {/* Total row */}
+                <div className="flex items-center justify-between pt-2 mt-1 border-t border-border/50">
+                  <span className="text-xs text-muted-foreground font-medium">Total Events in Pipeline</span>
+                  <span className="text-sm font-bold font-mono text-foreground">
+                    {(metrics?.total_events ?? 0).toLocaleString()}
+                  </span>
+                </div>
               </CardContent>
             </Card>
 
@@ -935,6 +966,76 @@ function DataIngestionContent() {
               </CardContent>
             </Card>
           </div>
+
+          {/* ── Section 3.5: Live Event Feed ── */}
+          <Card className="bg-card border border-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-foreground text-base">
+                <Activity className="h-5 w-5 text-emerald-400" />
+                Recent Pipeline Activity
+              </CardTitle>
+              <CardDescription className="text-xs text-muted-foreground">
+                Latest events flowing through the ingestion pipeline.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {status?.recent_events && status.recent_events.length > 0 ? (
+                <div className="max-h-[320px] overflow-y-auto pr-1">
+                  <div className="space-y-1">
+                    {status.recent_events.slice(0, 15).map((event) => {
+                      const sourceBadgeClasses: Record<string, string> = {
+                        git: "bg-foreground/10 text-foreground border-foreground/20",
+                        slack: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+                        calendar: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+                        gmail: "bg-red-500/10 text-red-400 border-red-500/20",
+                        csv: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+                      }
+                      const badgeClass =
+                        sourceBadgeClasses[event.source.toLowerCase()] ??
+                        "bg-muted text-muted-foreground border-border"
+
+                      const time = new Date(event.timestamp).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+
+                      return (
+                        <div
+                          key={event.id}
+                          className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted/30 transition-colors"
+                        >
+                          <span className="text-xs text-muted-foreground font-mono w-12 shrink-0">
+                            {time}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className={cn("text-[10px] px-1.5 py-0 capitalize shrink-0", badgeClass)}
+                          >
+                            {event.source}
+                          </Badge>
+                          <span className="text-sm text-foreground truncate flex-1 min-w-0">
+                            {event.event_type}
+                          </span>
+                          <span className="text-xs text-muted-foreground font-mono truncate max-w-[80px] shrink-0" title={event.user_hash}>
+                            {event.user_hash.length > 8
+                              ? `${event.user_hash.slice(0, 8)}...`
+                              : event.user_hash}
+                          </span>
+                          <span className="text-xs text-muted-foreground font-mono tabular-nums w-16 text-right shrink-0">
+                            {(event.latency_ms ?? 0).toFixed(1)}ms
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-8 text-sm text-muted-foreground/60">
+                  No recent events
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* ── Section 4: CSV Upload (simple, at bottom) ── */}
           <Card className="bg-card border border-border">
@@ -1052,7 +1153,7 @@ function DataIngestionContent() {
 
 export default function DataIngestionPage() {
   return (
-    <ProtectedRoute allowedRoles={["admin", "manager"]}>
+    <ProtectedRoute allowedRoles={["admin"]}>
       <DataIngestionContent />
     </ProtectedRoute>
   )

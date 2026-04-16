@@ -24,6 +24,10 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   title: 'Sentinel — AI-Powered Employee Insights',
   description: 'Privacy-first burnout detection, talent discovery, and team health monitoring.',
+  icons: {
+    icon: '/favicon-sentinel.png',
+    apple: '/favicon-sentinel.png',
+  },
 }
 
 export const viewport: Viewport = {

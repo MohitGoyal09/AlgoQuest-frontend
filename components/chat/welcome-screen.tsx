@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { AlertTriangle, Heart, Info, ShieldCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -77,8 +78,8 @@ export function WelcomeScreen({ userName, onSuggestionClick, inputSlot }: Welcom
     <div className="flex flex-col items-center w-full max-w-3xl mx-auto px-4">
       {/* 1. Sentinel brand avatar */}
       <div className="animate-in fade-in zoom-in-95 duration-500">
-        <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center text-3xl font-bold text-primary-foreground select-none ring-4 ring-primary/10">
-          S
+        <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center select-none ring-4 ring-primary/10 overflow-hidden">
+          <Image src="/favicon-sentinel.png" alt="Sentinel" width={80} height={80} className="rounded-full" />
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import Image from "next/image"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { Pencil } from "lucide-react"
@@ -53,10 +54,10 @@ function parseSuggestionsFromContent(content: string): string[] {
 function SentinelAvatar() {
   return (
     <div
-      className="shrink-0 w-7 h-7 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-[11px] font-bold select-none"
+      className="shrink-0 w-7 h-7 rounded-full bg-primary flex items-center justify-center select-none overflow-hidden"
       aria-hidden="true"
     >
-      S
+      <Image src="/favicon-sentinel.png" alt="" width={28} height={28} className="rounded-full" />
     </div>
   )
 }

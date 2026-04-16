@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
+import Image from "next/image"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { WelcomeScreen } from "./welcome-screen"
 import { ToolCard, type ToolStep } from "./tool-card"
@@ -78,10 +79,10 @@ function TypingIndicator() {
   return (
     <div className="flex items-start gap-3 animate-in fade-in slide-in-from-bottom-1 duration-200">
       <div
-        className="shrink-0 w-7 h-7 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-[11px] font-bold select-none"
+        className="shrink-0 w-7 h-7 rounded-full bg-primary flex items-center justify-center select-none overflow-hidden"
         aria-hidden="true"
       >
-        S
+        <Image src="/favicon-sentinel.png" alt="" width={28} height={28} className="rounded-full" />
       </div>
       <div className="flex items-center gap-1.5 pt-2">
         <span className="text-xs text-muted-foreground animate-pulse">Thinking...</span>

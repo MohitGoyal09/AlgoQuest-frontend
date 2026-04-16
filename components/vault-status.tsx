@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
 export function VaultStatus({ eventCount, userCount }: { eventCount?: number; userCount?: number }) {
-  const users = userCount || 6
-  const events = eventCount || 1248
+  const users = userCount ?? 0
+  const events = eventCount ?? 0
   const resolutions = Math.floor(users * 0.5)
 
   return (
@@ -16,7 +16,7 @@ export function VaultStatus({ eventCount, userCount }: { eventCount?: number; us
           <CardTitle className="text-sm font-semibold text-foreground">Two-Vault Architecture</CardTitle>
           <Badge
             variant="outline"
-            className="border-primary/20 bg-primary/6 text-[10px] font-medium text-primary"
+            className="border-emerald-500/30 bg-emerald-500/10 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400"
           >
             <Lock className="mr-1 h-2.5 w-2.5" />
             Secure
@@ -47,6 +47,16 @@ export function VaultStatus({ eventCount, userCount }: { eventCount?: number; us
               </span>
             </div>
           </div>
+        </div>
+
+        {/* Flow divider */}
+        <div className="flex items-center gap-2 px-2">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-[10px] font-medium tracking-wider text-muted-foreground/60">HANDOFF</span>
+          <svg className="h-3 w-3 text-muted-foreground/50" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 2v8m0 0L3 7m3 3l3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div className="h-px flex-1 bg-border" />
         </div>
 
         {/* Vault B */}
@@ -85,7 +95,7 @@ export function VaultStatus({ eventCount, userCount }: { eventCount?: number; us
               "Vault A never learns user identity",
             ].map((step, i) => (
               <div key={`step-${i}`} className="flex items-start gap-2.5">
-                <span className="shrink-0 font-mono text-[11px] font-bold text-[hsl(var(--sentinel-info))]">
+                <span className="shrink-0 font-mono text-xs font-extrabold text-[hsl(var(--sentinel-info))]">
                   {i + 1}.
                 </span>
                 <span className="text-xs text-muted-foreground">{step}</span>

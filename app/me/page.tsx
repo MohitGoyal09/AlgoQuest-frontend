@@ -538,6 +538,22 @@ function MePageContent() {
             <CardContent className="px-5 pb-5 space-y-4">
               {nudgeData ? (
                 <NudgeCard nudge={nudgeData} />
+              ) : data.risk?.risk_level === "CRITICAL" ? (
+                <div className="flex flex-col items-center justify-center py-6 text-center">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[hsl(var(--sentinel-critical))]/10 mb-3">
+                    <AlertTriangle className="h-4 w-4 text-[hsl(var(--sentinel-critical))]" />
+                  </div>
+                  <p className="text-xs font-medium text-[hsl(var(--sentinel-critical))]">Needs attention</p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-0.5">Your signals indicate high stress patterns</p>
+                </div>
+              ) : data.risk?.risk_level === "ELEVATED" ? (
+                <div className="flex flex-col items-center justify-center py-6 text-center">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[hsl(var(--sentinel-elevated))]/10 mb-3">
+                    <AlertTriangle className="h-4 w-4 text-[hsl(var(--sentinel-elevated))]" />
+                  </div>
+                  <p className="text-xs font-medium text-[hsl(var(--sentinel-elevated))]">Monitor</p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-0.5">Some signals trending above baseline</p>
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-6 text-center">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[hsl(var(--sentinel-healthy))]/10 mb-3">

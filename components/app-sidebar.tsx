@@ -459,8 +459,8 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {/* Data Ingestion — manager + admin only */}
-              {isManager && (
+              {/* Data Ingestion — admin only */}
+              {isAdmin && (
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
@@ -544,17 +544,19 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                             </Link>
                           </SidebarMenuSubButton>
                         </SidebarMenuSubItem>
-                        <SidebarMenuSubItem>
-                          <SidebarMenuSubButton
-                            asChild
-                            isActive={isActive(pathname, '/simulation')}
-                          >
-                            <Link href="/simulation">
-                              <Zap className="size-4" />
-                              <span>Simulation</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
+                        {isAdmin && (
+                          <SidebarMenuSubItem>
+                            <SidebarMenuSubButton
+                              asChild
+                              isActive={isActive(pathname, '/simulation')}
+                            >
+                              <Link href="/simulation">
+                                <Zap className="size-4" />
+                                <span>Simulation</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        )}
                       </SidebarMenuSub>
                     </CollapsibleContent>
                   </SidebarMenuItem>
