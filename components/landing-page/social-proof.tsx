@@ -15,7 +15,7 @@ const companies = [
 ]
 
 const stats = [
-  { value: 94, suffix: "%", label: "Accuracy" },
+  { value: 91, suffix: "%", label: "R² Confidence" },
   { value: 2, suffix: "-4", label: "Weeks Early" },
   { value: 18, suffix: "", label: "Days Average" },
   { value: 0, suffix: "", label: "Content Read" },

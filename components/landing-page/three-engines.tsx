@@ -149,7 +149,7 @@ function LivingECG({ isCritical = true }: { isCritical?: boolean }) {
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
-          <span className="text-[10px] text-white/40">94% confidence</span>
+          <span className="text-[10px] text-white/40">R² = 0.91 trend fit</span>
         </div>
       </div>
     </div>
@@ -400,7 +400,7 @@ const engines = [
     id: 'safety',
     title: 'Safety Valve',
     subtitle: 'Burnout Detection',
-    description: 'Velocity (linear regression), Belongingness (reply rate), Circadian Entropy (Shannon). Three signals. One risk score.',
+    description: 'Velocity (linear regression), Connection Index (reply + mention rate), Circadian Entropy (Shannon). Three signals. One risk score.',
     icon: Activity,
     color: 'rose',
     viz: LivingECG,

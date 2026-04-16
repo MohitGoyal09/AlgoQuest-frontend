@@ -81,7 +81,7 @@ export function FinalCTA() {
           <div className="flex flex-wrap items-center justify-center gap-6 mt-12 text-sm text-white/40">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>94% Detection Accuracy</span>
+              <span>R² Trend Confidence</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />

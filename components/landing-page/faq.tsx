@@ -18,7 +18,7 @@ const faqData = [
   {
     question: "What's the accuracy rate?",
     answer:
-      "94% accuracy in detecting employees at risk 2-4 weeks before traditional methods.",
+      "R-squared confidence on every individual trend line. We measure how well the math fits, not unvalidated prediction percentages. Detection window is 2-4 weeks before traditional methods surface the problem.",
   },
   {
     question: "How long does implementation take?",

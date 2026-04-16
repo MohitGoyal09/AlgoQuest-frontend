@@ -57,7 +57,7 @@ const steps = [
   {
     number: "02",
     title: "Math Decides",
-    description: "NumPy/SciPy computes velocity (linregress), circadian entropy (Shannon), belongingness (reply rates). Deterministic. 94% confidence gates.",
+    description: "NumPy/SciPy computes velocity (linregress), circadian entropy (Shannon), Connection Index (reply + mention rates). Deterministic. R² confidence on every alert.",
     icon: Calculator,
     color: "amber",
     detail: "Zero AI in decisions"

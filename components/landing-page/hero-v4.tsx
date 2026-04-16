@@ -200,8 +200,8 @@ export function LandingHeroV4({ isLoaded }: HeroProps) {
             transition={{ duration: 0.8, delay: 1.4 }}
           >
             {[
-              { value: "18", label: "Days Early", icon: Zap },
-              { value: "94%", label: "Accuracy", icon: Shield },
+              { value: "2-4", label: "Weeks Early", icon: Zap },
+              { value: "0.91", label: "R² Confidence", icon: Shield },
               { value: "0", label: "Content Read", icon: Network },
             ].map((stat, i) => (
               <div key={i} className="flex items-center gap-3">

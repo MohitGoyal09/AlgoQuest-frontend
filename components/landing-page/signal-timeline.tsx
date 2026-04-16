@@ -5,7 +5,7 @@ import { motion, useScroll, useTransform } from "framer-motion"
 
 const timelineEvents = [
   {
-    day: -18,
+    day: -21,
     label: "Signal",
     title: "First Anomalous Pattern",
     description:
@@ -15,7 +15,7 @@ const timelineEvents = [
     detail: "Velocity baseline deviation detected",
   },
   {
-    day: -14,
+    day: -16,
     label: "Entropy",
     title: "Behavioral Entropy Rising",
     description:
@@ -25,24 +25,24 @@ const timelineEvents = [
     detail: "Shannon entropy increase: 0.4 → 0.7",
   },
   {
-    day: -7,
-    label: "Belongingness",
+    day: -10,
+    label: "Connection",
     title: "Connection Atrophy",
     description:
       "Team sync participation dropped to 40%. Internal messages decreased 67%. The invisible thread of belonging is fraying.",
     risk: "medium-high",
     color: "#F59E0B",
-    detail: "Eigenvector centrality declining",
+    detail: "Connection Index: 0.55 → 0.30",
   },
   {
     day: -3,
     label: "Critical",
     title: "Pre-Resignation Signature",
     description:
-      "Pattern matches historical burnout cases with 94% accuracy. Document access patterns shifted. Recovery probability: low without intervention.",
+      "All three behavioral signals converging simultaneously. Velocity rising, connection declining, schedule fragmenting. Recovery probability: low without intervention.",
     risk: "high",
     color: "#EF4444",
-    detail: "94% match probability",
+    detail: "R² = 0.91 trend confidence",
   },
   {
     day: -1,
@@ -377,14 +377,14 @@ export function SignalTimeline() {
             </div>
 
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-white tracking-tight mb-3">
-              18 Days Before
+              21 Days Before
               <span className="block text-emerald-400 font-serif italic">
                 Resignation
               </span>
             </h2>
 
             <p className="text-base text-white/50 max-w-lg mx-auto">
-              Sentinel detected burnout 18 days before the employee submitted their
+              Sentinel detected burnout 21 days before the employee submitted their
               resignation. Each signal, invisible alone, told a story.
             </p>
           </motion.div>

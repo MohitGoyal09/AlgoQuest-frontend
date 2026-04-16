@@ -13,7 +13,7 @@ interface TagItem {
 
 const tags: TagItem[] = [
   { id: "overview", label: "Overview", href: "#overview", color: "#10B981" },
-  { id: "timeline", label: "18 Days", href: "#timeline", color: "#F59E0B" },
+  { id: "timeline", label: "21 Days", href: "#timeline", color: "#F59E0B" },
   { id: "privacy", label: "Privacy", href: "#privacy", color: "#8B5CF6" },
   { id: "engines", label: "Engines", href: "#engines", color: "#EF4444" },
   { id: "network", label: "Network", href: "#network", color: "#6366F1" },
