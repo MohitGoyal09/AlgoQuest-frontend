@@ -53,7 +53,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https: blob:",
               "font-src 'self' data:",
-              "connect-src 'self' http://localhost:* http://127.0.0.1:* https://*.supabase.co wss://*.supabase.co ws://localhost:* https://backend.composio.dev https://logos.composio.dev",
+              `connect-src 'self' http://localhost:* http://127.0.0.1:* https://*.supabase.co wss://*.supabase.co ws://localhost:* http://*.sslip.io ws://*.sslip.io wss://*.sslip.io https://backend.composio.dev https://logos.composio.dev ${process.env.NEXT_PUBLIC_API_URL ? new URL(process.env.NEXT_PUBLIC_API_URL).origin : ''}`,
               "frame-src 'self' https://*.composio.dev https://accounts.google.com",
             ].join("; "),
           },
