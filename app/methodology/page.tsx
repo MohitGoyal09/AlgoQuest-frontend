@@ -209,12 +209,12 @@ function MethodologyContent() {
             </CardContent>
           </Card>
 
-          {/* Engine 3: Culture Thermometer */}
+          {/* Engine 3: Team Health */}
           <Card className="border-border/50 bg-card/50">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
                 <Thermometer className="h-4 w-4 text-amber-400" />
-                Culture Thermometer — Team Health &amp; Contagion
+                Team Health — contagion &amp; wellbeing
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
