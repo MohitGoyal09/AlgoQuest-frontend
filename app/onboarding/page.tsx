@@ -130,7 +130,7 @@ function OnboardingPageContent() {
             <Card className="border-2">
               <CardContent className="pt-6">
                 <Heart className="w-8 h-8 text-pink-500 mb-3" />
-                <h3 className="font-semibold mb-1">Team Health</h3>
+                <h3 className="font-semibold mb-1">Culture Thermometer</h3>
                 <p className="text-sm text-muted-foreground">
                   Predict resignation contagion using SIR epidemic modeling
                 </p>

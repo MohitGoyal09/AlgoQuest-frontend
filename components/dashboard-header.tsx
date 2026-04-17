@@ -16,7 +16,7 @@ const viewLabels: Record<string, string> = {
   dashboard: "Overview",
   "safety-valve": "Safety Valve",
   "talent-scout": "Talent Scout",
-  culture: "Team Health",
+  culture: "Culture Thermometer",
   network: "Network Graph",
   simulation: "Simulation",
   admin: "Admin Panel",

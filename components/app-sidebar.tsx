@@ -540,7 +540,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                           >
                             <Link href="/engines/culture">
                               <Thermometer className="size-4" />
-                              <span>Team Health</span>
+                              <span>Culture Thermometer</span>
                             </Link>
                           </SidebarMenuSubButton>
                         </SidebarMenuSubItem>

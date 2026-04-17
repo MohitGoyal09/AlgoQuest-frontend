@@ -261,7 +261,7 @@ function CultureContent() {
           <div className="flex items-center gap-3">
             <Thermometer className="h-6 w-6 text-emerald-400 shrink-0" />
             <div>
-              <h1 className="text-2xl font-semibold text-foreground">Team Health</h1>
+              <h1 className="text-2xl font-semibold text-foreground">Culture Thermometer</h1>
               <p className="text-sm text-muted-foreground mt-0.5">
                 Team dynamics, communication patterns, and contagion risk
               </p>

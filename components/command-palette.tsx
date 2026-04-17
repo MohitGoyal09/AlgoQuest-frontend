@@ -46,7 +46,7 @@ export function CommandPalette({ onNavigate }: CommandPaletteProps) {
             { id: 'data-pipeline', label: 'Data Pipeline', category: 'navigation', icon: Zap, action: () => onNavigate('data-ingestion') },
             { id: 'safety-valve', label: 'Safety Valve Engine', category: 'navigation', icon: Shield, action: () => onNavigate('engines/safety') },
             { id: 'talent-scout', label: 'Talent Scout Engine', category: 'navigation', icon: Sparkles, action: () => onNavigate('engines/talent') },
-            { id: 'culture', label: 'Team Health', category: 'navigation', icon: Thermometer, action: () => onNavigate('engines/culture') },
+            { id: 'culture', label: 'Culture Thermometer Engine', category: 'navigation', icon: Thermometer, action: () => onNavigate('engines/culture') },
             { id: 'network', label: 'Network Graph', category: 'navigation', icon: Network, action: () => onNavigate('engines/network') },
             { id: 'simulation', label: 'Simulation Engine', category: 'navigation', icon: Zap, action: () => onNavigate('simulation') },
             { id: 'me', label: 'My Wellbeing', category: 'navigation', icon: User, action: () => onNavigate('me') },
